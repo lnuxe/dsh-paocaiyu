@@ -1,0 +1,3 @@
+- insert:
+    - id: qwerty-autotype-ui
+      name: '@local/qwerty-autotype-ui'

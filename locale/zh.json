@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Qwerty 跟打界面",
+    "description": "在对话里用 /qwerty-autotype 起一张跟打卡片：单词显示在对话流中，打对变绿进下一个词，打错整词重打。"
+  }
+}

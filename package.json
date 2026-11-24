@@ -1,0 +1,49 @@
+{
+  "name": "@local/qwerty-autotype-ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Qwerty 跟打的对话界面：/qwerty-autotype 在对话里长出一张跟打卡片。",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lnuxe/qwerty-autotype-ui.git"
+  },
+  "homepage": "https://github.com/lnuxe/qwerty-autotype-ui#readme",
+  "bugs": {
+    "url": "https://github.com/lnuxe/qwerty-autotype-ui/issues"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "dicts.generated.json",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  "scripts": {
+    "test": "node test-client-logic.mjs",
+    "check": "node --check client.js"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-chat"
+      ]
+    }
+  }
+}

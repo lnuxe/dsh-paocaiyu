@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Qwerty practice UI",
+    "description": "Starts an in-chat typing card with /qwerty-autotype: the word lives in the conversation, correct letters turn green, a wrong letter makes you retype it."
+  }
+}
