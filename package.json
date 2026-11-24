@@ -1,10 +1,10 @@
 {
   "name": "@local/qwerty-autotype-ui",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Qwerty 跟打的对话界面：/qwerty-autotype 在对话里长出一张跟打卡片。",
-  "license": "MIT",
+  "license": "GPL-3.0-only",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/lnuxe/qwerty-autotype-ui.git"
@@ -28,11 +28,17 @@
     "icon.svg",
     "README.md",
     "LICENSE",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "dicts.index.json",
+    "NOTICE"
   ],
   "scripts": {
     "test": "node test-client-logic.mjs",
-    "check": "node --check client.js"
+    "check": "node --check client.js",
+    "index": "node scripts/build-index.mjs",
+    "data": "node scripts/build-index.mjs && node scripts/build-dicts.mjs",
+    "index:inline": "node scripts/build-index.mjs --inline client.js",
+    "verify": "node --check client.js && node test-client-logic.mjs"
   },
   "dsh": {
     "bundle": {

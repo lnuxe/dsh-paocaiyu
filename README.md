@@ -26,7 +26,28 @@ Qwerty 跟打的**对话界面**（Client 半边）。Host 半边在 `../qwerty-
 
 ### 词库
 
-`dicts.generated.json` 由 `scripts/build-dicts.mjs` 从 [qwerty-learner](https://github.com/RealKai42/qwerty-learner) 生成后内联进 `client.js`，7 个词库共 560 词：
+**练习记录**：`wordRecords` / `chapterRecords` / `progress` 三个 IndexedDB store（库名 `qwerty-autotype`），全部本地；章节完成会打 ✓，面板显示「今日 N 词 · 正确率 · WPM」。
+
+**设置页**：`设置 → 跟打` 可改区分大小写、忽略标点、发音开关、默认默写形态，存于 `qwerty-autotype:setting:*`。
+
+**无障碍**：所有按钮 Tab 可达、Enter/Space 触发，有焦点轮廓；打错与完成通过 `aria-live` 播报；卡片内 `?` 看快捷键。
+
+**备份**：`设置 → 跟打 → 数据` 可导出/导入 JSON 备份（记录 + 设置），也可一键清空本地练习记录。
+
+**错词本与统计**：打错过的词自动进错词本（可按错误次数重练前 20），统计浮层给近 14 天柱状图、12 周热力图与总词数/正确率/WPM。
+
+**全量目录**：`dicts.index.json` 由 `scripts/build-index.mjs` 从 qwerty-learner 的 `src/resources/dictionary.ts` 生成（**371 个词库 / 414,485 词 / 10 个分类 / 6 种语言**），内联进 `client.js` 只占 62KB 元数据；词条本身在选中词库时按需拉取，顺序为 内存 → IndexedDB → 钉住提交(jsDelivr/raw) → master → 内置 7 库兜底。
+
+```bash
+npm run index                       # 只生成 dicts.index.json
+npm run index:inline                # 同时写回 client.js 的 @dict-index 区间
+node scripts/build-index.mjs --pin <sha> --inline client.js   # 钉住上游提交（推荐）
+npm run verify                      # node --check + 184 条逻辑/渲染测试
+```
+
+> 上游没有 release tag，`--pin` 用 commit SHA；客户端优先按 SHA 拉，拿不到自动回退 `master`。
+
+**离线兜底**：`dicts.generated.json` 由 `scripts/build-dicts.mjs` 生成后内联，7 个词库共 560 词：
 
 | id | 名称 | 分类 | 词数 |
 | --- | --- | --- | --- |
@@ -66,7 +87,7 @@ dsh plugin install <本仓库目录>
 
 ## 版本与仓库
 
-- 包名 `@local/qwerty-autotype-ui`，当前 `0.1.0`，许可证 MIT。
+- 包名 `@local/qwerty-autotype-ui`，当前 `0.2.0`，许可证 **GPL-3.0-only**（见 [NOTICE](./NOTICE)：词库数据派生自同样以 GPL-3.0 发布的 qwerty-learner）。
 - 变更记录见 [CHANGELOG.md](./CHANGELOG.md)（Keep a Changelog 格式）。
 
 ### 语义化版本约定

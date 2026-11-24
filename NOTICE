@@ -1,0 +1,13 @@
+qwerty-autotype-ui
+Copyright (C) 2026 lnuxe
+
+本项目的**词库数据**（dicts.generated.json、dicts.index.json 及其归一化后的词条）
+派生自 qwerty-learner（https://github.com/RealKai42/qwerty-learner），
+该项目以 GNU General Public License v3.0 发布。
+
+因为本项目分发这些派生数据，整个项目按 GPL-3.0（仅此版本）发布，
+完整许可全文见 LICENSE。上游版权归其作者所有；上游数据来源见其仓库
+docs/toBuildDict.md 与各词库的提交历史。
+
+运行时按需拉取的词库 JSON 直接来自上游仓库（jsDelivr / raw.githubusercontent），
+不构成本仓库的再次分发。

@@ -62,44 +62,944 @@ window.__ModuleLoader__.load({
       words: LEXICON.map((entry) => ({ w: entry.word, ipa: entry.ipa, zh: entry.zh })),
     }
 
-    const DICT_STORAGE_KEY = 'qwerty-autotype:dict'
+    /* @dict-index:start —— 由 scripts/build-index.mjs 生成，勿手改 */ const DICT_INDEX = {"source":"qwerty-learner","pinned":"490d7e3fef019c8246ee8c53f59e28f641253ef1","generatedAt":"2026-11-24","chapterLength":20,"dicts":[{"id":"cet4","name":"CET-4","category":"中国考试","tags":["大学英语"],"length":2607,"url":"/dicts/CET4_T.json","languageCategory":"en"},{"id":"cet6","name":"CET-6","category":"中国考试","tags":["大学英语"],"length":2345,"url":"/dicts/CET6_T.json","languageCategory":"en"},{"id":"xinghuoqiaoji_4","name":"四级巧记速记","category":"中国考试","tags":["大学英语"],"length":2522,"url":"/dicts/xinghuoqiaoji_4.json","languageCategory":"en"},{"id":"xinghuoqiaoji_6","name":"六级巧记速记","category":"中国考试","tags":["大学英语"],"length":7520,"url":"/dicts/xinghuoqiaoji_6.json","languageCategory":"en"},{"id":"cet4-sub","name":"CET-4-Sub","category":"中国考试","tags":["大学英语"],"length":1957,"url":"/dicts/DanCiDeJianFa_4.json","languageCategory":"en"},{"id":"cet6-sub","name":"CET-6-Sub","category":"中国考试","tags":["大学英语"],"length":1949,"url":"/dicts/DanCiDeJianFa_6.json","languageCategory":"en"},{"id":"kaoyan","name":"考研","category":"中国考试","tags":["考研"],"length":3728,"url":"/dicts/KaoYan_3_T.json","languageCategory":"en"},{"id":"kaoyan_2024","name":"考研 2024","category":"中国考试","tags":["考研"],"length":3731,"url":"/dicts/KaoYan_2024.json","languageCategory":"en"},{"id":"kaoyanshanguo_2023","name":"考研闪过 2023","category":"中国考试","tags":["考研"],"length":1771,"url":"/dicts/KaoYanShanGuo_2023.json","languageCategory":"en"},{"id":"926","name":"考研926词汇","category":"中国考试","tags":["考研"],"length":926,"url":"/dicts/926.json","languageCategory":"en"},{"id":"dancimimi_1","name":"单词的秘密-英语一","category":"中国考试","tags":["考研"],"length":5657,"url":"/dicts/DanCiDeMimi_1.json","languageCategory":"en"},{"id":"dancimimi_2","name":"单词的秘密-英语二","category":"中国考试","tags":["考研"],"length":3827,"url":"/dicts/DanCiDeMimi_2.json","languageCategory":"en"},{"id":"2024HongBao T1","name":"2024考研英语hongbaoshu(上)","category":"中国考试","tags":["考研"],"length":997,"url":"/dicts/2024HongBao_T1.json","languageCategory":"en"},{"id":"2024HongBao T2","name":"2024考研英语hongbaoshu(下)","category":"中国考试","tags":["考研"],"length":854,"url":"/dicts/2024HongBao_T2.json","languageCategory":"en"},{"id":"hongbaoshu-2026","name":"2026考研英语 hongbaoshu","category":"中国考试","tags":["考研"],"length":4858,"url":"/dicts/hongbaoshu-2026.json","languageCategory":"en"},{"id":"English_II","name":"英语二单词书","category":"中国考试","tags":["考研"],"length":4559,"url":"/dicts/English_II.json","languageCategory":"en"},{"id":"kaoyanshanguo2025","name":"考研 shanguo 2025","category":"中国考试","tags":["考研"],"length":2257,"url":"/dicts/kaoyanshanguo2025.json","languageCategory":"en"},{"id":"level4","name":"专四","category":"中国考试","tags":["大学英语"],"length":4025,"url":"/dicts/Level4luan_2_T.json","languageCategory":"en"},{"id":"level8","name":"专八","category":"中国考试","tags":["大学英语"],"length":12197,"url":"/dicts/Level8luan_2_T.json","languageCategory":"en"},{"id":"archVocabulary","name":"建筑专业英语","category":"中国考试","tags":["专业英语"],"length":630,"url":"/dicts/archVocabulary.json","languageCategory":"en"},{"id":"itVocabulary","name":"计算机专用英语","category":"中国考试","tags":["专业英语"],"length":1665,"url":"/dicts/itVocabulary.json","languageCategory":"en"},{"id":"pets3","name":"PETS","category":"中国考试","tags":["PET"],"length":1942,"url":"/dicts/PETS_3.json","languageCategory":"en"},{"id":"pets3-2023","name":"PETS-2023","category":"中国考试","tags":["PET"],"length":4449,"url":"/dicts/PETS3-2023.json","languageCategory":"en"},{"id":"self-study_English1","name":"自考1800高频单词","category":"中国考试","tags":["自考英语二"],"length":1800,"url":"/dicts/self-study_English1.json","languageCategory":"en"},{"id":"self-study_English2","name":"自考英语二高频悠悠单词","category":"中国考试","tags":["自考英语二"],"length":2181,"url":"/dicts/self-study_English2.json","languageCategory":"en"},{"id":"self-study_English3","name":"自考英语二完整单词","category":"中国考试","tags":["自考英语二"],"length":4603,"url":"/dicts/self-study_English3.json","languageCategory":"en"},{"id":"coca_20000","name":"COCA20000词","category":"中国考试","tags":["其他"],"length":20199,"url":"/dicts/coca20000.json","languageCategory":"en"},{"id":"4000_Essential_English_Words1","name":"Essential Words","category":"中国考试","tags":["其他"],"length":3600,"url":"/dicts/4000_Essential_English_Words-meaning.json","languageCategory":"en"},{"id":"4000_Essential_English_Words2","name":"Essential Words","category":"中国考试","tags":["其他"],"length":3600,"url":"/dicts/4000_Essential_English_Words-sentence.json","languageCategory":"en"},{"id":"longman_communication_3000_words","name":"Longman Communication 3000","category":"中国考试","tags":["其他"],"length":3168,"url":"/dicts/Longman_Communication_3000.json","languageCategory":"en"},{"id":"top_2000_English_Words","name":"Top 2000 words","category":"中国考试","tags":["其他"],"length":1867,"url":"/dicts/top2000words.json","languageCategory":"en"},{"id":"top_1500_nouns_Words","name":"Top 1500 Nouns","category":"中国考试","tags":["其他"],"length":1525,"url":"/dicts/Top1500NounWords.json","languageCategory":"en"},{"id":"top_1000_verb_Words","name":"Top 1000 Verbs","category":"中国考试","tags":["其他"],"length":1011,"url":"/dicts/Top1000VerbWords.json","languageCategory":"en"},{"id":"top_500_Adj_Words","name":"Top 500 adj.","category":"中国考试","tags":["其他"],"length":527,"url":"/dicts/Top500AdjectiveWords.json","languageCategory":"en"},{"id":"top_250_Adv_Words","name":"Top 250 adv.","category":"中国考试","tags":["其他"],"length":255,"url":"/dicts/Top250AdverbWords.json","languageCategory":"en"},{"id":"top_60_Pronouns","name":"Top 60 pron.","category":"中国考试","tags":["其他"],"length":59,"url":"/dicts/Top60Pronouns.json","languageCategory":"en"},{"id":"top_50_Prepositions","name":"Top 50 prep.","category":"中国考试","tags":["其他"],"length":46,"url":"/dicts/Top50Prepositions.json","languageCategory":"en"},{"id":"suffix word","name":"suffix word","category":"中国考试","tags":["其他"],"length":126,"url":"/dicts/suffix_word.json","languageCategory":"en"},{"id":"word roots1","name":"word roots1","category":"中国考试","tags":["其他"],"length":369,"url":"/dicts/word_roots1.json","languageCategory":"en"},{"id":"adult self-study examination","name":"专升本词汇","category":"中国考试","tags":["其他"],"length":3692,"url":"/dicts/adult-self-study-examination.json","languageCategory":"en"},{"id":"zhuan-cha-ben-ying-yu","name":"专插本英语词汇","category":"中国考试","tags":["其他"],"length":3217,"url":"/dicts/zhuan-cha-ben.json","languageCategory":"en"},{"id":"zhuan-sheng-ben-xue-shi","name":"专升本学士学位的英语","category":"中国考试","tags":["其他"],"length":897,"url":"/dicts/xueshiyingyu.json","languageCategory":"en"},{"id":"Oxford5000","name":"牛津5000词","category":"中国考试","tags":["其他"],"length":5836,"url":"/dicts/Oxford5000.json","languageCategory":"en"},{"id":"Merriam_Webster_sVocabularyBuilder","name":"韦氏词根词典","category":"中国考试","tags":["其他"],"length":1191,"url":"/dicts/Merriam_Webster_sVocabularyBuilder.json","languageCategory":"en"},{"id":"tingshuokaoshi","name":"听说考试常见词汇","category":"中国考试","tags":["其他"],"length":557,"url":"/dicts/tingshuokaoshi.json","languageCategory":"en"},{"id":"TOEFL_ZhangHongYan","name":"ZhangHongYan的TOEFL词汇书","category":"国际考试","tags":["TOEFL"],"length":4032,"url":"/dicts/TOEFL_ZhangHongYan.json","languageCategory":"en"},{"id":"2025KaoYanHongBaoShu","name":"2025考研英语词汇hongbao书","category":"中国考试","tags":["考研"],"length":6705,"url":"/dicts/2025KaoYanHongBaoShu.json","languageCategory":"en"},{"id":"3000_ClassRoom_English_Words","name":"专升本3000词","category":"中国考试","tags":["大学英语"],"length":2991,"url":"/dicts/3000_ClassRoom_English_Words.json","languageCategory":"en"},{"id":"frequently_used_words01","name":"超频单词level 1","category":"中国考试","tags":["其他"],"length":679,"url":"/dicts/frequently_used_word01.json","languageCategory":"en"},{"id":"frequently_used_words03","name":"超频单词level 2","category":"中国考试","tags":["其他"],"length":1040,"url":"/dicts/frequently_used_word02.json","languageCategory":"en"},{"id":"roger","name":"roger","category":"英语词典","tags":["课外词汇"],"length":4174,"url":"/dicts/RogersWords.json","languageCategory":"en"},{"id":"pet-2024","name":"PET-2024","category":"国际考试","tags":["PET"],"length":1871,"url":"/dicts/pet-vacabulary-list-2024.json","languageCategory":"en"},{"id":"gmat","name":"GMAT","category":"国际考试","tags":["GMAT"],"length":3047,"url":"/dicts/GMAT_3_T.json","languageCategory":"en"},{"id":"gre","name":"GRE","category":"国际考试","tags":["GRE"],"length":6515,"url":"/dicts/GRE_3_T.json","languageCategory":"en"},{"id":"gre1500","name":"GRE重点1500词-fen哥","category":"国际考试","tags":["GRE"],"length":1533,"url":"/dicts/GRE_1500.json","languageCategory":"en"},{"id":"gre3000","name":"GRE3000","category":"国际考试","tags":["GRE"],"length":3041,"url":"/dicts/GRE3000_3_T.json","languageCategory":"en"},{"id":"GRE-computer-based-test","name":"GRE机经词汇","category":"国际考试","tags":["GRE"],"length":1451,"url":"/dicts/GRE-computer-based-test.json","languageCategory":"en"},{"id":"ZaiYaoNiMing_GRE3000","name":"再要你命GRE3000","category":"国际考试","tags":["GRE"],"length":3041,"url":"/dicts/ZaiYaoNiMing_GRE3000.json","languageCategory":"en"},{"id":"GRE_equivalent","name":"GRE等价词","category":"国际考试","tags":["GRE"],"length":827,"url":"/dicts/GRE_equivalent.json","languageCategory":"en"},{"id":"GRE_ciyileiji","name":"GRE词以类记","category":"国际考试","tags":["GRE"],"length":8785,"url":"/dicts/gre-ciyileiji.json","languageCategory":"en"},{"id":"biomedical-terms","name":"生物医学专业英语词汇","category":"专业词汇","tags":["生物"],"length":560,"url":"/dicts/BIOmedical.json","languageCategory":"en"},{"id":"IELTS_tinglichangjing","name":"雅思听力场景词汇","category":"国际考试","tags":["IELTS"],"length":1204,"url":"/dicts/IELTS_tinglichangjing.json","languageCategory":"en"},{"id":"ielts_disorder","name":"IELTS乱序完整版","category":"国际考试","tags":["IELTS"],"length":9389,"url":"/dicts/IELTS_disorder.json","languageCategory":"en"},{"id":"ielts_order","name":"IELTS顺序完整版","category":"国际考试","tags":["IELTS"],"length":9389,"url":"/dicts/IELTS_order.json","languageCategory":"en"},{"id":"ielts","name":"IELTS","category":"国际考试","tags":["IELTS"],"length":3575,"url":"/dicts/IELTS_3_T.json","languageCategory":"en"},{"id":"heqiong","name":"heQiong雅思听力必考词汇","category":"国际考试","tags":["IELTS"],"length":2529,"url":"/dicts/HeQiong_IELTS.json","languageCategory":"en"},{"id":"ieltsWang3","name":"雅思wang C3","category":"国际考试","tags":["IELTS"],"length":1135,"url":"/dicts/IELTS_WANG_3.json","languageCategory":"en"},{"id":"ieltsWang4","name":"雅思wang C4","category":"国际考试","tags":["IELTS"],"length":346,"url":"/dicts/IELTS_WANG_4.json","languageCategory":"en"},{"id":"ieltsWang5","name":"雅思wang C5","category":"国际考试","tags":["IELTS"],"length":1569,"url":"/dicts/IELTS_WANG_5.json","languageCategory":"en"},{"id":"ieltsWang11","name":"雅思wang C11","category":"国际考试","tags":["IELTS"],"length":1738,"url":"/dicts/IELTS_WANG_11.json","languageCategory":"en"},{"id":"DuckCircle_IELTS","name":"鸭圈雅思核心词","category":"国际考试","tags":["IELTS"],"length":2644,"url":"/dicts/DuckCircle_IELTS.json","languageCategory":"en"},{"id":"IELTSVocabularyBible","name":"雅思词汇真经","category":"国际考试","tags":["IELTS"],"length":3673,"url":"/dicts/IELTSVocabularyBible.json","languageCategory":"en"},{"id":"IELTS-807","name":"雅思 wanglu 807","category":"国际考试","tags":["IELTS"],"length":4340,"url":"/dicts/ielts-807.json","languageCategory":"en"},{"id":"ielts-real-high","name":"雅思 real 词汇 高频","category":"国际考试","tags":["IELTS"],"length":524,"url":"/dicts/ielts-real-high.json","languageCategory":"en"},{"id":"ielts-real-5","name":"雅思 real 词汇 5","category":"国际考试","tags":["IELTS"],"length":183,"url":"/dicts/ielts-real-5.json","languageCategory":"en"},{"id":"ielts-real-4","name":"雅思 real 词汇 4","category":"国际考试","tags":["IELTS"],"length":201,"url":"/dicts/ielts-real-4.json","languageCategory":"en"},{"id":"ielts-real-3","name":"雅思 real 词汇 3","category":"国际考试","tags":["IELTS"],"length":256,"url":"/dicts/ielts-real-3.json","languageCategory":"en"},{"id":"ielts-real-2","name":"雅思 real 词汇 2","category":"国际考试","tags":["IELTS"],"length":402,"url":"/dicts/ielts-real-2.json","languageCategory":"en"},{"id":"ielts-real-1","name":"雅思 real 词汇 1","category":"国际考试","tags":["IELTS"],"length":737,"url":"/dicts/ielts-real-1.json","languageCategory":"en"},{"id":"IELTS9988wangyong","name":"雅思9988wangyong","category":"国际考试","tags":["IELTS"],"length":3698,"url":"/dicts/IELTS9988wangyong.json","languageCategory":"en"},{"id":"IELTSKingLu807","name":"wanglu807雅思词汇听力第2版","category":"国际考试","tags":["IELTS"],"length":1916,"url":"/dicts/IELTSKingLu807.json","languageCategory":"en"},{"id":"IELTSXDF7000","name":"100个句子记完7000个雅思单词","category":"国际考试","tags":["IELTS"],"length":5567,"url":"/dicts/IELTS_XDF_7000.json","languageCategory":"en"},{"id":"IELTS-oral-900","name":"雅思口语 900 beta版","category":"国际考试","tags":["IELTS"],"length":900,"url":"/dicts/IELTS-oral-900.json","languageCategory":"en"},{"id":"IELTS-listening-NeworientalDirect-Task1","name":"xdf听力 雅思中级直通车 day1","category":"国际考试","tags":["IELTS"],"length":44,"url":"/dicts/IELTS-listening-NewOrientalDirect-Task1.json","languageCategory":"en"},{"id":"IELTS-listening-NeworientalDirect-Task2","name":"xdf听力 雅思中级直通车 day2","category":"国际考试","tags":["IELTS"],"length":33,"url":"/dicts/IELTS-listening-NewOrientalDirect-Task2.json","languageCategory":"en"},{"id":"IELTS-listening-NeworientalDirect-Task3","name":"xdf听力 雅思中级直通车 day3","category":"国际考试","tags":["IELTS"],"length":33,"url":"/dicts/IELTS-listening-NewOrientalDirect-Task3.json","languageCategory":"en"},{"id":"IELTS-listening-NeworientalDirect-Task4","name":"xdf听力 雅思中级直通车 day4","category":"国际考试","tags":["IELTS"],"length":33,"url":"/dicts/IELTS-listening-NewOrientalDirect-Task4.json","languageCategory":"en"},{"id":"IELTS-listening-NeworientalDirect-Task5","name":"xdf听力 雅思中级直通车 day5","category":"国际考试","tags":["IELTS"],"length":38,"url":"/dicts/IELTS-listening-NewOrientalDirect-Task5.json","languageCategory":"en"},{"id":"IELTS-listening-NeworientalDirect-Task6","name":"xdf听力 雅思中级直通车 day6","category":"国际考试","tags":["IELTS"],"length":33,"url":"/dicts/IELTS-listening-NewOrientalDirect-Task6.json","languageCategory":"en"},{"id":"IELTS-listening-NeworientalDirect-Task7","name":"xdf听力 雅思中级直通车 day7","category":"国际考试","tags":["IELTS"],"length":39,"url":"/dicts/IELTS-listening-NewOrientalDirect-Task7.json","languageCategory":"en"},{"id":"IELTS-listening-NeworientalDirect-Task8","name":"xdf听力 雅思中级直通车 day8","category":"国际考试","tags":["IELTS"],"length":32,"url":"/dicts/IELTS-listening-NewOrientalDirect-Task8.json","languageCategory":"en"},{"id":"IELTS-listening-NeworientalDirect-Task9","name":"xdf听力 雅思中级直通车 day9","category":"国际考试","tags":["IELTS"],"length":46,"url":"/dicts/IELTS-listening-NewOrientalDirect-Task9.json","languageCategory":"en"},{"id":"IELTS-listening-NeworientalDirect-Task10","name":"xdf听力 雅思中级直通车 day10","category":"国际考试","tags":["IELTS"],"length":44,"url":"/dicts/IELTS-listening-NewOrientalDirect-Task10.json","languageCategory":"en"},{"id":"IELTS-listening-NeworientalDirect-Task11","name":"xdf听力 雅思中级直通车 day11","category":"国际考试","tags":["IELTS"],"length":36,"url":"/dicts/IELTS-listening-NewOrientalDirect-Task11.json","languageCategory":"en"},{"id":"IELTS-listening-NeworientalDirect-Task12","name":"xdf听力 雅思中级直通车 day12","category":"国际考试","tags":["IELTS"],"length":45,"url":"/dicts/IELTS-listening-NewOrientalDirect-Task12.json","languageCategory":"en"},{"id":"IELTS-listening-NeworientalDirect-Task13","name":"xdf听力 雅思中级直通车 day13","category":"国际考试","tags":["IELTS"],"length":49,"url":"/dicts/IELTS-listening-NewOrientalDirect-Task13.json","languageCategory":"en"},{"id":"IELTS-listening-NeworientalDirect-Task14","name":"xdf听力 雅思中级直通车 day14","category":"国际考试","tags":["IELTS"],"length":46,"url":"/dicts/IELTS-listening-NewOrientalDirect-Task14.json","languageCategory":"en"},{"id":"IELTS-listening-NeworientalDirect-Task15","name":"xdf听力 雅思中级直通车 day15","category":"国际考试","tags":["IELTS"],"length":29,"url":"/dicts/IELTS-listening-NewOrientalDirect-Task15.json","languageCategory":"en"},{"id":"IELTS-listening-NeworientalDirect-Task16","name":"xdf听力 雅思中级直通车 day16","category":"国际考试","tags":["IELTS"],"length":42,"url":"/dicts/IELTS-listening-NewOrientalDirect-Task16.json","languageCategory":"en"},{"id":"IELTS-listening-NeworientalDirect-Task17","name":"xdf听力 雅思中级直通车 day17","category":"国际考试","tags":["IELTS"],"length":22,"url":"/dicts/IELTS-listening-NewOrientalDirect-Task17.json","languageCategory":"en"},{"id":"IELTS-listening-NeworientalDirect-Task18","name":"xdf听力 雅思中级直通车 day18","category":"国际考试","tags":["IELTS"],"length":37,"url":"/dicts/IELTS-listening-NewOrientalDirect-Task18.json","languageCategory":"en"},{"id":"IELTS-listening-NeworientalDirect-Task19","name":"xdf听力 雅思中级直通车 day19","category":"国际考试","tags":["IELTS"],"length":26,"url":"/dicts/IELTS-listening-NewOrientalDirect-Task19.json","languageCategory":"en"},{"id":"IELTS-listening-18-days-1","name":"雅思听力词汇18天 day1","category":"国际考试","tags":["IELTS"],"length":74,"url":"/dicts/IELTS-listening-18days-day1.json","languageCategory":"en"},{"id":"IELTS-listening-18-days-2","name":"雅思听力词汇18天 day2","category":"国际考试","tags":["IELTS"],"length":77,"url":"/dicts/IELTS-listening-18days-day2.json","languageCategory":"en"},{"id":"IELTS-listening-18-days-3","name":"雅思听力词汇18天 day3","category":"国际考试","tags":["IELTS"],"length":77,"url":"/dicts/IELTS-listening-18days-day3.json","languageCategory":"en"},{"id":"IELTS-listening-18-days-4","name":"雅思听力词汇18天 day4","category":"国际考试","tags":["IELTS"],"length":73,"url":"/dicts/IELTS-listening-18days-day4.json","languageCategory":"en"},{"id":"IELTS-listening-18-days-5","name":"雅思听力词汇18天 day5","category":"国际考试","tags":["IELTS"],"length":76,"url":"/dicts/IELTS-listening-18days-day5.json","languageCategory":"en"},{"id":"IELTS-listening-18-days-6","name":"雅思听力词汇18天 day6","category":"国际考试","tags":["IELTS"],"length":77,"url":"/dicts/IELTS-listening-18days-day6.json","languageCategory":"en"},{"id":"IELTS-listening-18-days-7","name":"雅思听力词汇18天 day7","category":"国际考试","tags":["IELTS"],"length":75,"url":"/dicts/IELTS-listening-18days-day7.json","languageCategory":"en"},{"id":"IELTS-listening-18-days-8","name":"雅思听力词汇18天 day8","category":"国际考试","tags":["IELTS"],"length":76,"url":"/dicts/IELTS-listening-18days-day8.json","languageCategory":"en"},{"id":"IELTS-listening-18-days-9","name":"雅思听力词汇18天 day9","category":"国际考试","tags":["IELTS"],"length":76,"url":"/dicts/IELTS-listening-18days-day9.json","languageCategory":"en"},{"id":"IELTS-listening-18-days-10","name":"雅思听力词汇18天 day10","category":"国际考试","tags":["IELTS"],"length":33,"url":"/dicts/IELTS-listening-18days-day10.json","languageCategory":"en"},{"id":"IELTS-listening-18-days-11","name":"雅思听力词汇18天 day11","category":"国际考试","tags":["IELTS"],"length":52,"url":"/dicts/IELTS-listening-18days-day11.json","languageCategory":"en"},{"id":"IELTS-listening-18-days-12","name":"雅思听力词汇18天 day12","category":"国际考试","tags":["IELTS"],"length":77,"url":"/dicts/IELTS-listening-18days-day12.json","languageCategory":"en"},{"id":"IELTS-listening-18-days-13","name":"雅思听力词汇18天 day13","category":"国际考试","tags":["IELTS"],"length":78,"url":"/dicts/IELTS-listening-18days-day13.json","languageCategory":"en"},{"id":"IELTS-listening-18-days-14","name":"雅思听力词汇18天 day14","category":"国际考试","tags":["IELTS"],"length":76,"url":"/dicts/IELTS-listening-18days-day14.json","languageCategory":"en"},{"id":"IELTS-listening-18-days-15","name":"雅思听力词汇18天 day15","category":"国际考试","tags":["IELTS"],"length":77,"url":"/dicts/IELTS-listening-18days-day15.json","languageCategory":"en"},{"id":"IELTS-listening-18-days-16","name":"雅思听力词汇18天 day16","category":"国际考试","tags":["IELTS"],"length":77,"url":"/dicts/IELTS-listening-18days-day16.json","languageCategory":"en"},{"id":"IELTS-listening-18-days-17","name":"雅思听力词汇18天 day17","category":"国际考试","tags":["IELTS"],"length":46,"url":"/dicts/IELTS-listening-18days-day17.json","languageCategory":"en"},{"id":"IELTS-listening-18-days-18","name":"雅思听力词汇18天 day18","category":"国际考试","tags":["IELTS"],"length":76,"url":"/dicts/IELTS-listening-18days-day18.json","languageCategory":"en"},{"id":"ket","name":"KET","category":"国际考试","tags":["KET"],"length":1147,"url":"./dicts/ket2021.json","languageCategory":"en"},{"id":"sat","name":"SAT","category":"国际考试","tags":["SAT"],"length":4464,"url":"/dicts/SAT_3_T.json","languageCategory":"en"},{"id":"SATen","name":"SAT en-en","category":"国际考试","tags":["SAT"],"length":2681,"url":"/dicts/SATen.json","languageCategory":"en"},{"id":"toefl","name":"TOEFL","category":"国际考试","tags":["TOEFL"],"length":4264,"url":"/dicts/TOEFL_3_T.json","languageCategory":"en"},{"id":"bec2","name":"商务英语","category":"国际考试","tags":["BEC"],"length":2753,"url":"/dicts/BEC_2_T.json","languageCategory":"en"},{"id":"bec3","name":"BEC","category":"国际考试","tags":["BEC"],"length":2825,"url":"/dicts/BEC_3_T.json","languageCategory":"en"},{"id":"PTE_junior","name":"PTE 基础词汇","category":"国际考试","tags":["PTE"],"length":2651,"url":"/dicts/PTE_junior.json","languageCategory":"en"},{"id":"PTE_senior","name":"PTE 高阶词汇","category":"国际考试","tags":["PTE"],"length":3170,"url":"/dicts/PTE_senior.json","languageCategory":"en"},{"id":"PTE_FIB_R_junior","name":"阅读 FIB 基础机经词汇","category":"国际考试","tags":["PTE"],"length":941,"url":"/dicts/PTE_FIB_R_junior.json","languageCategory":"en"},{"id":"PTE_FIB_R_senior","name":"阅读 FIB 高阶机经词汇","category":"国际考试","tags":["PTE"],"length":1272,"url":"/dicts/PTE_FIB_R_senior.json","languageCategory":"en"},{"id":"PTE_WFD","name":"WFD 机经词汇","category":"国际考试","tags":["PTE"],"length":1212,"url":"/dicts/PTE_WFD.json","languageCategory":"en"},{"id":"PTE_FIB_L","name":"听力 FIB 机经词汇","category":"国际考试","tags":["PTE"],"length":646,"url":"/dicts/PTE_FIB_L.json","languageCategory":"en"},{"id":"PTE_Basic_apeuni","name":"PTE 基础词汇 xingji","category":"国际考试","tags":["PTE"],"length":2652,"url":"/dicts/PTE_Basic_apeuni.json","languageCategory":"en"},{"id":"PTE_Advanced_apeuni.json","name":"PTE 高阶词汇 xingji","category":"国际考试","tags":["PTE"],"length":3169,"url":"/dicts/PTE_Advanced_apeuni.json","languageCategory":"en"},{"id":"PTE_Read_apeuni.json","name":"PTE 阅读FIB机经词汇 xingji","category":"国际考试","tags":["PTE"],"length":630,"url":"/dicts/PTE_Read_apeuni.json","languageCategory":"en"},{"id":"PTE_Listening_apeuni.json","name":"PTE 听力FIB机经词汇 xingji","category":"国际考试","tags":["PTE"],"length":674,"url":"/dicts/PTE_Listening_apeuni.json","languageCategory":"en"},{"id":"TOEIC","name":"TOEIC 词汇","category":"国际考试","tags":["TOEIC"],"length":1694,"url":"/dicts/TOEIC.json","languageCategory":"en"},{"id":"Duolingo_Vocabulary_B1","name":"多邻国分级词汇B1","category":"国际考试","tags":["CEFR"],"length":801,"url":"/dicts/Duolingo_Vocabulary_B1.json","languageCategory":"en"},{"id":"Duolingo_Vocabulary_B2","name":"多邻国分级词汇B2","category":"国际考试","tags":["CEFR"],"length":1423,"url":"/dicts/Duolingo_Vocabulary_B2.json","languageCategory":"en"},{"id":"Duolingo_Vocabulary_C1","name":"多邻国分级词汇C1","category":"国际考试","tags":["CEFR"],"length":1314,"url":"/dicts/Duolingo_Vocabulary_C1.json","languageCategory":"en"},{"id":"Oxford3000","name":"牛津3000词","category":"国际考试","tags":["牛津版"],"length":1342,"url":"/dicts/Oxford3000.json","languageCategory":"en"},{"id":"voa","name":"VOA 基础词库","category":"国际考试","tags":["其他"],"length":1505,"url":"/dicts/voa.json","languageCategory":"en"},{"id":"Common-Phrases-PTE-Unofficial","name":"PTE 常用短语 (非官方)","category":"国际考试","tags":["PTE"],"length":274,"url":"/dicts/Common-Phrases-PTE-Unofficial.json","languageCategory":"en"},{"id":"Common-Phrases-FCE-Unofficial","name":"FCE 常用短语 (非官方)","category":"国际考试","tags":["FCE"],"length":438,"url":"/dicts/Common-Phrases-FCE-Unofficial.json","languageCategory":"en"},{"id":"Categorized_TOEFL_Vocabulary_by_Zhanghongyan","name":"Categorized Vocab.","category":"国际考试","tags":["TOEFL"],"length":4123,"url":"/dicts/Categorized_TOEFL_Vocabulary_by_Zhanghongyan.json","languageCategory":"en"},{"id":"gaokao3500","name":"高考 3500 词","category":"青少年英语","tags":["通用"],"length":3893,"url":"/dicts/GaoKao_3500.json","languageCategory":"en"},{"id":"gaokaozhentihexin","name":"高考历年真题核心高频","category":"青少年英语","tags":["通用"],"length":799,"url":"/dicts/GaoKaoZhenTiHeXinGaoPin.json","languageCategory":"en"},{"id":"gaokao-yuedu-gaopin","name":"高考英语阅读高频词汇","category":"青少年英语","tags":["通用"],"length":688,"url":"/dicts/gaokao-yuedu-gaopin.json","languageCategory":"en"},{"id":"zhongkaohexin","name":"中考核心词","category":"青少年英语","tags":["通用"],"length":2140,"url":"/dicts/ZhongKaoHeXin.json","languageCategory":"en"},{"id":"nce1","name":"新概念英语-1","category":"青少年英语","tags":["新概念英语"],"length":900,"url":"/dicts/NCE_1.json","languageCategory":"en"},{"id":"nce2","name":"新概念英语-2","category":"青少年英语","tags":["新概念英语"],"length":858,"url":"/dicts/NCE_2.json","languageCategory":"en"},{"id":"nce3","name":"新概念英语-3","category":"青少年英语","tags":["新概念英语"],"length":1052,"url":"/dicts/NCE_3.json","languageCategory":"en"},{"id":"nce4","name":"新概念英语-4","category":"青少年英语","tags":["新概念英语"],"length":784,"url":"/dicts/NCE_4.json","languageCategory":"en"},{"id":"nce-new-1","name":"新概念英语(新版)-1","category":"青少年英语","tags":["新概念英语"],"length":908,"url":"/dicts/nce-new-1.json","languageCategory":"en"},{"id":"nce-new-2","name":"新概念英语(新版)-2","category":"青少年英语","tags":["新概念英语"],"length":862,"url":"/dicts/nce-new-2.json","languageCategory":"en"},{"id":"nce-new-3","name":"新概念英语(新版)-3","category":"青少年英语","tags":["新概念英语"],"length":1062,"url":"/dicts/nce-new-3.json","languageCategory":"en"},{"id":"nce-new-4","name":"新概念英语(新版)-4","category":"青少年英语","tags":["新概念英语"],"length":793,"url":"/dicts/nce-new-4.json","languageCategory":"en"},{"id":"SHjuniormiddleOxford","name":"上海初中牛津词汇","category":"青少年英语","tags":["牛津版"],"length":1270,"url":"/dicts/OxfordVocabulary_juniorMiddleSH.json","languageCategory":"en"},{"id":"san1","name":"三年级上","category":"青少年英语","tags":["人教版"],"length":64,"url":"/dicts/PEPXiaoXue3_1_T.json","languageCategory":"en"},{"id":"san2","name":"三年级下","category":"青少年英语","tags":["人教版"],"length":72,"url":"/dicts/PEPXiaoXue3_2_T.json","languageCategory":"en"},{"id":"si1","name":"四年级上","category":"青少年英语","tags":["人教版"],"length":84,"url":"/dicts/PEPXiaoXue4_1_T.json","languageCategory":"en"},{"id":"si2","name":"四年级下","category":"青少年英语","tags":["人教版"],"length":104,"url":"/dicts/PEPXiaoXue4_2_T.json","languageCategory":"en"},{"id":"wu1","name":"五年级上","category":"青少年英语","tags":["人教版"],"length":131,"url":"/dicts/PEPXiaoXue5_1_T.json","languageCategory":"en"},{"id":"wu2","name":"五年级下","category":"青少年英语","tags":["人教版"],"length":156,"url":"/dicts/PEPXiaoXue5_2_T.json","languageCategory":"en"},{"id":"liu1","name":"六年级上","category":"青少年英语","tags":["人教版"],"length":130,"url":"/dicts/PEPXiaoXue6_1_T.json","languageCategory":"en"},{"id":"liu2","name":"六年级下","category":"青少年英语","tags":["人教版"],"length":108,"url":"/dicts/PEPXiaoXue6_2_T.json","languageCategory":"en"},{"id":"pep-sl-yi1","name":"人教版(新起点)一年级上","category":"青少年英语","tags":["人教版"],"length":52,"url":"/dicts/PEP_SL_XiaoXue1_1_t.json","languageCategory":"en"},{"id":"pep-sl-yi2","name":"人教版(新起点)一年级下","category":"青少年英语","tags":["人教版"],"length":45,"url":"/dicts/PEP_SL_XiaoXue1_2_t.json","languageCategory":"en"},{"id":"pep-sl-er1","name":"人教版(新起点)二年级上","category":"青少年英语","tags":["人教版"],"length":54,"url":"/dicts/PEP_SL_XiaoXue2_1_t.json","languageCategory":"en"},{"id":"pep-sl-er2","name":"人教版(新起点)二年级下","category":"青少年英语","tags":["人教版"],"length":55,"url":"/dicts/PEP_SL_XiaoXue2_2_t.json","languageCategory":"en"},{"id":"pep-sl-san1","name":"人教版(新起点)三年级上","category":"青少年英语","tags":["人教版"],"length":103,"url":"/dicts/PEP_SL_XiaoXue3_1_t.json","languageCategory":"en"},{"id":"pep-sl-san2","name":"人教版(新起点)三年级下","category":"青少年英语","tags":["人教版"],"length":84,"url":"/dicts/PEP_SL_XiaoXue3_2_t.json","languageCategory":"en"},{"id":"pep-sl-si1","name":"人教版(新起点)四年级上","category":"青少年英语","tags":["人教版"],"length":116,"url":"/dicts/PEP_SL_XiaoXue4_1_t.json","languageCategory":"en"},{"id":"pep-sl-si2","name":"人教版(新起点)四年级下","category":"青少年英语","tags":["人教版"],"length":87,"url":"/dicts/PEP_SL_XiaoXue4_2_t.json","languageCategory":"en"},{"id":"pep-sl-wu1","name":"人教版(新起点)五年级上","category":"青少年英语","tags":["人教版"],"length":66,"url":"/dicts/PEP_SL_XiaoXue5_1_t.json","languageCategory":"en"},{"id":"pep-sl-wu2","name":"人教版(新起点)五年级下","category":"青少年英语","tags":["人教版"],"length":96,"url":"/dicts/PEP_SL_XiaoXue5_2_t.json","languageCategory":"en"},{"id":"pep-sl-liu1","name":"人教版(新起点)六年级上","category":"青少年英语","tags":["人教版"],"length":102,"url":"/dicts/PEP_SL_XiaoXue6_1_t.json","languageCategory":"en"},{"id":"pep-sl-liu2","name":"人教版(新起点)六年级下","category":"青少年英语","tags":["人教版"],"length":41,"url":"/dicts/PEP_SL_XiaoXue6_2_t.json","languageCategory":"en"},{"id":"qi1","name":"七年级上","category":"青少年英语","tags":["人教版"],"length":392,"url":"/dicts/PEPChuZhong7_1_T.json","languageCategory":"en"},{"id":"qi2","name":"七年级下","category":"青少年英语","tags":["人教版"],"length":492,"url":"/dicts/PEPChuZhong7_2_T.json","languageCategory":"en"},{"id":"ba1","name":"八年级上","category":"青少年英语","tags":["人教版"],"length":419,"url":"/dicts/PEPChuZhong8_1_T.json","languageCategory":"en"},{"id":"ba2","name":"八年级下","category":"青少年英语","tags":["人教版"],"length":466,"url":"/dicts/PEPChuZhong8_2_T.json","languageCategory":"en"},{"id":"jiu","name":"九年级","category":"青少年英语","tags":["人教版"],"length":551,"url":"/dicts/PEPChuZhong9_1_T.json","languageCategory":"en"},{"id":"renjiaogaozhong1","name":"高中必修1","category":"青少年英语","tags":["人教版"],"length":311,"url":"/dicts/PEPGaoZhong_1_T.json","languageCategory":"en"},{"id":"renjiaogaozhong2","name":"高中必修2","category":"青少年英语","tags":["人教版"],"length":319,"url":"/dicts/PEPGaoZhong_2_T.json","languageCategory":"en"},{"id":"renjiaogaozhong3","name":"高中必修3","category":"青少年英语","tags":["人教版"],"length":366,"url":"/dicts/PEPGaoZhong_3_T.json","languageCategory":"en"},{"id":"renjiaogaozhong4","name":"高中必修4","category":"青少年英语","tags":["人教版"],"length":307,"url":"/dicts/PEPGaoZhong_4_T.json","languageCategory":"en"},{"id":"renjiaogaozhong5","name":"高中必修5","category":"青少年英语","tags":["人教版"],"length":357,"url":"/dicts/PEPGaoZhong_5_T.json","languageCategory":"en"},{"id":"renjiaogaozhong6","name":"高中选修6","category":"青少年英语","tags":["人教版"],"length":391,"url":"/dicts/PEPGaoZhong_6_T.json","languageCategory":"en"},{"id":"renjiaogaozhong7","name":"高中选修7","category":"青少年英语","tags":["人教版"],"length":384,"url":"/dicts/PEPGaoZhong_7_T.json","languageCategory":"en"},{"id":"renjiaogaozhong8","name":"高中选修8","category":"青少年英语","tags":["人教版"],"length":420,"url":"/dicts/PEPGaoZhong_8_T.json","languageCategory":"en"},{"id":"renjiaogaozhong9","name":"高中选修9","category":"青少年英语","tags":["人教版"],"length":352,"url":"/dicts/PEPGaoZhong_9_T.json","languageCategory":"en"},{"id":"renjiaogaozhong10","name":"高中选修10","category":"青少年英语","tags":["人教版"],"length":361,"url":"/dicts/PEPGaoZhong_10_T.json","languageCategory":"en"},{"id":"renjiaogaozhong11","name":"高中选修11","category":"青少年英语","tags":["人教版"],"length":309,"url":"/dicts/PEPGaoZhong_11_T.json","languageCategory":"en"},{"id":"waiyan1","name":"外研七年级上册","category":"青少年英语","tags":["外研版"],"length":629,"url":"/dicts/WaiYanSheChuZhong_1_T.json","languageCategory":"en"},{"id":"new-waiyan1","name":"新外研七年级上册","category":"青少年英语","tags":["外研版"],"length":294,"url":"/dicts/Newwaiyan7-1.json","languageCategory":"en"},{"id":"new-waiyan2","name":"新外研七年级下册","category":"青少年英语","tags":["外研版"],"length":306,"url":"/dicts/Newwaiyan7-2.json","languageCategory":"en"},{"id":"waiyan2","name":"外研七年级下册","category":"青少年英语","tags":["外研版"],"length":438,"url":"/dicts/WaiYanSheChuZhong_2_T.json","languageCategory":"en"},{"id":"waiyan3","name":"外研八年级上册","category":"青少年英语","tags":["外研版"],"length":320,"url":"/dicts/WaiYanSheChuZhong_3_T.json","languageCategory":"en"},{"id":"waiyan4","name":"外研八年级下册","category":"青少年英语","tags":["外研版"],"length":266,"url":"/dicts/WaiYanSheChuZhong_4_T.json","languageCategory":"en"},{"id":"waiyan5","name":"外研九年级上册","category":"青少年英语","tags":["外研版"],"length":381,"url":"/dicts/WaiYanSheChuZhong_5_T.json","languageCategory":"en"},{"id":"waiyan6","name":"外研九年级下册","category":"青少年英语","tags":["外研版"],"length":128,"url":"/dicts/WaiYanSheChuZhong_6_T.json","languageCategory":"en"},{"id":"waiyan7","name":"外研高中必修1","category":"青少年英语","tags":["外研版"],"length":411,"url":"/dicts/WaiYanSheGaoZhong_1_T.json","languageCategory":"en"},{"id":"waiyan8","name":"外研高中必修2","category":"青少年英语","tags":["外研版"],"length":272,"url":"/dicts/WaiYanSheGaoZhong_2_T.json","languageCategory":"en"},{"id":"waiyan9","name":"外研一年级上册","category":"青少年英语","tags":["外研版"],"length":138,"url":"/dicts/WaiYanSheChuZhong_1-Volume-up.json","languageCategory":"en"},{"id":"waiyan10","name":"外研一年级下册","category":"青少年英语","tags":["外研版"],"length":118,"url":"/dicts/WaiYanSheChuZhong_1-Volume-down.json","languageCategory":"en"},{"id":"waiyan11","name":"外研二年级上册","category":"青少年英语","tags":["外研版"],"length":118,"url":"/dicts/WaiYanSheChuZhong_2-Volume-top.json","languageCategory":"en"},{"id":"waiyan12","name":"外研二年级下册","category":"青少年英语","tags":["外研版"],"length":110,"url":"/dicts/WaiYanSheChuZhong_2-Volume-down.json","languageCategory":"en"},{"id":"waiyan13","name":"外研三年级上册","category":"青少年英语","tags":["外研版"],"length":82,"url":"/dicts/WaiYanSheChuZhong_3-Volume-top.json","languageCategory":"en"},{"id":"waiyan14","name":"外研三年级下册","category":"青少年英语","tags":["外研版"],"length":106,"url":"/dicts/WaiYanSheChuZhong_3-Volume-down.json","languageCategory":"en"},{"id":"waiyan15","name":"外研四年级上册","category":"青少年英语","tags":["外研版"],"length":116,"url":"/dicts/WaiYanSheChuZhong_4-Volume-top.json","languageCategory":"en"},{"id":"waiyan16","name":"外研四年级下册","category":"青少年英语","tags":["外研版"],"length":78,"url":"/dicts/WaiYanSheChuZhong_4-Volume-down.json","languageCategory":"en"},{"id":"waiyan17","name":"外研五年级上册","category":"青少年英语","tags":["外研版"],"length":80,"url":"/dicts/WaiYanSheChuZhong_5-Volume-top.json","languageCategory":"en"},{"id":"waiyan18","name":"外研五年级下册","category":"青少年英语","tags":["外研版"],"length":72,"url":"/dicts/WaiYanSheChuZhong_5-Volume-down.json","languageCategory":"en"},{"id":"waiyan19","name":"外研六年级上册","category":"青少年英语","tags":["外研版"],"length":61,"url":"/dicts/WaiYanSheChuZhong_6-Volume-top.json","languageCategory":"en"},{"id":"waiyan20","name":"外研六年级下册","category":"青少年英语","tags":["外研版"],"length":91,"url":"/dicts/WaiYanSheChuZhong_6-Volume-down.json","languageCategory":"en"},{"id":"waiyan3-1","name":"外研新起点三年级上册","category":"青少年英语","tags":["外研版"],"length":134,"url":"/dicts/waiyan-xin-3-1.json","languageCategory":"en"},{"id":"waiyan3-2","name":"外研新起点三年级下册","category":"青少年英语","tags":["外研版"],"length":156,"url":"/dicts/waiyan-xin-3-2.json","languageCategory":"en"},{"id":"waiyan4-1","name":"外研新起点四年级上册","category":"青少年英语","tags":["外研版"],"length":144,"url":"/dicts/waiyan-xin-4-1.json","languageCategory":"en"},{"id":"waiyan4-2","name":"外研新起点四年级下册","category":"青少年英语","tags":["外研版"],"length":134,"url":"/dicts/waiyan-xin-4-2.json","languageCategory":"en"},{"id":"waiyan5-1","name":"外研新起点五年级上册","category":"青少年英语","tags":["外研版"],"length":152,"url":"/dicts/waiyan-xin-5-1.json","languageCategory":"en"},{"id":"waiyan5-2","name":"外研新起点五年级下册","category":"青少年英语","tags":["外研版"],"length":147,"url":"/dicts/waiyan-xin-5-2.json","languageCategory":"en"},{"id":"waiyan6-1","name":"外研新起点六年级上册","category":"青少年英语","tags":["外研版"],"length":83,"url":"/dicts/waiyan-xin-6-1.json","languageCategory":"en"},{"id":"waiyan6-2","name":"外研新起点六年级下册","category":"青少年英语","tags":["外研版"],"length":105,"url":"/dicts/waiyan-xin-6-2.json","languageCategory":"en"},{"id":"shanghai-6-2word","name":"上海新教材六年级下","category":"青少年英语","tags":["上海版"],"length":274,"url":"/dicts/shanghai-6-2-word.json","languageCategory":"en"},{"id":"Yilin1","name":"高中必修1","category":"青少年英语","tags":["译林版"],"length":276,"url":"./dicts/YiLin_1.json","languageCategory":"en"},{"id":"Yilin2","name":"高中必修2","category":"青少年英语","tags":["译林版"],"length":297,"url":"./dicts/YiLin_2.json","languageCategory":"en"},{"id":"Yilin3","name":"高中必修3","category":"青少年英语","tags":["译林版"],"length":295,"url":"./dicts/YiLin_3.json","languageCategory":"en"},{"id":"beishi1","name":"高中必修1","category":"青少年英语","tags":["北师大"],"length":226,"url":"/dicts/BeiShiGaoZhong_1_T.json","languageCategory":"en"},{"id":"beishi2","name":"高中必修2","category":"青少年英语","tags":["北师大"],"length":244,"url":"/dicts/BeiShiGaoZhong_2_T.json","languageCategory":"en"},{"id":"beishi3","name":"高中必修3","category":"青少年英语","tags":["北师大"],"length":295,"url":"/dicts/BeiShiGaoZhong_3_T.json","languageCategory":"en"},{"id":"beishi4","name":"高中必修4","category":"青少年英语","tags":["北师大"],"length":336,"url":"/dicts/BeiShiGaoZhong_4_T.json","languageCategory":"en"},{"id":"beishi5","name":"高中必修5","category":"青少年英语","tags":["北师大"],"length":327,"url":"/dicts/BeiShiGaoZhong_5_T.json","languageCategory":"en"},{"id":"beishi6","name":"高中选修6","category":"青少年英语","tags":["北师大"],"length":271,"url":"/dicts/BeiShiGaoZhong_6_T.json","languageCategory":"en"},{"id":"beishi7","name":"高中选修7","category":"青少年英语","tags":["北师大"],"length":334,"url":"/dicts/BeiShiGaoZhong_7_T.json","languageCategory":"en"},{"id":"beishi8","name":"高中选修8","category":"青少年英语","tags":["北师大"],"length":364,"url":"/dicts/BeiShiGaoZhong_8_T.json","languageCategory":"en"},{"id":"beishi9","name":"高中选修9","category":"青少年英语","tags":["北师大"],"length":299,"url":"/dicts/BeiShiGaoZhong_9_T.json","languageCategory":"en"},{"id":"beishi10","name":"高中选修10","category":"青少年英语","tags":["北师大"],"length":267,"url":"/dicts/BeiShiGaoZhong_10_T.json","languageCategory":"en"},{"id":"beishi11","name":"高中选修11","category":"青少年英语","tags":["北师大"],"length":330,"url":"/dicts/BeiShiGaoZhong_11_T.json","languageCategory":"en"},{"id":"jijiao1","name":"冀教 3 上","category":"青少年英语","tags":["冀教版"],"length":75,"url":"/dicts/jiJiao3-1.json","languageCategory":"en"},{"id":"jijiao2","name":"冀教 3 下","category":"青少年英语","tags":["冀教版"],"length":76,"url":"/dicts/jiJiao3-2.json","languageCategory":"en"},{"id":"jijiao3","name":"冀教 4 上","category":"青少年英语","tags":["冀教版"],"length":78,"url":"/dicts/jiJiao4-1.json","languageCategory":"en"},{"id":"jijiao4","name":"冀教 4 下","category":"青少年英语","tags":["冀教版"],"length":84,"url":"/dicts/jiJiao4-2.json","languageCategory":"en"},{"id":"jijiao5","name":"冀教 5 上","category":"青少年英语","tags":["冀教版"],"length":79,"url":"/dicts/jiJiao5-1.json","languageCategory":"en"},{"id":"jijiao6","name":"冀教 5 下","category":"青少年英语","tags":["冀教版"],"length":96,"url":"/dicts/jiJiao5-2.json","languageCategory":"en"},{"id":"jijiao7","name":"冀教 6 上","category":"青少年英语","tags":["冀教版"],"length":66,"url":"/dicts/jiJiao6-1.json","languageCategory":"en"},{"id":"jijiao8","name":"冀教 6 下","category":"青少年英语","tags":["冀教版"],"length":51,"url":"/dicts/jiJiao6-2.json","languageCategory":"en"},{"id":"jijiao9","name":"冀教 7 上","category":"青少年英语","tags":["冀教版"],"length":561,"url":"/dicts/jiJiao7-1.json","languageCategory":"en"},{"id":"jijiao10","name":"冀教 7 下","category":"青少年英语","tags":["冀教版"],"length":514,"url":"/dicts/jiJiao7-2.json","languageCategory":"en"},{"id":"jijiao11","name":"冀教 8 上","category":"青少年英语","tags":["冀教版"],"length":420,"url":"/dicts/jiJiao8-1.json","languageCategory":"en"},{"id":"jijiao12","name":"冀教 8 下","category":"青少年英语","tags":["冀教版"],"length":487,"url":"/dicts/jiJiao8-2.json","languageCategory":"en"},{"id":"jijiao13","name":"冀教 9 上","category":"青少年英语","tags":["冀教版"],"length":636,"url":"/dicts/jiJiao9.json","languageCategory":"en"},{"id":"BJJuniorHigh","name":"北京初中","category":"青少年英语","tags":["其他"],"length":1844,"url":"/dicts/beijing_junior_high_school.json","languageCategory":"en"},{"id":"eflevel1","name":"EF-LEVEL-1","category":"青少年英语","tags":["EF"],"length":297,"url":"/dicts/EF_LEVEL_1.json","languageCategory":"en"},{"id":"eflevel2","name":"EF-LEVEL-2","category":"青少年英语","tags":["EF"],"length":353,"url":"/dicts/EF_LEVEL_2.json","languageCategory":"en"},{"id":"eflevel3","name":"EF-LEVEL-3","category":"青少年英语","tags":["EF"],"length":172,"url":"/dicts/EF_LEVEL_3.json","languageCategory":"en"},{"id":"eflevel4","name":"EF-LEVEL-4","category":"青少年英语","tags":["EF"],"length":178,"url":"/dicts/EF_LEVEL_4.json","languageCategory":"en"},{"id":"eflevel5","name":"EF-LEVEL-5","category":"青少年英语","tags":["EF"],"length":172,"url":"/dicts/EF_LEVEL_5.json","languageCategory":"en"},{"id":"eflevel6","name":"EF-LEVEL-6","category":"青少年英语","tags":["EF"],"length":172,"url":"/dicts/EF_LEVEL_6.json","languageCategory":"en"},{"id":"eflevel7","name":"EF-LEVEL-7","category":"青少年英语","tags":["EF"],"length":171,"url":"/dicts/EF_LEVEL_7.json","languageCategory":"en"},{"id":"eflevel8","name":"EF-LEVEL-8","category":"青少年英语","tags":["EF"],"length":172,"url":"/dicts/EF_LEVEL_8.json","languageCategory":"en"},{"id":"eflevel9","name":"EF-LEVEL-9","category":"青少年英语","tags":["EF"],"length":165,"url":"/dicts/EF_LEVEL_9.json","languageCategory":"en"},{"id":"eflevel10","name":"EF-LEVEL-10","category":"青少年英语","tags":["EF"],"length":174,"url":"/dicts/EF_LEVEL_10.json","languageCategory":"en"},{"id":"eflevel11","name":"EF-LEVEL-11","category":"青少年英语","tags":["EF"],"length":176,"url":"/dicts/EF_LEVEL_11.json","languageCategory":"en"},{"id":"eflevel12","name":"EF-LEVEL-12","category":"青少年英语","tags":["EF"],"length":170,"url":"/dicts/EF_LEVEL_12.json","languageCategory":"en"},{"id":"eflevel13","name":"EF-LEVEL-13","category":"青少年英语","tags":["EF"],"length":172,"url":"/dicts/EF_LEVEL_13.json","languageCategory":"en"},{"id":"eflevel14","name":"EF-LEVEL-14","category":"青少年英语","tags":["EF"],"length":171,"url":"/dicts/EF_LEVEL_14.json","languageCategory":"en"},{"id":"eflevel15","name":"EF-LEVEL-15","category":"青少年英语","tags":["EF"],"length":168,"url":"/dicts/EF_LEVEL_15.json","languageCategory":"en"},{"id":"eflevel16","name":"EF-LEVEL-16","category":"青少年英语","tags":["EF"],"length":170,"url":"/dicts/EF_LEVEL_16.json","languageCategory":"en"},{"id":"ReadingExplorer3","name":"Reading Explorer 3","category":"青少年英语","tags":["其他"],"length":239,"url":"/dicts/ReadingExplorer3.json","languageCategory":"en"},{"id":"Macmillan7000","name":"麦克米伦7000","category":"中国考试","tags":["其他"],"length":6268,"url":"/dicts/Macmillan7000.json","languageCategory":"en"},{"id":"raz-AA","name":"RAZ 分级阅读 AA","category":"青少年英语","tags":["RAZ"],"length":422,"url":"/dicts/raz-AA.json","languageCategory":"en"},{"id":"raz-A","name":"RAZ 分级阅读 A","category":"青少年英语","tags":["RAZ"],"length":487,"url":"/dicts/raz-A.json","languageCategory":"en"},{"id":"raz-B","name":"RAZ 分级阅读 B","category":"青少年英语","tags":["RAZ"],"length":465,"url":"/dicts/raz-B.json","languageCategory":"en"},{"id":"raz-C","name":"RAZ 分级阅读 C","category":"青少年英语","tags":["RAZ"],"length":480,"url":"/dicts/raz-C.json","languageCategory":"en"},{"id":"raz-D","name":"RAZ 分级阅读 D","category":"青少年英语","tags":["RAZ"],"length":436,"url":"/dicts/raz-D.json","languageCategory":"en"},{"id":"raz-E","name":"RAZ 分级阅读 E","category":"青少年英语","tags":["RAZ"],"length":427,"url":"/dicts/raz-E.json","languageCategory":"en"},{"id":"raz-F","name":"RAZ 分级阅读 F","category":"青少年英语","tags":["RAZ"],"length":437,"url":"/dicts/raz-F.json","languageCategory":"en"},{"id":"raz-G","name":"RAZ 分级阅读 G","category":"青少年英语","tags":["RAZ"],"length":435,"url":"/dicts/raz-G.json","languageCategory":"en"},{"id":"raz-H","name":"RAZ 分级阅读 H","category":"青少年英语","tags":["RAZ"],"length":385,"url":"/dicts/raz-H.json","languageCategory":"en"},{"id":"raz-I","name":"RAZ 分级阅读 I","category":"青少年英语","tags":["RAZ"],"length":408,"url":"/dicts/raz-I.json","languageCategory":"en"},{"id":"raz-J","name":"RAZ 分级阅读 J","category":"青少年英语","tags":["RAZ"],"length":434,"url":"/dicts/raz-J.json","languageCategory":"en"},{"id":"raz-K","name":"RAZ 分级阅读 K","category":"青少年英语","tags":["RAZ"],"length":397,"url":"/dicts/raz-K.json","languageCategory":"en"},{"id":"raz-L","name":"RAZ 分级阅读 L","category":"青少年英语","tags":["RAZ"],"length":402,"url":"/dicts/raz-L.json","languageCategory":"en"},{"id":"raz-M","name":"RAZ 分级阅读 M","category":"青少年英语","tags":["RAZ"],"length":403,"url":"/dicts/raz-M.json","languageCategory":"en"},{"id":"raz-N","name":"RAZ 分级阅读 N","category":"青少年英语","tags":["RAZ"],"length":376,"url":"/dicts/raz-N.json","languageCategory":"en"},{"id":"raz-O","name":"RAZ 分级阅读 O","category":"青少年英语","tags":["RAZ"],"length":429,"url":"/dicts/raz-O.json","languageCategory":"en"},{"id":"raz-P","name":"RAZ 分级阅读 P","category":"青少年英语","tags":["RAZ"],"length":379,"url":"/dicts/raz-P.json","languageCategory":"en"},{"id":"raz-Q","name":"RAZ 分级阅读 Q","category":"青少年英语","tags":["RAZ"],"length":442,"url":"/dicts/raz-Q.json","languageCategory":"en"},{"id":"raz-R","name":"RAZ 分级阅读 R","category":"青少年英语","tags":["RAZ"],"length":422,"url":"/dicts/raz-R.json","languageCategory":"en"},{"id":"raz-S","name":"RAZ 分级阅读 S","category":"青少年英语","tags":["RAZ"],"length":434,"url":"/dicts/raz-S.json","languageCategory":"en"},{"id":"raz-T","name":"RAZ 分级阅读 T","category":"青少年英语","tags":["RAZ"],"length":427,"url":"/dicts/raz-T.json","languageCategory":"en"},{"id":"raz-U","name":"RAZ 分级阅读 U","category":"青少年英语","tags":["RAZ"],"length":418,"url":"/dicts/raz-U.json","languageCategory":"en"},{"id":"raz-V","name":"RAZ 分级阅读 V","category":"青少年英语","tags":["RAZ"],"length":409,"url":"/dicts/raz-V.json","languageCategory":"en"},{"id":"raz-W","name":"RAZ 分级阅读 W","category":"青少年英语","tags":["RAZ"],"length":392,"url":"/dicts/raz-W.json","languageCategory":"en"},{"id":"raz-X","name":"RAZ 分级阅读 X","category":"青少年英语","tags":["RAZ"],"length":546,"url":"/dicts/raz-X.json","languageCategory":"en"},{"id":"raz-Y","name":"RAZ 分级阅读 Y","category":"青少年英语","tags":["RAZ"],"length":461,"url":"/dicts/raz-Y.json","languageCategory":"en"},{"id":"raz-Z","name":"RAZ 分级阅读 Z","category":"青少年英语","tags":["RAZ"],"length":414,"url":"/dicts/raz-Z.json","languageCategory":"en"},{"id":"raz-Z1","name":"RAZ 分级阅读 Z1","category":"青少年英语","tags":["RAZ"],"length":467,"url":"/dicts/raz-Z1.json","languageCategory":"en"},{"id":"raz-Z2","name":"RAZ 分级阅读 Z2","category":"青少年英语","tags":["RAZ"],"length":492,"url":"/dicts/raz-Z2.json","languageCategory":"en"},{"id":"raz-all","name":"RAZ 分级阅读 所有词汇","category":"青少年英语","tags":["RAZ"],"length":5831,"url":"/dicts/raz-all.json","languageCategory":"en"},{"id":"Cambridge_JOIN_IN","name":"剑桥小学英语 JOIN IN","category":"青少年英语","tags":["其他"],"length":1350,"url":"/dicts/Cambridge_JOIN_IN.json","languageCategory":"en"},{"id":"coder","name":"Coder Dict","category":"代码练习","tags":["通用"],"length":1700,"url":"/dicts/it-words.json","languageCategory":"code"},{"id":"childCode","name":"少儿 Python","category":"代码练习","tags":["少儿编程","Python"],"length":19,"url":"/dicts/Child_python_code.json","languageCategory":"code"},{"id":"childCode002","name":"少儿 Python Turtle","category":"代码练习","tags":["少儿编程","Python"],"length":27,"url":"/dicts/Child_python_turtle_code.json","languageCategory":"code"},{"id":"childCode003","name":"少儿 C++","category":"代码练习","tags":["少儿编程","C++"],"length":39,"url":"/dicts/Child_cpp.json","languageCategory":"code"},{"id":"oi-xcpc","name":"OI / XCPC 竞赛词汇","category":"代码练习","tags":["C++"],"length":195,"url":"/dicts/OI_XCPC.json","languageCategory":"code"},{"id":"childCode004","name":"Arduino","category":"代码练习","tags":["少儿编程","Arduino"],"length":78,"url":"/dicts/arduino_keywords.json","languageCategory":"code"},{"id":"jsArray","name":"JS: Array","category":"代码练习","tags":["JavaScript"],"length":36,"url":"/dicts/js-array.json","languageCategory":"code"},{"id":"jsDate","name":"JS: Date","category":"代码练习","tags":["JavaScript"],"length":34,"url":"/dicts/js-date.json","languageCategory":"code"},{"id":"jsGlobal","name":"JS: Global","category":"代码练习","tags":["JavaScript"],"length":9,"url":"/dicts/js-global.json","languageCategory":"code"},{"id":"jsMapSet","name":"JS: Map & Set","category":"代码练习","tags":["JavaScript"],"length":16,"url":"/dicts/js-map-set.json","languageCategory":"code"},{"id":"jsMath","name":"JS: Math","category":"代码练习","tags":["JavaScript"],"length":38,"url":"/dicts/js-math.json","languageCategory":"code"},{"id":"jsNumber","name":"JS: Number","category":"代码练习","tags":["JavaScript"],"length":22,"url":"/dicts/js-number.json","languageCategory":"code"},{"id":"jsObject","name":"JS: Object","category":"代码练习","tags":["JavaScript"],"length":37,"url":"/dicts/js-object.json","languageCategory":"code"},{"id":"jsPromise","name":"JS: Promise","category":"代码练习","tags":["JavaScript"],"length":9,"url":"/dicts/js-promise.json","languageCategory":"code"},{"id":"jsString","name":"JS: String","category":"代码练习","tags":["JavaScript"],"length":32,"url":"/dicts/js-string.json","languageCategory":"code"},{"id":"python-builtin","name":"Python: Built-in","category":"代码练习","tags":["Python"],"length":65,"url":"/dicts/python-builtin.json","languageCategory":"code"},{"id":"python-array","name":"Python: array","category":"代码练习","tags":["Python"],"length":11,"url":"/dicts/python-array.json","languageCategory":"code"},{"id":"python-date","name":"Python: date","category":"代码练习","tags":["Python"],"length":39,"url":"/dicts/python-date.json","languageCategory":"code"},{"id":"python-file","name":"Python: file","category":"代码练习","tags":["Python"],"length":21,"url":"/dicts/python-file.json","languageCategory":"code"},{"id":"python-class","name":"Python: class","category":"代码练习","tags":["Python"],"length":13,"url":"/dicts/python-class.json","languageCategory":"code"},{"id":"python-set","name":"Python: set","category":"代码练习","tags":["Python"],"length":29,"url":"/dicts/python-set.json","languageCategory":"code"},{"id":"python-math","name":"Python: math","category":"代码练习","tags":["Python"],"length":37,"url":"/dicts/python-math.json","languageCategory":"code"},{"id":"python-string","name":"Python: string","category":"代码练习","tags":["Python"],"length":40,"url":"/dicts/python-string.json","languageCategory":"code"},{"id":"python-system","name":"Python: system","category":"代码练习","tags":["Python"],"length":24,"url":"/dicts/python-sys.json","languageCategory":"code"},{"id":"javeArrayList","name":"Java: ArrayList","category":"代码练习","tags":["Java"],"length":25,"url":"/dicts/java-arraylist.json","languageCategory":"code"},{"id":"javaCharacter","name":"Java: Character","category":"代码练习","tags":["Java"],"length":8,"url":"/dicts/java-character.json","languageCategory":"code"},{"id":"javaHashmap","name":"Java: Hashmap","category":"代码练习","tags":["Java"],"length":22,"url":"/dicts/java-hashmap.json","languageCategory":"code"},{"id":"javaLinkedList","name":"Java: LinkedList","category":"代码练习","tags":["Java"],"length":25,"url":"/dicts/java-linkedlist.json","languageCategory":"code"},{"id":"javaString","name":"Java: String","category":"代码练习","tags":["Java"],"length":48,"url":"/dicts/java-string.json","languageCategory":"code"},{"id":"javaStringBuffer","name":"Java: StringBuffer","category":"代码练习","tags":["Java"],"length":20,"url":"/dicts/java-stringBuffer.json","languageCategory":"code"},{"id":"linuxCommand","name":"Linux","category":"代码练习","tags":["Linux"],"length":575,"url":"/dicts/linux-command.json","languageCategory":"code"},{"id":"csharpKeywords","name":"C#关键字","category":"代码练习","tags":["C#"],"length":78,"url":"/dicts/csharp-keywords.json","languageCategory":"code"},{"id":"csharpString","name":"C#: String API","category":"代码练习","tags":["C#"],"length":79,"url":"/dicts/csharp-string.json","languageCategory":"code"},{"id":"csharpList","name":"C#: List API","category":"代码练习","tags":["C#"],"length":36,"url":"/dicts/csharp-list.json","languageCategory":"code"},{"id":"sql-lower-case","name":"SQL: 常用语句 lower case","category":"代码练习","tags":["SQL"],"length":12,"url":"/dicts/SQL_statement_lower-case.json","languageCategory":"code"},{"id":"sql-upper-case","name":"SQL: 常用语句 upper case","category":"代码练习","tags":["SQL"],"length":12,"url":"/dicts/SQL_statement_upper-case.json","languageCategory":"code"},{"id":"ai-machine-learning","name":"人工智能: 机器学习","category":"代码练习","tags":["AI"],"length":726,"url":"/dicts/ai_machine_learning.json","languageCategory":"code"},{"id":"ai-ai-for-science","name":"人工智能: AI for Science","category":"代码练习","tags":["AI"],"length":491,"url":"/dicts/ai_for_science.json","languageCategory":"code"},{"id":"go_keyword","name":"golang-keyword","category":"代码练习","tags":["golang"],"length":25,"url":"/dicts/go_keyword.json","languageCategory":"code"},{"id":"go_builtin","name":"golang-builtin","category":"代码练习","tags":["golang"],"length":46,"url":"/dicts/go_builtin.json","languageCategory":"code"},{"id":"rustKeyword","name":"Rust: Keyword","category":"代码练习","tags":["Rust"],"length":35,"url":"/dicts/rust-keyword.json","languageCategory":"code"},{"id":"rustString","name":"Rust: String","category":"代码练习","tags":["Rust"],"length":24,"url":"/dicts/rust-string.json","languageCategory":"code"},{"id":"rustVector","name":"Rust: Vector","category":"代码练习","tags":["Rust"],"length":28,"url":"/dicts/rust-vector.json","languageCategory":"code"},{"id":"rustHashMap","name":"Rust: HashMap","category":"代码练习","tags":["Rust"],"length":23,"url":"/dicts/rust-hashmap.json","languageCategory":"code"},{"id":"SoundSfxKey","name":"AudioKey_UCS-SubCategory","category":"代码练习","tags":["RAZ"],"length":436,"url":"/dicts/AudioKey_SubCategory.json","languageCategory":"en"},{"id":"SoundSfxKey2","name":"AudioKey_UCS-Category","category":"代码练习","tags":["RAZ"],"length":82,"url":"/dicts/AudioKey_Category.json","languageCategory":"code"},{"id":"japanese-hiragana","name":"平假名","category":"日语学习","tags":["基础","五十音","平假名"],"length":280,"url":"/dicts/JapaneseHiragana.json","languageCategory":"ja"},{"id":"japanese-katakana","name":"片假名","category":"日语学习","tags":["基础","五十音","片假名"],"length":280,"url":"/dicts/JapaneseKatakana.json","languageCategory":"ja"},{"id":"japanese001","name":"日语常见词","category":"日语学习","tags":["基础"],"length":100,"url":"/dicts/Japanesebasicword.json","languageCategory":"ja"},{"id":"japanese001-zh","name":"日语常见词","category":"日语学习","tags":["基础"],"length":100,"url":"/dicts/Japanesebasicword_zh.json","languageCategory":"ja"},{"id":"japanese002","name":"N5","category":"日语学习","tags":["基础"],"length":670,"url":"/dicts/JapVocabList.N5.json","languageCategory":"ja"},{"id":"japanese002-zh","name":"N5","category":"日语学习","tags":["基础"],"length":670,"url":"/dicts/JapVocabList.N5_zh.json","languageCategory":"ja"},{"id":"japanese003","name":"N4","category":"日语学习","tags":["基础"],"length":635,"url":"/dicts/JapVocabList.N4.json","languageCategory":"ja"},{"id":"japanese003-zh","name":"N4","category":"日语学习","tags":["基础"],"length":635,"url":"/dicts/JapVocabList.N4_zh.json","languageCategory":"ja"},{"id":"japanese004","name":"N3","category":"日语学习","tags":["基础"],"length":1830,"url":"/dicts/JapVocabList.N3.json","languageCategory":"ja"},{"id":"japanese004-zh","name":"N3","category":"日语学习","tags":["基础"],"length":1830,"url":"/dicts/JapVocabList.N3_zh.json","languageCategory":"ja"},{"id":"japanese005","name":"N2","category":"日语学习","tags":["基础"],"length":1836,"url":"/dicts/JapVocabList.N2.json","languageCategory":"ja"},{"id":"japanese005-zh","name":"N2","category":"日语学习","tags":["基础"],"length":1836,"url":"/dicts/JapVocabList.N2_zh.json","languageCategory":"ja"},{"id":"japanese006","name":"N1","category":"日语学习","tags":["基础"],"length":3477,"url":"/dicts/JapVocabList.N1.json","languageCategory":"ja"},{"id":"japanese006-zh","name":"N1","category":"日语学习","tags":["基础"],"length":3477,"url":"/dicts/JapVocabList.N1_zh.json","languageCategory":"ja"},{"id":"japanese007","name":"高频单词_N1","category":"日语学习","tags":["基础"],"length":3000,"url":"/dicts/Jap_High-Frequency_N1.json","languageCategory":"ja"},{"id":"japanese008","name":"高频单词_N2","category":"日语学习","tags":["基础"],"length":2500,"url":"/dicts/Jap_High-Frequency_N2.json","languageCategory":"ja"},{"id":"japanese009","name":"高频单词_N3","category":"日语学习","tags":["基础"],"length":1999,"url":"/dicts/Jap_High-Frequency_N3.json","languageCategory":"ja"},{"id":"japanese0010","name":"高频单词_N4N5","category":"日语学习","tags":["基础"],"length":2000,"url":"/dicts/Jap_High-Frequency_N4N5.json","languageCategory":"ja"},{"id":"german2en","name":"德语 英译","category":"德语学习","tags":["基础"],"length":5892,"url":"/dicts/german2en.json","languageCategory":"de"},{"id":"en2german","name":"英语 德译","category":"德语学习","tags":["基础"],"length":5025,"url":"/dicts/en2german.json","languageCategory":"de"},{"id":"kazakh_basic_3000_arabic_hapin","name":"基础3000词(老文字版)","category":"哈萨克语","tags":["老文字","哈拼"],"length":3002,"url":"/dicts/kazakh_basic_3000_arabic_hapin.json","languageCategory":"kk"},{"id":"kazakh_basic_3000_cyrillic_hapin","name":"基础3000词(西里尔字母版)","category":"哈萨克语","tags":["西里尔字母","哈拼"],"length":3002,"url":"/dicts/kazakh_basic_3000_cyrillic_hapin.json","languageCategory":"kk"},{"id":"indonesian_highFrequency_3043","name":"印尼语高频词汇","category":"印尼语","tags":["基础"],"length":3037,"url":"/dicts/Indonesian.json","languageCategory":"id"}]} /* @dict-index:end */
 
-    /** 可用词库列表（内联数据优先，否则用内置兜底） */
-    function dictionaries() {
+    const CHAPTER_LENGTH = (DICT_INDEX && DICT_INDEX.chapterLength) || 20
+
+    const DICT_STORAGE_KEY = 'qwerty-autotype:dict'
+    const RECENT_STORAGE_KEY = 'qwerty-autotype:recent'
+    const CACHE_DB_NAME = 'qwerty-autotype'
+    const CACHE_DB_VERSION = 2
+    const CACHE_STORE = 'dicts'
+    const WORD_STORE = 'wordRecords'
+    const CHAPTER_STORE = 'chapterRecords'
+    const PROGRESS_STORE = 'progress'
+
+    /** 上游仓库与固定 ref（换版本只改这里；jsDelivr 不吃 commit sha 时才用分支） */
+    const DICT_REPO = 'RealKai42/qwerty-learner'
+    const DICT_REF = 'master'
+    /** 上游的钉住提交（有就优先按 SHA 拉，避免 master 漂移；失败自动回退 master） */
+    const DICT_PIN = (DICT_INDEX && DICT_INDEX.pinned) || ''
+
+    /**
+     * 词条来源：jsDelivr → raw.githubusercontent。
+     * 只有当前页面本身就跑在 8081（本地 qwerty-learner 开发服）时才优先用它，
+     * 因为那个服务不带 CORS 头，别的 origin 取不到。
+     */
+    function dictSourceList() {
+      const list = []
+      // 钉住的提交优先：master 漂移或词库被改都不影响；拿不到再回退 master
+      if (DICT_PIN) {
+        list.push((file) => `https://cdn.jsdelivr.net/gh/${DICT_REPO}@${DICT_PIN}/public${file}`)
+        list.push((file) => `https://raw.githubusercontent.com/${DICT_REPO}/${DICT_PIN}/public${file}`)
+      }
+      list.push((file) => `https://cdn.jsdelivr.net/gh/${DICT_REPO}@${DICT_REF}/public${file}`)
+      list.push((file) => `https://raw.githubusercontent.com/${DICT_REPO}/${DICT_REF}/public${file}`)
+      try {
+        const { hostname, port } = window.location
+        if (port === '8081' && (hostname === '127.0.0.1' || hostname === 'localhost')) {
+          list.unshift((file) => `http://127.0.0.1:8081${file}`)
+        }
+      } catch {
+        /* 非浏览器环境（测试）忽略 */
+      }
+      return list
+    }
+
+    /** 内存缓存：dictId → 归一化词条数组 */
+    const DICT_CACHE = new Map()
+    /** 进行中的加载：dictId → Promise，避免重复请求 */
+    const DICT_INFLIGHT = new Map()
+
+    /** 内联的 7 个词库（离线兜底 + 首次可用） */
+    function builtinDicts() {
       const inline = typeof DICT_DATA === 'undefined' ? null : DICT_DATA
-      const list = inline?.dicts
-      return Array.isArray(list) && list.length > 0 ? list : [FALLBACK_DICT]
+      return Array.isArray(inline?.dicts) ? inline.dicts : []
+    }
+
+    function builtinById(id) {
+      return builtinDicts().find((dict) => dict.id === id)
+    }
+
+    /** 全量词库元数据（371 条）；缺失时回落到内置 7 库 */
+    function catalog() {
+      const list = DICT_INDEX?.dicts
+      if (Array.isArray(list) && list.length > 0) return list
+      return builtinDicts().map((dict) => ({
+        id: dict.id,
+        name: dict.name,
+        category: dict.category,
+        tags: [],
+        length: (dict.words || []).length,
+        url: '',
+        languageCategory: 'en',
+      }))
+    }
+
+    function dictionaries() {
+      return catalog()
     }
 
     function dictionaryById(id) {
-      const list = dictionaries()
+      const list = catalog()
       return list.find((dict) => dict.id === id) ?? list[0]
     }
 
-    function readDictId() {
-      try {
-        const saved = window.localStorage.getItem(DICT_STORAGE_KEY)
-        if (saved && dictionaries().some((dict) => dict.id === saved)) return saved
-      } catch {
-        /* 无痕模式等，忽略 */
-      }
-      return dictionaries()[0].id
+    /** 词库元数据 → 章数 */
+    function chapterCount(meta) {
+      const length = Number(meta?.length) || 0
+      return Math.max(1, Math.ceil(length / CHAPTER_LENGTH))
     }
 
-    function writeDictId(id) {
+    function chaptersOf(id) {
+      const meta = dictionaryById(id)
+      return { count: chapterCount(meta), length: CHAPTER_LENGTH, words: Number(meta?.length) || 0 }
+    }
+
+    /** 取某章的词条（0-based） */
+    function wordsOfChapter(words, chapter, size) {
+      const step = size || CHAPTER_LENGTH
+      const start = Math.max(0, Number(chapter) || 0) * step
+      return (words || []).slice(start, start + step)
+    }
+
+    /** 文本清洗：去换行/压缩空格/中文标点两侧不留空格 */
+    function cleanZh(text) {
+      if (!text) return ''
+      return String(text)
+        .replace(/\r?\n/g, ' ')
+        .replace(/[\u3000\t]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .replace(/\s*([，。；：、！？（）「」])\s*/g, '$1')
+        .replace(/^[\s;；,，]+|[\s;；,，]+$/g, '')
+        .trim()
+    }
+
+    /** ukphone 优先、其次 usphone；多音取第一支；' → ˈ；包成 /.../ */
+    function buildIpa(raw) {
+      const text = (raw || '').toString().trim()
+      if (!text) return ''
+      let first = text.split(/[;；]/)[0].trim()
+      first = first.replace(/^[/[\].,，、\s]+/, '').replace(/[/[\]\s]+$/, '')
+      if (!first) return ''
+      return `/${first.replace(/'/g, 'ˈ').replace(/\s+/g, '')}/`
+    }
+
+    /** 允许词组（单词之间单空格），不允许前后空格 / 换行 / 控制字符 */
+    const WORD_OK = /^[^\s\u0000-\u001f](?:[^\u0000-\u001f]*[^\s\u0000-\u001f])?$/
+
+    /**
+     * 上游裸词条 { name, trans[], usphone, ukphone } → { w, ipa, zh }
+     * 不合法返回 null（空词、空释义、超长、含控制字符）
+     * 大小写：en 一律小写（判定不因大小写卡人）；code 保留原样（SQL 等有意义）
+     */
+    function normalizeWord(raw, languageCategory) {
+      if (!raw || typeof raw !== 'object') return null
+      const isCode = languageCategory === 'code'
+      let w = (raw.name ?? raw.w ?? '').toString().replace(/\s+/g, ' ').trim()
+      if (!w || w.length > 40) return null
+      if (!WORD_OK.test(w)) return null
+      if (!isCode) w = w.toLowerCase()
+      const zh = cleanZh(Array.isArray(raw.trans) ? raw.trans.join('；') : raw.trans)
+      if (!zh) return null
+      const ipa = isCode ? '' : buildIpa(raw.ukphone || raw.usphone)
+      return { w, ipa, zh }
+    }
+
+    /** 批量归一化 + 去重（保序） */
+    function normalizeWords(list, languageCategory) {
+      const seen = new Set()
+      const out = []
+      for (const raw of list || []) {
+        const word = normalizeWord(raw, languageCategory)
+        if (!word) continue
+        const key = word.w.toLowerCase()
+        if (seen.has(key)) continue
+        seen.add(key)
+        out.push(word)
+      }
+      return out
+    }
+
+    /* ---------------- IndexedDB 缓存 ---------------- */
+
+    let DB_PROMISE = null
+
+    function openCacheDb() {
+      if (DB_PROMISE) return DB_PROMISE
+      DB_PROMISE = new Promise((resolve) => {
+        try {
+          if (!window.indexedDB) return resolve(null)
+          const request = window.indexedDB.open(CACHE_DB_NAME, CACHE_DB_VERSION)
+          request.onupgradeneeded = () => {
+            const db = request.result
+            if (!db.objectStoreNames.contains(CACHE_STORE)) {
+              db.createObjectStore(CACHE_STORE, { keyPath: 'key' })
+            }
+            if (!db.objectStoreNames.contains(WORD_STORE)) {
+              const store = db.createObjectStore(WORD_STORE, { keyPath: 'id', autoIncrement: true })
+              store.createIndex('word', 'word')
+              store.createIndex('dictId', 'dictId')
+              store.createIndex('at', 'at')
+            }
+            if (!db.objectStoreNames.contains(CHAPTER_STORE)) {
+              const store = db.createObjectStore(CHAPTER_STORE, { keyPath: 'id', autoIncrement: true })
+              store.createIndex('dictId', 'dictId')
+              store.createIndex('at', 'at')
+            }
+            if (!db.objectStoreNames.contains(PROGRESS_STORE)) {
+              db.createObjectStore(PROGRESS_STORE, { keyPath: 'key' })
+            }
+          }
+          request.onsuccess = () => {
+            const db = request.result
+            // 别的标签页升级版本时主动让路，避免后续事务全被 blocked
+            db.onversionchange = () => {
+              try {
+                db.close()
+              } catch {
+                /* ignore */
+              }
+              DB_PROMISE = null
+            }
+            resolve(db)
+          }
+          request.onerror = () => resolve(null)
+          request.onblocked = () => resolve(null)
+        } catch {
+          resolve(null)
+        }
+      })
+      return DB_PROMISE
+    }
+
+    function cacheGet(key) {
+      return openCacheDb().then(
+        (db) =>
+          new Promise((resolve) => {
+            if (!db) return resolve(null)
+            try {
+              const tx = db.transaction(CACHE_STORE, 'readonly')
+              const request = tx.objectStore(CACHE_STORE).get(key)
+              request.onsuccess = () => resolve(request.result?.words ?? null)
+              request.onerror = () => resolve(null)
+            } catch {
+              resolve(null)
+            }
+          }),
+      )
+    }
+
+    function cachePut(key, words, meta) {
+      return openCacheDb().then(
+        (db) =>
+          new Promise((resolve) => {
+            if (!db) return resolve(false)
+            try {
+              const tx = db.transaction(CACHE_STORE, 'readwrite')
+              tx.objectStore(CACHE_STORE).put({
+                key,
+                words,
+                count: words.length,
+                dictId: meta?.id ?? key,
+                savedAt: Date.now(),
+              })
+              tx.oncomplete = () => resolve(true)
+              tx.onerror = () => resolve(false)
+            } catch {
+              resolve(false)
+            }
+          }),
+      )
+    }
+
+    /* ---------------- 练习记录（wordRecords / chapterRecords / progress） ---------------- */
+
+    /** 事务包装：拿 store 名 + 回调，无 IndexedDB 时静默跳过 */
+    function withStore(names, mode, run) {
+      return openCacheDb().then(
+        (db) =>
+          new Promise((resolve) => {
+            if (!db) return resolve(null)
+            try {
+              const tx = db.transaction(names, mode)
+              let result = null
+              run(tx, (value) => {
+                result = value
+              })
+              tx.oncomplete = () => resolve(result)
+              tx.onerror = () => resolve(null)
+              tx.onabort = () => resolve(null)
+            } catch {
+              resolve(null)
+            }
+          }),
+      )
+    }
+
+    /** 记一个词：打对记一条，打错几次记几次（wrongCount 用同一轮内累计） */
+    function recordWord(entry) {
+      if (!entry || !entry.word) return Promise.resolve(null)
+      return withStore(WORD_STORE, 'readwrite', (tx, done) => {
+        const request = tx.objectStore(WORD_STORE).add({
+          word: String(entry.word),
+          dictId: entry.dictId ?? '',
+          chapter: Number.isInteger(entry.chapter) ? entry.chapter : null,
+          at: entry.at ?? Date.now(),
+          wrongCount: Math.max(0, Number(entry.wrongCount) || 0),
+          timing: Array.isArray(entry.timing) ? entry.timing.slice(0, 64) : [],
+        })
+        request.onsuccess = () => done(request.result)
+      }).then((id) => {
+        if (id === null) {
+          const mirror = readMirror()
+          mirror.wordRecords.unshift({
+            word: String(entry.word),
+            dictId: entry.dictId ?? '',
+            chapter: Number.isInteger(entry.chapter) ? entry.chapter : null,
+            at: entry.at ?? Date.now(),
+            wrongCount: Math.max(0, Number(entry.wrongCount) || 0),
+          })
+          writeMirror(mirror)
+        }
+        return id
+      })
+    }
+
+    /** 记一章：词数 / 对错 / 用时（秒） */
+    function recordChapter(entry) {
+      if (!entry) return Promise.resolve(null)
+      return withStore(CHAPTER_STORE, 'readwrite', (tx, done) => {
+        const request = tx.objectStore(CHAPTER_STORE).add({
+          dictId: entry.dictId ?? '',
+          chapter: Number.isInteger(entry.chapter) ? entry.chapter : null,
+          at: entry.at ?? Date.now(),
+          seconds: Math.max(1, Number(entry.seconds) || 1),
+          wordCount: Math.max(0, Number(entry.wordCount) || 0),
+          wrongCount: Math.max(0, Number(entry.wrongCount) || 0),
+          wrongLetters: entry.wrongLetters && typeof entry.wrongLetters === 'object' ? { ...entry.wrongLetters } : {},
+        })
+        request.onsuccess = () => done(request.result)
+      }).then((id) => {
+        if (id === null) {
+          const mirror = readMirror()
+          mirror.chapterRecords.unshift({ ...entry })
+          writeMirror(mirror)
+        }
+        return id
+      })
+    }
+
+    /** 写章节进度（key = `${dictId}:${chapter}`） */
+    function saveProgress(dictId, chapter, patch) {
+      const key = `${dictId}:${chapter}`
+      return withStore(PROGRESS_STORE, 'readwrite', (tx, done) => {
+        const store = tx.objectStore(PROGRESS_STORE)
+        const get = store.get(key)
+        get.onsuccess = () => {
+          const next = { ...(get.result || { key, dictId, chapter }), ...patch, updatedAt: Date.now() }
+          const put = store.put(next)
+          put.onsuccess = () => done(next)
+        }
+      })
+    }
+
+    function readProgress(dictId) {
+      return withStore(PROGRESS_STORE, 'readonly', (tx, done) => {
+        const request = tx.objectStore(PROGRESS_STORE).getAll()
+        request.onsuccess = () => {
+          const all = Array.isArray(request.result) ? request.result : []
+          done(dictId ? all.filter((item) => item.dictId === dictId) : all)
+        }
+      }).then((value) => {
+        if (value && value.length) return value
+        const mirror = readMirror().progress
+        return dictId ? mirror.filter((item) => item.dictId === dictId) : mirror
+      })
+    }
+
+    function readWordRecords(limit) {
+      return withStore(WORD_STORE, 'readonly', (tx, done) => {
+        const request = tx.objectStore(WORD_STORE).getAll()
+        request.onsuccess = () => {
+          const all = Array.isArray(request.result) ? request.result : []
+          all.sort((a, b) => (b.at || 0) - (a.at || 0))
+          done(limit ? all.slice(0, limit) : all)
+        }
+      }).then((value) => (value && value.length ? value : readMirror().wordRecords))
+    }
+
+    function readChapterRecords(limit) {
+      return withStore(CHAPTER_STORE, 'readonly', (tx, done) => {
+        const request = tx.objectStore(CHAPTER_STORE).getAll()
+        request.onsuccess = () => {
+          const all = Array.isArray(request.result) ? request.result : []
+          all.sort((a, b) => (b.at || 0) - (a.at || 0))
+          done(limit ? all.slice(0, limit) : all)
+        }
+      }).then((value) => value ?? [])
+    }
+
+    /** 「已掌握」的词：`${dictId}:${word}` 集合，存 localStorage（不占 IndexedDB 版本位） */
+    const MASTERED_KEY = 'qwerty-autotype:mastered'
+
+    function masteredKey(dictId, word) {
+      return `${dictId || ''}:${word}`
+    }
+
+    function readMastered() {
       try {
-        window.localStorage.setItem(DICT_STORAGE_KEY, id)
+        const raw = JSON.parse(window.localStorage.getItem(MASTERED_KEY) || '[]')
+        return Array.isArray(raw) ? raw.filter((item) => typeof item === 'string') : []
+      } catch {
+        return []
+      }
+    }
+
+    function writeMastered(list) {
+      try {
+        window.localStorage.setItem(MASTERED_KEY, JSON.stringify([...new Set(list)].slice(0, 2000)))
       } catch {
         /* ignore */
       }
     }
 
-    /** 查一个词的中文与音标：先查当前词库，再查其它词库，最后查内置表 */
+    /** 切换掌握状态，返回切换后的布尔值 */
+    function toggleMastered(dictId, word) {
+      const key = masteredKey(dictId, word)
+      const list = readMastered()
+      const has = list.includes(key)
+      writeMastered(has ? list.filter((item) => item !== key) : [...list, key])
+      return !has
+    }
+
+    /** localStorage 降级镜像（IndexedDB 被禁/隐私模式时用，只在内存里留最近 300 条） */
+    const MIRROR_KEY = 'qwerty-autotype:records-mirror'
+    const MIRROR_LIMIT = 300
+
+    function readMirror() {
+      try {
+        const raw = JSON.parse(window.localStorage.getItem(MIRROR_KEY) || 'null')
+        if (!raw || typeof raw !== 'object') return { wordRecords: [], chapterRecords: [], progress: [] }
+        return {
+          wordRecords: Array.isArray(raw.wordRecords) ? raw.wordRecords : [],
+          chapterRecords: Array.isArray(raw.chapterRecords) ? raw.chapterRecords : [],
+          progress: Array.isArray(raw.progress) ? raw.progress : [],
+        }
+      } catch {
+        return { wordRecords: [], chapterRecords: [], progress: [] }
+      }
+    }
+
+    function writeMirror(mirror) {
+      try {
+        window.localStorage.setItem(MIRROR_KEY, JSON.stringify({
+          wordRecords: (mirror.wordRecords || []).slice(0, MIRROR_LIMIT),
+          chapterRecords: (mirror.chapterRecords || []).slice(0, MIRROR_LIMIT),
+          progress: (mirror.progress || []).slice(0, MIRROR_LIMIT),
+        }))
+      } catch {
+        /* 配额满了就算了，IndexedDB 才是主存储 */
+      }
+    }
+
+    /* ---------------- 备份（导出 / 导入） ---------------- */
+
+    const BACKUP_VERSION = 1
+    /** 备份里各表最多带多少条，避免导出一个几十 MB 的文件 */
+    const BACKUP_LIMITS = { wordRecords: 5000, chapterRecords: 2000, progress: 2000 }
+
+    /** 打包成可下载的 JSON 文本（只含本地练习数据 + 设置，不含词库词条） */
+    function serializeBackup(parts) {
+      const { settings, wordRecords, chapterRecords, progress, mastered } = parts || {}
+      const trim = (list, limit) => (Array.isArray(list) ? list.slice(0, limit) : [])
+      const payload = {
+        kind: 'qwerty-autotype-backup',
+        version: BACKUP_VERSION,
+        exportedAt: new Date().toISOString(),
+        // 只带已知设置项，别把 localStorage 里的杂项搬来搬去
+        settings: Object.fromEntries(
+          Object.keys(SETTING_DEFAULTS)
+            .filter((key) => settings && key in settings)
+            .map((key) => [key, settings[key]]),
+        ),
+        wordRecords: trim(wordRecords, BACKUP_LIMITS.wordRecords),
+        chapterRecords: trim(chapterRecords, BACKUP_LIMITS.chapterRecords),
+        progress: trim(progress, BACKUP_LIMITS.progress),
+        mastered: trim(mastered, BACKUP_LIMITS.progress),
+      }
+      return JSON.stringify(payload, null, 2)
+    }
+
+    /**
+     * 解析备份文本：结构不对 / 版本更高就抛错，字段类型不对就丢掉那一条。
+     * 返回 { settings, wordRecords, chapterRecords, progress }
+     */
+    function parseBackup(text) {
+      let raw
+      try {
+        raw = JSON.parse(String(text ?? ''))
+      } catch {
+        throw new Error('backup:not-json')
+      }
+      if (!raw || typeof raw !== 'object') throw new Error('backup:not-object')
+      if (raw.kind !== 'qwerty-autotype-backup') throw new Error('backup:bad-kind')
+      if (!Number.isInteger(raw.version) || raw.version < 1) throw new Error('backup:bad-version')
+      if (raw.version > BACKUP_VERSION) throw new Error('backup:version-too-new')
+
+      const keepStrings = (value) => (typeof value === 'string' ? value : '')
+      const num = (value) => (Number.isFinite(Number(value)) ? Number(value) : 0)
+
+      const settings = {}
+      if (raw.settings && typeof raw.settings === 'object') {
+        for (const [key, value] of Object.entries(SETTING_DEFAULTS)) {
+          if (key in raw.settings) settings[key] = typeof value === 'boolean' ? !!raw.settings[key] : String(raw.settings[key])
+        }
+      }
+
+      const wordRecords = (Array.isArray(raw.wordRecords) ? raw.wordRecords : [])
+        .filter((row) => row && typeof row.word === 'string' && row.word)
+        .map((row) => ({
+          word: row.word,
+          dictId: keepStrings(row.dictId),
+          chapter: Number.isInteger(row.chapter) ? row.chapter : null,
+          at: num(row.at) || Date.now(),
+          wrongCount: Math.max(0, num(row.wrongCount)),
+          timing: Array.isArray(row.timing) ? row.timing.slice(0, 64) : [],
+        }))
+
+      const chapterRecords = (Array.isArray(raw.chapterRecords) ? raw.chapterRecords : [])
+        .filter((row) => row && typeof row === 'object')
+        .map((row) => ({
+          dictId: keepStrings(row.dictId),
+          chapter: Number.isInteger(row.chapter) ? row.chapter : null,
+          at: num(row.at) || Date.now(),
+          seconds: Math.max(1, num(row.seconds) || 1),
+          wordCount: Math.max(0, num(row.wordCount)),
+          wrongCount: Math.max(0, num(row.wrongCount)),
+        }))
+
+      const progress = (Array.isArray(raw.progress) ? raw.progress : [])
+        .filter((row) => row && typeof row.dictId === 'string' && Number.isInteger(row.chapter))
+        .map((row) => ({
+          key: `${row.dictId}:${row.chapter}`,
+          dictId: row.dictId,
+          chapter: row.chapter,
+          index: Math.max(0, num(row.index)),
+          words: Math.max(0, num(row.words)),
+          done: !!row.done,
+          updatedAt: num(row.updatedAt) || Date.now(),
+        }))
+
+      const mastered = (Array.isArray(raw.mastered) ? raw.mastered : [])
+        .filter((item) => typeof item === 'string' && item)
+
+      return { settings, wordRecords, chapterRecords, progress, mastered }
+    }
+
+    /** 清空一张表（IndexedDB 不可用时清镜像） */
+    function clearStores(names) {
+      return withStore(names, 'readwrite', (tx, done) => {
+        let pending = names.length
+        for (const name of names) {
+          try {
+            const request = tx.objectStore(name).clear()
+            request.onsuccess = () => {
+              pending -= 1
+              if (pending === 0) done(true)
+            }
+            request.onerror = () => {
+              pending -= 1
+              if (pending === 0) done(false)
+            }
+          } catch {
+            pending -= 1
+            if (pending === 0) done(false)
+          }
+        }
+      })
+    }
+
+    /** 导入：先清空再批量写入（progress 用 put，其余用 add） */
+    function importData(parsed) {
+      const names = [WORD_STORE, CHAPTER_STORE, PROGRESS_STORE]
+      return clearStores(names).then((cleared) => {
+        if (!cleared) {
+          // 没有 IndexedDB：整份进镜像
+          writeMirror({
+            wordRecords: parsed.wordRecords,
+            chapterRecords: parsed.chapterRecords,
+            progress: parsed.progress,
+          })
+          return {
+            restored: parsed.wordRecords.length + parsed.chapterRecords.length + parsed.progress.length,
+            fallback: true,
+          }
+        }
+        return withStore(names, 'readwrite', (tx, done) => {
+          let ok = 0
+          let pending = parsed.wordRecords.length + parsed.chapterRecords.length + parsed.progress.length
+          const settle = (hit) => {
+            if (hit) ok += 1
+            pending -= 1
+            // 全部落库后把条数交给 withStore 的 oncomplete
+            if (pending <= 0) done(ok)
+          }
+          const submit = (storeName, row, method) => {
+            try {
+              const request = tx.objectStore(storeName)[method](row)
+              request.onsuccess = () => settle(true)
+              request.onerror = () => settle(false)
+            } catch {
+              settle(false)
+            }
+          }
+          if (pending <= 0) {
+            done(0)
+            return
+          }
+          for (const row of parsed.wordRecords) {
+            submit(WORD_STORE, {
+              word: row.word,
+              dictId: row.dictId,
+              chapter: row.chapter,
+              at: row.at,
+              wrongCount: row.wrongCount,
+              timing: row.timing || [],
+            }, 'add')
+          }
+          for (const row of parsed.chapterRecords) submit(CHAPTER_STORE, { ...row }, 'add')
+          for (const row of parsed.progress) submit(PROGRESS_STORE, { ...row }, 'put')
+        }).then((count) => ({
+          restored: count ?? parsed.wordRecords.length + parsed.chapterRecords.length,
+          fallback: false,
+        }))
+      })
+    }
+
+    /** 清空本地练习数据（settings 可选保留） */
+    function clearData(options) {
+      const { keepSettings = true } = options || {}
+      return clearStores([WORD_STORE, CHAPTER_STORE, PROGRESS_STORE]).then(() => {
+        writeMirror({ wordRecords: [], chapterRecords: [], progress: [] })
+        writeMastered([])
+        clearSession()
+        if (!keepSettings) {
+          for (const key of Object.keys(SETTING_DEFAULTS)) {
+            try {
+              window.localStorage.removeItem(SETTING_PREFIX + key)
+            } catch {
+              /* ignore */
+            }
+          }
+        }
+        return true
+      })
+    }
+
+    /** 导出当前所有本地数据为 JSON 文本 */
+    function exportBackup() {
+      return Promise.all([readWordRecords(), readChapterRecords(), readProgress()]).then(
+        ([wordRecords, chapterRecords, progress]) => serializeBackup({
+          settings: getSettings(),
+          wordRecords,
+          chapterRecords,
+          progress,
+          mastered: readMastered(),
+        }),
+      )
+    }
+
+    /* ---------------- 纯聚合（可在 node 里测） ---------------- */
+
+    /** 本地时区的自然日 key：YYYY-MM-DD */
+    function dayKey(timestamp) {
+      const date = new Date(timestamp ?? Date.now())
+      const pad = (n) => String(n).padStart(2, '0')
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+    }
+
+    /** 按天聚合章节记录：{ day, words, chapters, wrong, seconds, accuracy, wpm } */
+    function aggregateDaily(chapters) {
+      const buckets = new Map()
+      for (const item of chapters || []) {
+        const day = dayKey(item.at)
+        const bucket = buckets.get(day) ?? { day, words: 0, chapters: 0, wrong: 0, seconds: 0 }
+        bucket.chapters += 1
+        bucket.words += Number(item.wordCount) || 0
+        bucket.wrong += Number(item.wrongCount) || 0
+        bucket.seconds += Number(item.seconds) || 0
+        buckets.set(day, bucket)
+      }
+      return [...buckets.values()]
+        .sort((a, b) => (a.day < b.day ? -1 : 1))
+        .map((bucket) => {
+          const total = bucket.words + bucket.wrong
+          return {
+            ...bucket,
+            accuracy: total > 0 ? Math.round((bucket.words / total) * 100) : 0,
+            wpm: bucket.seconds > 0 ? Math.round((bucket.words / bucket.seconds) * 60) : 0,
+          }
+        })
+    }
+
+    /** 总体指标：词数 / 章数 / 正确率 / WPM */
+    function summarize(chapters) {
+      let words = 0
+      let wrong = 0
+      let seconds = 0
+      for (const item of chapters || []) {
+        words += Number(item.wordCount) || 0
+        wrong += Number(item.wrongCount) || 0
+        seconds += Number(item.seconds) || 0
+      }
+      const total = words + wrong
+      return {
+        words,
+        wrong,
+        chapters: (chapters || []).length,
+        accuracy: total > 0 ? Math.round((words / total) * 100) : 0,
+        wpm: seconds > 0 ? Math.round((words / seconds) * 60) : 0,
+      }
+    }
+
+    /**
+     * 错词聚合：wordRecords 里 wrongCount > 0 的，按 (dictId, word) 合并
+     * 返回 [{ word, dictId, wrongCount, lastAt }]，按错次数降序、同次数按最近降序
+     */
+    function collectWrongWords(records, limit) {
+      const map = new Map()
+      for (const item of records || []) {
+        const word = item?.word
+        if (!word || !(Number(item.wrongCount) > 0)) continue
+        const key = `${item.dictId ?? ''}::${word}`
+        const prev = map.get(key)
+        if (prev) {
+          prev.wrongCount += Number(item.wrongCount) || 0
+          prev.lastAt = Math.max(prev.lastAt, Number(item.at) || 0)
+        } else {
+          map.set(key, {
+            word,
+            dictId: item.dictId ?? '',
+            wrongCount: Number(item.wrongCount) || 0,
+            lastAt: Number(item.at) || 0,
+          })
+        }
+      }
+      const list = [...map.values()].sort(
+        (a, b) => (b.wrongCount - a.wrongCount) || (b.lastAt - a.lastAt),
+      )
+      return limit ? list.slice(0, limit) : list
+    }
+
+    /** 热力等级：0 词 = 0；按当日词数落 1..4 档（对齐 GitHub 的观感） */
+    function heatLevel(words) {
+      const n = Number(words) || 0
+      if (n <= 0) return 0
+      if (n < 20) return 1
+      if (n < 50) return 2
+      if (n < 100) return 3
+      return 4
+    }
+
+    /**
+     * 热力图：近 weeks 周，每周 7 天（周一起），最后一列是本周。
+     * 返回 [{ days: [{ day, words, level, future }] }]，future 用于把本周还没到的日子画成空格。
+     */
+    function heatmapWeeks(chapters, weeks, now) {
+      const count = Math.max(1, weeks ?? 12)
+      const today = new Date(now ?? Date.now())
+      const todayKey = dayKey(today.getTime())
+      const byDay = new Map(aggregateDaily(chapters).map((item) => [item.day, item]))
+      // 本周周一
+      const weekday = (today.getDay() + 6) % 7
+      const monday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - weekday)
+      const columns = []
+      for (let w = count - 1; w >= 0; w -= 1) {
+        const days = []
+        for (let d = 0; d < 7; d += 1) {
+          const date = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() - w * 7 + d)
+          const day = dayKey(date.getTime())
+          const hit = byDay.get(day)
+          days.push({
+            day,
+            words: hit ? hit.words : 0,
+            level: heatLevel(hit ? hit.words : 0),
+            future: day > todayKey,
+          })
+        }
+        columns.push({ days })
+      }
+      return columns
+    }
+
+    /** 最容易打错的字母：把每章记录里的 wrongLetters 累加，取前 N */
+    function topWrongLetters(chapters, limit) {
+      const tally = new Map()
+      for (const row of chapters || []) {
+        const map = row && row.wrongLetters
+        if (!map || typeof map !== 'object') continue
+        for (const [letter, count] of Object.entries(map)) {
+          const key = String(letter)
+          if (!key) continue
+          const add = Math.max(0, Number(count) || 0)
+          if (!add) continue
+          tally.set(key, (tally.get(key) || 0) + add)
+        }
+      }
+      return [...tally.entries()]
+        .map(([letter, count]) => ({ letter, count }))
+        .sort((a, b) => b.count - a.count || (a.letter < b.letter ? -1 : 1))
+        .slice(0, Math.max(1, limit ?? 5))
+    }
+
+    /** 错词本筛选：按词库 + 关键词 + 排序方式 */
+    function filterWrongWords(rows, filters) {
+      const { query, dictId, sort, mastered, showMastered = false } = filters || {}
+      const needle = String(query ?? '').trim().toLowerCase()
+      const known = mastered instanceof Set ? mastered : new Set(mastered || [])
+      let list = (rows || []).filter((row) => {
+        if (dictId && row.dictId !== dictId) return false
+        // 已掌握的默认不出现，但要能看到（showMastered）
+        if (!showMastered && known.has(`${row.dictId || ''}:${row.word}`)) return false
+        if (!needle) return true
+        const meta = lookup(row.word)
+        return row.word.toLowerCase().includes(needle)
+          || String(meta?.zh ?? '').toLowerCase().includes(needle)
+      })
+      if (sort === 'recent') list = list.slice().sort((a, b) => b.lastAt - a.lastAt)
+      else if (sort === 'alpha') list = list.slice().sort((a, b) => (a.word < b.word ? -1 : 1))
+      return list
+    }
+
+    /** 最近 n 天（含今天），缺失的日子补零，供折线/柱状图直接画 */
+    function lastDays(chapters, days, now) {
+      const count = days ?? 30
+      const aggregated = aggregateDaily(chapters)
+      const byDay = new Map(aggregated.map((item) => [item.day, item]))
+      const out = []
+      const base = new Date(now ?? Date.now())
+      for (let i = count - 1; i >= 0; i -= 1) {
+        const date = new Date(base.getFullYear(), base.getMonth(), base.getDate() - i)
+        const day = dayKey(date.getTime())
+        out.push(byDay.get(day) ?? { day, words: 0, chapters: 0, wrong: 0, seconds: 0, accuracy: 0, wpm: 0 })
+      }
+      return out
+    }
+
+    /** 拉一个词库的原始 JSON：按 DICT_SOURCES 依次尝试 */
+    async function fetchDictJson(meta) {
+      const file = meta?.url
+      if (!file) throw new Error('该词库没有数据地址')
+      let lastError = null
+      for (const build of dictSourceList()) {
+        const target = build(file)
+        try {
+          const response = await fetch(target)
+          if (!response.ok) throw new Error(`HTTP ${response.status}`)
+          const data = await response.json()
+          const list = Array.isArray(data) ? data : data[Object.keys(data)[0]]
+          if (!Array.isArray(list)) throw new Error('数据格式不是数组')
+          return list
+        } catch (error) {
+          lastError = error
+        }
+      }
+      throw lastError ?? new Error('词库加载失败')
+    }
+
+    /** 读词条：内存 → 内置 → IndexedDB → 网络（force=true 时跳过前三级） */
+    async function loadDictWords(id, options) {
+      const force = Boolean(options?.force)
+      const meta = dictionaryById(id)
+      if (!meta) throw new Error(`未知词库：${id}`)
+
+      if (!force) {
+        if (DICT_CACHE.has(id)) return DICT_CACHE.get(id)
+        const cached = await cacheGet(id)
+        if (Array.isArray(cached) && cached.length) {
+          DICT_CACHE.set(id, cached)
+          return cached
+        }
+      }
+
+      if (DICT_INFLIGHT.has(id)) return DICT_INFLIGHT.get(id)
+
+      const task = (async () => {
+        try {
+          const raw = await fetchDictJson(meta)
+          const words = normalizeWords(raw, meta.languageCategory)
+          if (!words.length) throw new Error('词库解析后没有有效词条')
+          DICT_CACHE.set(id, words)
+          cachePut(id, words, meta)
+          return words
+        } catch (error) {
+          // 拉不到就退回内置采样（只对 7 个内置库有效），并让调用方知道降级了
+          const builtin = builtinById(id)
+          if (builtin?.words?.length) {
+            DICT_CACHE.set(id, builtin.words)
+            throw Object.assign(error, { fallbackWords: builtin.words })
+          }
+          throw error
+        }
+      })()
+
+      DICT_INFLIGHT.set(id, task)
+      try {
+        return await task
+      } finally {
+        DICT_INFLIGHT.delete(id)
+      }
+    }
+
+    /** 只取已就绪的词条（不触发网络），没有就返回内置兜底 */
+    function wordsSync(id) {
+      if (DICT_CACHE.has(id)) return DICT_CACHE.get(id)
+      const builtin = builtinById(id)
+      if (builtin?.words?.length) return builtin.words
+      return LEXICON.map((entry) => ({ w: entry.word, ipa: entry.ipa, zh: entry.zh }))
+    }
+
+    function readDictId() {
+      try {
+        const saved = window.localStorage.getItem(DICT_STORAGE_KEY)
+        if (saved && catalog().some((dict) => dict.id === saved)) return saved
+      } catch {
+        /* 无痕模式等，忽略 */
+      }
+      return catalog()[0]?.id ?? 'builtin'
+    }
+
+    function writeDictId(id) {
+      try {
+        window.localStorage.setItem(DICT_STORAGE_KEY, id)
+        const recent = readRecent().filter((item) => item !== id)
+        recent.unshift(id)
+        window.localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(recent.slice(0, 5)))
+      } catch {
+        /* ignore */
+      }
+    }
+
+    function readRecent() {
+      try {
+        const raw = JSON.parse(window.localStorage.getItem(RECENT_STORAGE_KEY) || '[]')
+        return Array.isArray(raw) ? raw.filter((id) => typeof id === 'string') : []
+      } catch {
+        return []
+      }
+    }
+
+    /** 查一个词的中文与音标：已加载词库 → 内置词库 → LEXICON */
     function lookup(word) {
       if (!word) return undefined
       const needle = String(word).toLowerCase()
-      for (const dict of dictionaries()) {
+      for (const dict of builtinDicts()) {
         const hit = dict.words?.find((entry) => entry.w === needle)
+        if (hit) return { word: hit.w, ipa: hit.ipa, zh: hit.zh }
+      }
+      for (const words of DICT_CACHE.values()) {
+        const hit = words.find((entry) => entry.w === needle)
         if (hit) return { word: hit.w, ipa: hit.ipa, zh: hit.zh }
       }
       const fallback = LEXICON.find((entry) => entry.word === needle)
@@ -118,10 +1018,9 @@ window.__ModuleLoader__.load({
       return groups
     }
 
-    /** 从词库里随机取一批词（Fisher-Yates，取前 count 个） */
-    function sampleWords(dictId, count) {
-      const dict = dictionaryById(dictId)
-      const pool = (dict.words ?? []).map((entry) => entry.w).filter(Boolean)
+    /** 从一批词条里随机取 count 个词（Fisher-Yates 洗牌后截断） */
+    function sampleFromWords(words, count) {
+      const pool = (words || []).map((entry) => entry.w).filter(Boolean)
       const list = pool.slice()
       for (let i = list.length - 1; i > 0; i -= 1) {
         const j = Math.floor(Math.random() * (i + 1))
@@ -130,6 +1029,22 @@ window.__ModuleLoader__.load({
         list[j] = swap
       }
       return list.slice(0, count ?? 20)
+    }
+
+    /** 从指定词库随机取一批词（只用于已就绪的数据，异步加载见 loadDictWords） */
+    function sampleWords(dictId, count) {
+      return sampleFromWords(wordsSync(dictId), count)
+    }
+
+    /** 搜索词库：名称 / id / 标签 */
+    function searchCatalog(query, limit) {
+      const q = String(query || '').trim().toLowerCase()
+      if (!q) return []
+      const list = catalog().filter((dict) => {
+        const hay = [dict.name, dict.id, ...(dict.tags || [])].join(' ').toLowerCase()
+        return hay.includes(q)
+      })
+      return list.slice(0, limit ?? 40)
     }
 
     const DICT = {
@@ -154,6 +1069,74 @@ window.__ModuleLoader__.load({
         empty: '没有单词；用空格分隔即可，例如：/qwerty-autotype cancel govern',
         sideLabel: '跟打',
         sideTitle: '开 / 关 Qwerty 跟打卡片',
+        searchDict: '搜索词库（名称 / 标签）',
+        allCategories: '全部',
+        recent: '最近使用',
+        searchResult: '搜索结果',
+        loading: '正在加载词库…',
+        loadFailed: '词库加载失败，先用内置词库继续',
+        chapterTitle: '选择章节',
+        speak: '读一遍',
+        todayStats: '今日 {words} 词 · 正确率 {accuracy}% · {wpm} WPM',
+        accuracyShort: '正确率 {n}%',
+        prevTip: '上一个（Ctrl/⌘+←）',
+        skipTip: '跳过（Ctrl/⌘+→）',
+        loopTip: '循环当前词（Ctrl/⌘+J）',
+        pauseTip: '暂停（Ctrl/⌘+P）',
+        resumeTip: '继续',
+        pausedTip: '已暂停（失焦或切标签页会自动暂停）',
+        resume: '继续',
+        wrongBook: '错词本',
+        wrongSearch: '搜单词或释义',
+        mistakesLabel: '本轮打错 {n} 个：',
+        settingsTitle: '跟打',
+        settingSound: '键音',
+        settingSoundHint: '打对/打错时给一声轻提示',
+        hotkeysTitle: '快捷键',
+        announceWrong: '打错了，请整词重打 {word}',
+        announceDone: '本轮完成，共 {n} 个词',
+        hotkeysList: 'Esc 关闭 · Ctrl/⌘+← 上一个 · Ctrl/⌘+→ 跳过 · Ctrl/⌘+J 循环 · Ctrl/⌘+P 暂停 · 在输入框里按 Tab 开始',
+        lettersTitle: '易错字母',
+        markMastered: '标记已掌握',
+        dataTitle: '数据',
+        backupExport: '导出备份',
+        backupImport: '导入备份',
+        backupClear: '清空记录',
+        clearConfirm: '再点一次确认清空',
+        clearedDone: '已清空本地练习记录',
+        backupExported: '备份已开始下载',
+        backupImported: '已恢复 {n} 条记录',
+        backupBadFile: '这个文件不是跟打备份',
+        backupFailed: '导出失败，浏览器可能禁止了下载',
+        settingCaseSensitive: '区分大小写',
+        settingCaseSensitiveHint: '关：Cancel 打 cancel 也算对（代码词库建议开）',
+        settingIgnorePunct: '忽略标点',
+        settingIgnorePunctHint: '开：append() 只需要打 append',
+        settingVoice: '发音按钮',
+        settingVoiceHint: '关掉后卡片上不显示 🔊',
+        settingDictation: '默写形态',
+        settingDictationHint: '默认遮住哪些字母，练习时仍可临时切换',
+        reviewMistakes: '重练这些词',
+        nextChapter: '下一章',
+        allDicts: '全部',
+        sortCount: '按错误次数',
+        sortRecent: '按最近出错',
+        wrongTitle: '错词本 · {n} 个',
+        wrongEmpty: '还没有错词。打错过的词会自动出现在这里。',
+        reviewTop: '重练前 20',
+        clearWrong: '刷新',
+        stats: '统计',
+        statsTitle: '近 14 天',
+        statWords: '{n} 词',
+        statChapters: '{n} 章',
+        elapsedShort: '用时 {sec}s',
+        dictation: '默写形态',
+        dictation_none: '正常显示',
+        dictation_hideAll: '全部隐藏',
+        dictation_hideVowel: '隐藏元音',
+        dictation_hideConsonant: '隐藏辅音',
+        dictation_randomHide: '随机隐藏',
+        wordCount: '{n} 词',
       },
       en: {
         title: 'Qwerty practice',
@@ -173,6 +1156,74 @@ window.__ModuleLoader__.load({
         doneTitle: 'Round complete',
         doneBody: '{total}/{total} done in {sec}s — {hits} hits, {retries} retries',
         again: 'Go again',
+        searchDict: 'Search dictionaries',
+        allCategories: 'All',
+        recent: 'Recent',
+        searchResult: 'Results',
+        loading: 'Loading dictionary…',
+        loadFailed: 'Dictionary failed to load — using the built-in one',
+        chapterTitle: 'Chapter',
+        speak: 'Read aloud',
+        todayStats: 'Today {words} words · {accuracy}% · {wpm} WPM',
+        accuracyShort: '{n}% accuracy',
+        prevTip: 'Previous (⌘/Ctrl+←)',
+        skipTip: 'Skip (⌘/Ctrl+→)',
+        loopTip: 'Loop this word (⌘/Ctrl+J)',
+        pauseTip: 'Pause (⌘/Ctrl+P)',
+        resumeTip: 'Resume',
+        pausedTip: 'Paused (auto-paused on blur or tab switch)',
+        resume: 'Resume',
+        wrongBook: 'Wrong words',
+        wrongSearch: 'Search word or meaning',
+        mistakesLabel: 'Mistyped {n} this round:',
+        settingsTitle: 'Typing drill',
+        settingSound: 'Key sound',
+        settingSoundHint: 'A soft click on hit or miss',
+        hotkeysTitle: 'Shortcuts',
+        announceWrong: 'Mistyped — retype the whole word {word}',
+        announceDone: 'Round finished, {n} words',
+        hotkeysList: 'Esc close · Ctrl/⌘+← prev · Ctrl/⌘+→ skip · Ctrl/⌘+J loop · Ctrl/⌘+P pause · Tab in the composer starts',
+        lettersTitle: 'Tricky letters',
+        markMastered: 'Mark as mastered',
+        dataTitle: 'Data',
+        backupExport: 'Export backup',
+        backupImport: 'Import backup',
+        backupClear: 'Clear records',
+        clearConfirm: 'Click again to confirm',
+        clearedDone: 'Local practice records cleared',
+        backupExported: 'Backup download started',
+        backupImported: 'Restored {n} records',
+        backupBadFile: 'Not a typing-drill backup',
+        backupFailed: 'Export failed — the browser blocked the download',
+        settingCaseSensitive: 'Case sensitive',
+        settingCaseSensitiveHint: 'Off: typing "cancel" passes for "Cancel"',
+        settingIgnorePunct: 'Ignore punctuation',
+        settingIgnorePunctHint: 'On: "append()" only needs "append"',
+        settingVoice: 'Speak button',
+        settingVoiceHint: 'Hide the 🔊 on the card',
+        settingDictation: 'Dictation',
+        settingDictationHint: 'Which letters stay hidden by default',
+        reviewMistakes: 'Review them',
+        nextChapter: 'Next chapter',
+        allDicts: 'All',
+        sortCount: 'By mistakes',
+        sortRecent: 'By recent',
+        wrongTitle: 'Wrong words · {n}',
+        wrongEmpty: 'No wrong words yet — mistyped words land here automatically.',
+        reviewTop: 'Review top 20',
+        clearWrong: 'Refresh',
+        stats: 'Stats',
+        statsTitle: 'Last 14 days',
+        statWords: '{n} words',
+        statChapters: '{n} chapters',
+        elapsedShort: '{sec}s',
+        dictation: 'Dictation',
+        dictation_none: 'Show all',
+        dictation_hideAll: 'Hide all',
+        dictation_hideVowel: 'Hide vowels',
+        dictation_hideConsonant: 'Hide consonants',
+        dictation_randomHide: 'Hide random',
+        wordCount: '{n} words',
         empty: 'No words; separate them with spaces, e.g. /qwerty-autotype cancel govern',
         sideLabel: 'Practice',
         sideTitle: 'Show / hide the Qwerty practice card',
@@ -190,6 +1241,76 @@ window.__ModuleLoader__.load({
 .qat-select{appearance:none;border:1px solid var(--dsw-alias-border-l1);background:transparent;color:var(--dsw-alias-label-secondary);border-radius:6px;padding:1px 6px;font:inherit;font-size:11px;cursor:pointer;max-width:150px}
 .qat-select:hover{color:var(--dsw-alias-label-primary);border-color:var(--dsw-alias-border-l2)}
 .qat-select:focus{outline:1px solid var(--dsw-alias-brand-primary);outline-offset:1px}
+.qat-dictbtn{max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:2px 8px;font-size:12px}
+.qat-picker{width:100%;display:flex;flex-direction:column;gap:10px;padding:4px 2px 12px}
+.qat-picker-head{display:flex;align-items:center;gap:10px}
+.qat-search{flex:1;min-width:0;border:1px solid var(--dsw-alias-border-l1);background:transparent;color:var(--dsw-alias-label-primary);border-radius:8px;padding:7px 10px;font:inherit;font-size:13px}
+.qat-search:focus{outline:1px solid var(--dsw-alias-brand-primary);outline-offset:1px}
+.qat-chips{display:flex;flex-wrap:wrap;gap:6px}
+.qat-chip{border:1px solid var(--dsw-alias-border-l1);background:transparent;color:var(--dsw-alias-label-secondary);border-radius:999px;padding:3px 10px;font-size:12px;cursor:pointer}
+.qat-chip:hover{background:var(--dsw-alias-interactive-bg-hover);color:var(--dsw-alias-label-primary)}
+.qat-chip[data-active="true"]{border-color:var(--dsw-alias-brand-primary);color:var(--dsw-alias-label-primary)}
+.qat-dictgroup{display:flex;flex-direction:column;gap:4px;min-height:0}
+.qat-dictgroup-title{font-size:11px;color:var(--dsw-alias-label-tertiary);padding:2px 2px 4px}
+.qat-dictscroll{max-height:320px;overflow:auto;display:flex;flex-direction:column;gap:2px;padding-right:4px}
+.qat-dictrow{display:flex;align-items:baseline;justify-content:space-between;gap:10px;border:none;background:transparent;color:var(--dsw-alias-label-primary);text-align:left;padding:7px 9px;border-radius:8px;font:inherit;font-size:13px;cursor:pointer}
+.qat-dictrow:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.qat-dictrow[data-active="true"]{background:var(--dsw-alias-interactive-bg-hover)}
+.qat-dictname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qat-dictmeta{flex:none;font-size:11px;color:var(--dsw-alias-label-tertiary)}
+.qat-loading{color:var(--dsw-alias-label-secondary);font-size:13px;padding:24px 0;text-align:center}
+.qat-letter[data-mask="true"]{color:var(--dsw-alias-label-tertiary);opacity:.55}
+.qat-picker-title{font-size:13px;color:var(--dsw-alias-label-secondary)}
+.qat-wrongrow{display:flex;align-items:baseline;gap:10px;padding:6px 8px;border-radius:8px}
+.qat-wrongrow:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.qat-wrongrow{display:flex;align-items:center;gap:8px;padding:3px 2px}
+.qat-icon[data-active="true"][data-act="mastered"]{color:var(--dsw-alias-state-success-primary);opacity:1}
+.qat-wrongword{font-size:14px;color:var(--dsw-alias-label-primary);min-width:110px}
+.qat-wrongzh{flex:1;font-size:12px;color:var(--dsw-alias-label-tertiary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qat-wrongcount{font-size:12px;color:var(--dsw-alias-state-error-primary)}
+.qat-stats-nums{display:flex;gap:16px;font-size:13px;color:var(--dsw-alias-label-secondary)}
+.qat-letters{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--dsw-alias-label-secondary);margin:2px 0 6px}
+.qat-letters-label{color:var(--dsw-alias-label-tertiary)}
+.qat-letterchip{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.qat-heat{display:flex;gap:3px;margin:4px 0 10px}
+.qat-heatcol{display:flex;flex-direction:column;gap:3px}
+.qat-heatcell{width:9px;height:9px;border-radius:2px;background:var(--dsw-alias-border-l1)}
+.qat-heatcell[data-level="1"]{background:color-mix(in srgb, var(--dsw-alias-brand-primary) 28%, transparent)}
+.qat-heatcell[data-level="2"]{background:color-mix(in srgb, var(--dsw-alias-brand-primary) 50%, transparent)}
+.qat-heatcell[data-level="3"]{background:color-mix(in srgb, var(--dsw-alias-brand-primary) 74%, transparent)}
+.qat-heatcell[data-level="4"]{background:var(--dsw-alias-brand-primary)}
+.qat-heatcell[data-level="future"]{background:transparent}
+.qat-wrongsearch{max-width:160px;margin-left:8px}
+.qat-bars{display:flex;align-items:flex-end;gap:6px;height:120px;padding:8px 2px 0}
+.qat-barcol{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;gap:4px}
+.qat-barfill{width:100%;max-width:22px;background:var(--dsw-alias-brand-primary);border-radius:3px 3px 0 0;min-height:2px}
+.qat-barfill[data-empty="true"]{background:var(--dsw-alias-border-l1)}
+.qat-barlabel{font-size:9px;color:var(--dsw-alias-label-tertiary)}
+.qat-btn:focus-visible,.qat-icon:focus-visible,.qat-chip:focus-visible,.qat-switch:focus-visible,.qat-item:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px;border-radius:6px}
+.qat-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.qat-help{margin:2px 0 8px;padding:8px 10px;border-radius:8px;background:var(--dsw-alias-bg-layer-2);font-size:12px;color:var(--dsw-alias-label-secondary);line-height:1.7}
+.qat-btn[data-on="true"]{color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-interactive-bg-selected)}
+.qat-paused{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--dsw-alias-label-secondary);padding:6px 0}
+.qat-metric{color:var(--dsw-alias-label-tertiary)}
+.qat-settings{display:flex;flex-direction:column;gap:12px;padding:14px 0}
+.qat-settings-title{font-size:13px;font-weight:600;color:var(--dsw-alias-label-primary)}
+.qat-setrow{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.qat-settext{display:flex;flex-direction:column;gap:2px;min-width:0}
+.qat-setlabel{font-size:13px;color:var(--dsw-alias-label-primary)}
+.qat-sethint{font-size:12px;color:var(--dsw-alias-label-tertiary)}
+.qat-datablock{margin-top:6px}
+.qat-hotkeys{line-height:1.7;margin-top:-6px}
+.qat-databtns{display:flex;gap:8px;flex-wrap:wrap}
+.qat-switch{display:inline-flex;align-items:center;justify-content:center;min-width:40px;padding:3px 10px;border-radius:999px;font-size:12px;cursor:pointer;user-select:none;border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary)}
+.qat-switch[data-on="true"]{background:var(--dsw-alias-brand-primary);border-color:transparent;color:#fff}
+.qat-mistakes{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:12px;color:var(--dsw-alias-label-secondary)}
+.qat-mistakes-list{color:var(--dsw-alias-state-error-primary);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.qat-done-metrics{display:flex;gap:14px;font-size:13px;color:var(--dsw-alias-label-secondary);margin-top:6px}
+.qat-speak{margin-left:8px;cursor:pointer;font-size:13px;opacity:.65;user-select:none}
+.qat-speak:hover{opacity:1}
+.qat-chapter{max-width:110px}
+.qat-dictation{max-width:110px}
+.qat-note{font-size:12px;color:var(--dsw-alias-state-warn-primary,var(--dsw-alias-label-secondary));padding:2px 0 6px}
 .qat-glyph{line-height:1;display:inline-flex;align-items:center;justify-content:center;color:var(--dsw-alias-label-secondary)}
 .qat-glyph[data-active="true"]{color:var(--dsw-alias-label-primary)}
 .qat-panel{padding:28px 32px;max-width:820px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
@@ -257,6 +1378,8 @@ window.__ModuleLoader__.load({
       return out
     }
 
+    let PLUGIN_CTX = null
+
     function useT(ctx) {
       const current = useSyncExternalStore(subscribeLocale, getLocaleVersion, getLocaleVersion)
       return useMemo(() => {
@@ -268,6 +1391,25 @@ window.__ModuleLoader__.load({
         }
         return (key, vars) => format(translate?.(key) ?? DICT.zh[key] ?? key, vars)
       }, [ctx, current])
+    }
+
+    /**
+     * 让 span 扮的按钮真的能用键盘：Tab 可聚焦、Enter/Space 等于点击。
+     * 用法：h('span', { ...pressable(() => doIt()), className: 'qat-btn' }, '文字')
+     */
+    function pressable(onPress) {
+      return {
+        role: 'button',
+        tabIndex: 0,
+        onMouseDown: (event) => event.preventDefault(),
+        onClick: onPress,
+        onKeyDown: (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            onPress?.(event)
+          }
+        },
+      }
     }
 
     /* ------------------------------------------------------------- open state */
@@ -306,13 +1448,39 @@ window.__ModuleLoader__.load({
      * 'bad'  某个位置打错 → 标红、清空、整词重打
      * 'over' 打超长，直接忽略
      */
-    function judgeTyping(target, value) {
-      if (!target) return { state: 'bad', badIndex: -1 }
-      if (value.length > target.length) return { state: 'over', badIndex: -1 }
-      for (let i = 0; i < value.length; i += 1) {
-        if (value[i] !== target[i]) return { state: 'bad', badIndex: i }
+    /** 判定时忽略的标点（不含 ' 和 -，它们属于单词本身） */
+    const PUNCT_RE = /[()[\]{}<>.,;:!?"“”‘’·、，。；：！？（）《》【】…]/g
+
+    function stripPunct(text) {
+      return String(text ?? '').replace(PUNCT_RE, '')
+    }
+
+    /**
+     * 实际参与判定的目标串：
+     * - `ignorePunct` 去掉标点（代码词库的 `append()` 只打 append）
+     * - 非 `caseSensitive` 一律小写（默认，避免大写词卡人）
+     */
+    function effectiveTarget(word, options) {
+      const { caseSensitive = false, ignorePunct = false } = options || {}
+      let text = String(word ?? '')
+      if (ignorePunct) text = stripPunct(text) || text
+      if (!caseSensitive) text = text.toLowerCase()
+      return text
+    }
+
+    /**
+     * 逐位比对，返回 { state, badIndex }。
+     * state: 'ok' 前缀正确 / 'done' 整词正确 / 'bad' 某位打错 / 'over' 超长
+     */
+    function judgeTyping(target, value, options) {
+      const word = effectiveTarget(target, options)
+      const typed = String(value ?? '')
+      if (!word) return { state: 'bad', badIndex: -1 }
+      if (typed.length > word.length) return { state: 'over', badIndex: -1 }
+      for (let i = 0; i < typed.length; i += 1) {
+        if (typed[i] !== word[i]) return { state: 'bad', badIndex: i }
       }
-      return { state: value === target ? 'done' : 'ok', badIndex: -1 }
+      return { state: typed === word ? 'done' : 'ok', badIndex: -1 }
     }
 
     /**
@@ -322,12 +1490,247 @@ window.__ModuleLoader__.load({
      * @param typed - 已经打对的前缀
      * @param ch - 新按下的一个字符
      */
-    function pushChar(target, typed, ch) {
+    function pushChar(target, typed, ch, options) {
       if (!target) return { typed, result: 'over' }
       const next = typed + ch
-      const verdict = judgeTyping(target, next)
+      const verdict = judgeTyping(target, next, options)
       if (verdict.state === 'over') return { typed, result: 'over' }
       return { typed: next, result: verdict.state === 'bad' ? 'bad' : verdict.state }
+    }
+
+    /* -------------------------------------------------- 指标 / Tab 裁决 / 会话 */
+
+    /**
+     * 有效练习毫秒：暂停期间不计时（失焦、切标签页、手动暂停都走这里）
+     * clock = { ms: 已累计毫秒, last: 上一次开始计时的时刻 | null(暂停中) }
+     */
+    function activeMs(clock, now) {
+      const base = Number(clock?.ms) || 0
+      if (!clock || clock.last === null || clock.last === undefined) return Math.max(0, base)
+      return Math.max(0, base + Math.max(0, (now ?? Date.now()) - clock.last))
+    }
+
+    /**
+     * 快捷键裁决（只在焦点位于 composer 时问它）：
+     * 返回 'prev' | 'skip' | 'loop' | 'pause' | 'close' | ''，
+     * 空字符串表示不是我们管的键，交给宿主。
+     */
+    function resolveHotkey(input) {
+      const { key, meta, ctrl, alt, shift } = input || {}
+      if (!key) return ''
+      const mod = !!(meta || ctrl)
+      if (alt) return ''
+      if (key === 'Escape') return mod ? '' : 'close'
+      if (key === 'ArrowLeft' && mod && !shift) return 'prev'
+      if (key === 'ArrowRight' && mod && !shift) return 'skip'
+      if ((key === 'j' || key === 'J') && mod && !shift) return 'loop'
+      if ((key === 'p' || key === 'P') && mod && !shift) return 'pause'
+      return ''
+    }
+
+    /** WPM：词数 / 秒 → 每分钟词数（四舍五入，和上游同口径） */
+    function calcWpm(words, seconds) {
+      const n = Number(words) || 0
+      const sec = Number(seconds) || 0
+      if (n <= 0 || sec <= 0) return 0
+      return Math.round((n / sec) * 60)
+    }
+
+    /** 正确率：打对词数 /（打对 + 打错次数）× 100 */
+    function calcAccuracy(hits, retries) {
+      const ok = Number(hits) || 0
+      const bad = Number(retries) || 0
+      if (ok + bad <= 0) return 0
+      return Math.round((ok / (ok + bad)) * 100)
+    }
+
+    /**
+     * Tab 该不该用来启动跟打：只在「没开 + 焦点在 composer + 草稿为空 + 无修饰键」时接管，
+     * 其余一律还给宿主（见文档 §3.6 的三分支裁决）。
+     */
+    function shouldStartOnTab(input) {
+      const { key, open, inComposer, draft, modifier } = input || {}
+      if (key !== 'Tab') return false
+      if (open) return false
+      if (!inComposer) return false
+      if (modifier) return false
+      return String(draft ?? '').trim() === ''
+    }
+
+    const SESSION_KEY = 'qwerty-autotype:session'
+
+    /** 存一份进行中的练习（切面板回来能接着打） */
+    function saveSession(session) {
+      if (!session || !session.dictId || !Array.isArray(session.words) || session.words.length === 0) return false
+      try {
+        window.localStorage.setItem(SESSION_KEY, JSON.stringify({
+          dictId: session.dictId,
+          chapter: Number.isInteger(session.chapter) ? session.chapter : null,
+          words: session.words,
+          index: Math.max(0, Number(session.index) || 0),
+          hits: Math.max(0, Number(session.hits) || 0),
+          retries: Math.max(0, Number(session.retries) || 0),
+          startedAt: Number(session.startedAt) || Date.now(),
+          activeMs: Math.max(0, Number(session.activeMs) || 0),
+          savedAt: Date.now(),
+        }))
+        return true
+      } catch {
+        return false
+      }
+    }
+
+    function readSession() {
+      try {
+        const raw = JSON.parse(window.localStorage.getItem(SESSION_KEY) || 'null')
+        if (!raw || !raw.dictId || !Array.isArray(raw.words) || raw.words.length === 0) return null
+        if (raw.index >= raw.words.length) return null
+        return raw
+      } catch {
+        return null
+      }
+    }
+
+    function clearSession() {
+      try {
+        window.localStorage.removeItem(SESSION_KEY)
+      } catch {
+        /* ignore */
+      }
+    }
+
+    /** 存档和当前这轮是不是同一轮（词库 + 章节 + 词表都一致才算） */
+    function sameSession(session, dictId, chapter, words) {
+      if (!session || !Array.isArray(words) || words.length === 0) return false
+      if (session.dictId !== dictId) return false
+      const key = Number.isInteger(chapter) ? chapter : null
+      if (session.chapter !== key) return false
+      if (session.words.length !== words.length) return false
+      return session.words.every((word, index) => word === words[index])
+    }
+
+    /* ------------------------------------------------------- 默写 / 发音 / 设置 */
+
+    /** 默写形态（对齐上游 WordDictationSwitcher:18-32） */
+    const DICTATION_MODES = ['none', 'hideAll', 'hideVowel', 'hideConsonant', 'randomHide']
+    const VOWELS = new Set(['a', 'e', 'i', 'o', 'u'])
+
+    /**
+     * 每个字母是否要遮住（true = 默写时打码，打对后自动现身）
+     * randomHide 用 (seed, i) 的确定性伪随机，同一个词每次遮的位置一致
+     */
+    function maskLetters(target, mode, seed) {
+      const chars = String(target ?? '').split('')
+      if (!mode || mode === 'none') return chars.map(() => false)
+      if (mode === 'hideAll') return chars.map(() => true)
+      if (mode === 'hideVowel') return chars.map((ch) => VOWELS.has(ch.toLowerCase()))
+      if (mode === 'hideConsonant') return chars.map((ch) => /[a-z]/i.test(ch) && !VOWELS.has(ch.toLowerCase()))
+      return chars.map((ch, index) => {
+        if (!/[a-z]/i.test(ch)) return false
+        const noise = Math.abs(Math.sin((Number(seed) + 1) * (index + 7)) * 10000) % 1
+        return noise < 0.5
+      })
+    }
+
+    /** 读一遍这个词（浏览器内置 TTS，没有就静默返回 false） */
+    /** 键音：打对一声高、打错一声低；没有 WebAudio 或关掉开关就静默 */
+    let AUDIO_CTX = null
+    function playClick(kind) {
+      try {
+        if (!getSettings().sound) return false
+        const Ctor = window.AudioContext || window.webkitAudioContext
+        if (!Ctor) return false
+        AUDIO_CTX = AUDIO_CTX || new Ctor()
+        if (AUDIO_CTX.state === 'suspended') AUDIO_CTX.resume?.()
+        const miss = kind === 'miss'
+        const osc = AUDIO_CTX.createOscillator()
+        const gain = AUDIO_CTX.createGain()
+        osc.type = 'sine'
+        osc.frequency.value = miss ? 220 : 880
+        const now = AUDIO_CTX.currentTime
+        const peak = 0.02
+        gain.gain.setValueAtTime(peak, now)
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + (miss ? 0.12 : 0.05))
+        osc.connect(gain)
+        gain.connect(AUDIO_CTX.destination)
+        osc.start(now)
+        osc.stop(now + 0.13)
+        return true
+      } catch {
+        return false
+      }
+    }
+
+    function speak(word) {
+      const text = String(word ?? '').trim()
+      if (!text) return false
+      try {
+        const synth = window.speechSynthesis
+        if (!synth || typeof window.SpeechSynthesisUtterance !== 'function') return false
+        synth.cancel()
+        const utterance = new window.SpeechSynthesisUtterance(text)
+        utterance.lang = /^[\x20-\x7F]+$/.test(text) ? 'en-US' : 'ja-JP'
+        utterance.rate = 0.95
+        synth.speak(utterance)
+        return true
+      } catch {
+        return false
+      }
+    }
+
+    const SETTING_DEFAULTS = {
+      dictation: 'none',
+      caseSensitive: false,
+      ignorePunct: false,
+      showZh: true,
+      showIpa: true,
+      voice: true,
+      sound: true,
+    }
+    const SETTING_PREFIX = 'qwerty-autotype:setting:'
+
+    let SETTINGS = null
+    const settingListeners = new Set()
+
+    function readSettings() {
+      const merged = { ...SETTING_DEFAULTS }
+      try {
+        for (const key of Object.keys(SETTING_DEFAULTS)) {
+          const raw = window.localStorage.getItem(SETTING_PREFIX + key)
+          if (raw === null) continue
+          try {
+            merged[key] = JSON.parse(raw)
+          } catch {
+            merged[key] = raw
+          }
+        }
+      } catch {
+        /* 无痕模式：用默认值 */
+      }
+      if (!DICTATION_MODES.includes(merged.dictation)) merged.dictation = 'none'
+      return merged
+    }
+
+    function getSettings() {
+      if (!SETTINGS) SETTINGS = readSettings()
+      return SETTINGS
+    }
+
+    function subscribeSettings(listener) {
+      settingListeners.add(listener)
+      return () => settingListeners.delete(listener)
+    }
+
+    function setSetting(id, value) {
+      if (!(id in SETTING_DEFAULTS)) return getSettings()
+      SETTINGS = { ...getSettings(), [id]: value }
+      try {
+        window.localStorage.setItem(SETTING_PREFIX + id, JSON.stringify(value))
+      } catch {
+        /* ignore */
+      }
+      for (const listener of settingListeners) listener()
+      return SETTINGS
     }
 
     /* --------------------------------------------------------------- trainer */
@@ -338,7 +1741,10 @@ window.__ModuleLoader__.load({
      * @param props.variant - 'dock' | 'command'（只影响宽度与是否显示收起按钮）
      * @param props.onClose - 收起回调（侧栏入口开出来的卡片才有）
      */
-    function Trainer({ words, variant, onClose, showMeta = false, ctx }) {
+    function Trainer({
+      words, variant, onClose, showMeta = false, options, dictation = 'none',
+      dictId = '', chapter = null, onFinish, onReview, onNextChapter, ctx,
+    }) {
       const t = useT(ctx)
       const [state, setState] = useState({
         index: 0, typed: '', flash: false, hits: 0, retries: 0, finishedAt: null,
@@ -346,8 +1752,25 @@ window.__ModuleLoader__.load({
       const [auto, setAuto] = useState(false)
       const inputRef = useRef(null)
       const live = useRef({ index: 0, typed: '', locked: false, timer: null })
+      /** 当前这个词这一轮打错了几次（写记录用） */
+      const wrongRef = useRef(0)
+      /** 是否已经尝试过从存档恢复（只恢复一次，避免覆盖用户手动重开） */
+      const restoredRef = useRef(false)
       const stateRef = useRef(state)
       const startedAt = useRef(Date.now())
+      /** 有效练习时钟（暂停不计时） */
+      const clock = useRef({ ms: 0, last: Date.now() })
+      const [paused, setPaused] = useState(false)
+      const [loop, setLoop] = useState(false)
+      /** 本轮打错过的词（结果页展示 + 一键重练） */
+      const [mistakes, setMistakes] = useState([])
+      const [helpOpen, setHelpOpen] = useState(false)
+      /** 读屏播报：只在状态变化时更新，避免每敲一键都朗读 */
+      const [announce, setAnnounce] = useState('')
+      const voiceOn = useSyncExternalStore(subscribeSettings, getSettings, getSettings).voice
+      /** 本轮打错时"该打却没打对"的字母计数 */
+      const lettersRef = useRef({})
+      const pausedRef = useRef(false)
 
       useEffect(() => {
         stateRef.current = state
@@ -368,6 +1791,79 @@ window.__ModuleLoader__.load({
         return () => clearTimeout(id)
       }, [])
 
+      // 从存档恢复：词库 + 章节 + 词表完全一致才接着打（切面板回来不丢进度）
+      useEffect(() => {
+        if (restoredRef.current) return
+        restoredRef.current = true
+        if (variant !== 'panel' || !dictId) return
+        const saved = readSession()
+        if (!sameSession(saved, dictId, chapter, words)) return
+        live.current.index = saved.index
+        live.current.typed = ''
+        startedAt.current = saved.startedAt
+        clock.current = { ms: Number(saved.activeMs) || 0, last: Date.now() }
+        setState({
+          index: saved.index,
+          typed: '',
+          flash: false,
+          hits: saved.hits,
+          retries: saved.retries,
+          finishedAt: null,
+        })
+      }, [chapter, dictId, variant, words])
+
+      /** 暂停/继续：暂停期间不计时，也吞掉击键 */
+      const applyPaused = useCallback((next) => {
+        if (pausedRef.current === next) return
+        pausedRef.current = next
+        if (next) {
+          clock.current = { ms: activeMs(clock.current, Date.now()), last: null }
+        } else {
+          clock.current = { ...clock.current, last: Date.now() }
+        }
+        setPaused(next)
+        setState((prev) => ({ ...prev, typed: '', flash: false }))
+        live.current.typed = ''
+      }, [])
+
+      // 失焦 / 切标签页自动暂停，回来继续（手动暂停的状态不会被焦点事件解除）
+      useEffect(() => {
+        if (variant !== 'panel' && variant !== 'command') return undefined
+        const pause = () => {
+          if (!pausedRef.current) applyPaused(true)
+        }
+        const onVisibility = () => {
+          if (document.hidden) pause()
+        }
+        window.addEventListener('blur', pause)
+        document.addEventListener('visibilitychange', onVisibility)
+        return () => {
+          window.removeEventListener('blur', pause)
+          document.removeEventListener('visibilitychange', onVisibility)
+        }
+      }, [applyPaused, variant])
+
+      /** 上一个 / 跳过 / 循环 三个动作（快捷键和点击共用） */
+      const goPrev = useCallback(() => {
+        const prev = Math.max(0, stateRef.current.index - 1)
+        live.current.typed = ''
+        setState((prevState) => ({ ...prevState, index: prev, typed: '', flash: false, finishedAt: null }))
+      }, [])
+
+      const goSkip = useCallback(() => {
+        const next = Math.min(words.length, stateRef.current.index + 1)
+        live.current.typed = ''
+        setState((prevState) => ({
+          ...prevState,
+          index: next,
+          typed: '',
+          flash: false,
+          finishedAt: next >= words.length ? Date.now() : null,
+        }))
+      }, [words])
+
+      const goLoop = useCallback(() => setLoop((value) => !value), [])
+
       const focusInput = useCallback((event) => {
         const element = inputRef.current
         if (element && event?.target !== element) element.focus()
@@ -376,7 +1872,10 @@ window.__ModuleLoader__.load({
       const total = words.length
       const done = total > 0 && state.index >= total
       const current = done ? '' : (words[state.index] ?? '')
-      const chars = current.split('')
+      // 判定用的目标串（忽略标点 / 大小写）与展示用的遮罩
+      const target = effectiveTarget(current, options)
+      const chars = target.split('')
+      const masked = maskLetters(target, dictation, state.index)
       const meta = lookup(current)
       const ipaText = meta?.ipa ?? ''
       const gloss = meta?.zh ?? ''
@@ -387,7 +1886,58 @@ window.__ModuleLoader__.load({
       }, [])
 
       const advance = useCallback(() => {
-        const next = stateRef.current.index + 1
+        const snapshot = stateRef.current
+        // 循环单词：原地重打，不推进进度、不写记录
+        if (loop) {
+          live.current = { ...live.current, typed: '' }
+          setState((prev) => ({ ...prev, typed: '', flash: false, hits: prev.hits + 1 }))
+          return
+        }
+        const next = snapshot.index + 1
+        const finished = next >= words.length
+        const at = Date.now()
+        const word = effectiveTarget(words[snapshot.index] ?? '', options)
+
+        // 落一条单词记录（打错次数 = 本词这一轮累计）
+        if (word) {
+          recordWord({ word, dictId, chapter, at, wrongCount: wrongRef.current, timing: [] })
+        }
+        wrongRef.current = 0
+
+        if (!finished && variant === 'panel' && dictId) {
+          saveSession({
+            dictId,
+            chapter,
+            words,
+            index: next,
+            hits: snapshot.hits + 1,
+            retries: snapshot.retries,
+            startedAt: startedAt.current,
+            activeMs: activeMs(clock.current, Date.now()),
+          })
+        }
+        if (finished) {
+          lettersRef.current = {}
+          if (variant === 'panel') clearSession()
+          const seconds = Math.max(1, Math.round(activeMs(clock.current, at) / 1000))
+          recordChapter({
+            dictId,
+            chapter,
+            at,
+            seconds,
+            wordCount: words.length,
+            wrongCount: snapshot.retries,
+            wrongLetters: lettersRef.current,
+          })
+          if (dictId && Number.isInteger(chapter)) {
+            saveProgress(dictId, chapter, { done: true, words: words.length, index: words.length })
+          }
+          setAnnounce(t('announceDone', { n: words.length }))
+          onFinish?.({ words: words.length, seconds, retries: snapshot.retries, hits: snapshot.hits + 1 })
+        } else if (dictId && Number.isInteger(chapter)) {
+          saveProgress(dictId, chapter, { index: next, words: words.length })
+        }
+
         live.current.typed = ''
         setState((prev) => ({
           ...prev,
@@ -395,18 +1945,19 @@ window.__ModuleLoader__.load({
           flash: false,
           hits: prev.hits + 1,
           index: next,
-          finishedAt: next >= words.length ? Date.now() : null,
+          finishedAt: finished ? at : null,
         }))
-      }, [words])
+      }, [chapter, dictId, loop, onFinish, options, variant, words])
 
       const accept = useCallback((value) => {
         if (live.current.locked) return
-        const target = words[live.current.index] ?? ''
-        const verdict = judgeTyping(target, value)
+        const guess = words[live.current.index] ?? ''
+        const verdict = judgeTyping(guess, value, options)
         if (verdict.state === 'over') return
         if (verdict.state !== 'bad') {
           setTyped(value)
           if (verdict.state === 'done') {
+            playClick('hit')
             live.current.locked = true
             live.current.timer = setTimeout(() => {
               live.current.timer = null
@@ -417,6 +1968,14 @@ window.__ModuleLoader__.load({
           return
         }
         // 打错：标红 → 抖动 → 清空并要求整词重打
+        wrongRef.current += 1
+        playClick('miss')
+        setAnnounce(t('announceWrong', { word: target }))
+        const expect = target[stateRef.current.typed.length]
+        if (expect && expect !== ' ') {
+          lettersRef.current[expect] = (lettersRef.current[expect] || 0) + 1
+        }
+        setMistakes((list) => (list.includes(target) ? list : [...list, target]))
         live.current.locked = true
         setTyped(value)
         setState((prev) => ({ ...prev, flash: true }))
@@ -426,23 +1985,23 @@ window.__ModuleLoader__.load({
           live.current.typed = ''
           setState((prev) => ({ ...prev, typed: '', flash: false, retries: prev.retries + 1 }))
         }, 320)
-      }, [advance, setTyped, words])
+      }, [advance, options, setTyped, words])
 
       // 自动打：把目标词逐字打进同一个输入框，行为和手打一致（不伪造通过）
       useEffect(() => {
         if (!auto || done || total === 0) return undefined
         const id = setInterval(() => {
           const snapshot = stateRef.current
-          const target = words[snapshot.index] ?? ''
-          if (!target || live.current.locked) return
-          if (!target.startsWith(snapshot.typed)) {
+          const goal = effectiveTarget(words[snapshot.index] ?? '', options)
+          if (!goal || live.current.locked) return
+          if (!goal.startsWith(snapshot.typed)) {
             setTyped('')
             return
           }
-          if (snapshot.typed.length >= target.length) return
-          const next = target.slice(0, snapshot.typed.length + 1)
+          if (snapshot.typed.length >= goal.length) return
+          const next = goal.slice(0, snapshot.typed.length + 1)
           setTyped(next)
-          if (next === target) {
+          if (next === goal) {
             live.current.locked = true
             live.current.timer = setTimeout(() => {
               live.current.timer = null
@@ -452,11 +2011,15 @@ window.__ModuleLoader__.load({
           }
         }, 120)
         return () => clearInterval(id)
-      }, [advance, auto, done, setTyped, total, words])
+      }, [advance, auto, done, options, setTyped, total, words])
 
       const restart = useCallback(() => {
         startedAt.current = Date.now()
         live.current = { index: 0, typed: '', locked: false, timer: null }
+        wrongRef.current = 0
+        lettersRef.current = {}
+        setMistakes([])
+        if (variant === 'panel') clearSession()
         setAuto(false)
         setState({ index: 0, typed: '', flash: false, hits: 0, retries: 0, finishedAt: null })
         const input = inputRef.current
@@ -467,10 +2030,12 @@ window.__ModuleLoader__.load({
         return h('div', { className: 'qat-card' }, h(Styles), h('div', { className: 'qat-hint' }, t('empty')))
       }
 
-      const elapsed = Math.max(1, Math.round(((done ? state.finishedAt : Date.now()) - startedAt.current) / 1000))
+      const elapsed = Math.max(1, Math.round(activeMs(clock.current, done ? state.finishedAt : Date.now()) / 1000))
 
       return h('div', { className: 'qat-card', 'data-variant': variant ?? 'command', onMouseDown: focusInput },
         h(Styles),
+        h('div', { className: 'qat-sr', 'aria-live': 'polite', 'aria-atomic': 'true', role: 'status' }, announce),
+        helpOpen ? h('div', { className: 'qat-help', 'data-help': 'true' }, t('hotkeysList')) : null,
         h('div', { className: 'qat-head' },
           h('span', { className: 'qat-title' }, t('title')),
           h('span', { className: 'qat-sep' }),
@@ -478,28 +2043,71 @@ window.__ModuleLoader__.load({
           h('span', { className: 'qat-sep' }),
           h('span', null, t('hits', { n: state.hits })),
           h('span', null, t('retries', { n: state.retries })),
+          h('span', { className: 'qat-metric' }, `WPM ${calcWpm(state.hits, elapsed)}`),
+          h('span', { className: 'qat-metric' }, t('accuracyShort', { n: calcAccuracy(state.hits, state.retries) })),
           h('span', { className: 'qat-grow' }),
+          h('span', {
+            ...pressable(() => setHelpOpen((value) => !value)),
+            className: 'qat-icon',
+            'data-act': 'help',
+            'aria-expanded': helpOpen ? 'true' : 'false',
+            title: t('hotkeysTitle'),
+            'aria-label': t('hotkeysTitle'),
+          }, '?'),
+          h('span', {
+            ...pressable(goPrev),
+            className: 'qat-btn',
+            'data-act': 'prev',
+            title: t('prevTip'),
+          }, '⏮'),
+          h('span', {
+            ...pressable(goSkip),
+            className: 'qat-btn',
+            'data-act': 'skip',
+            title: t('skipTip'),
+          }, '⏭'),
+          h('span', {
+            ...pressable(goLoop),
+            className: 'qat-btn',
+            'data-act': 'loop',
+            'data-on': loop ? 'true' : 'false',
+            title: t('loopTip'),
+          }, '🔁'),
+          h('span', {
+            ...pressable(() => applyPaused(!pausedRef.current)),
+            className: 'qat-btn',
+            'data-act': 'pause',
+            title: paused ? t('resumeTip') : t('pauseTip'),
+          }, paused ? '▶' : '⏸'),
           onClose
             ? h('span', {
-              role: 'button',
-              tabIndex: -1,
+              ...pressable(onClose),
               className: 'qat-btn',
-              onMouseDown: (event) => event.preventDefault(),
-              onClick: onClose,
             }, t('close'))
             : null,
         ),
+        paused && !done
+          ? h('div', { className: 'qat-paused' },
+            h('span', null, t('pausedTip')),
+            h('span', {
+              ...pressable(() => applyPaused(false)),
+              className: 'qat-btn',
+            }, t('resume')),
+          )
+          : null,
         done
           ? h('div', { className: 'qat-done' },
             h('div', { className: 'qat-done-title' }, t('doneTitle')),
             h('div', { className: 'qat-hint' }, t('doneBody', { total, sec: elapsed, hits: state.hits, retries: state.retries })),
+            h('div', { className: 'qat-done-metrics' },
+              h('span', null, `WPM ${calcWpm(total, elapsed)}`),
+              h('span', null, t('accuracyShort', { n: calcAccuracy(total, state.retries) })),
+              h('span', null, t('elapsedShort', { sec: elapsed })),
+            ),
             h('div', { className: 'qat-row' },
               h('span', {
-                role: 'button',
-                tabIndex: -1,
+                ...pressable(restart),
                 className: 'qat-btn',
-                onMouseDown: (event) => event.preventDefault(),
-                onClick: restart,
               }, t('again')),
             ),
           )
@@ -508,13 +2116,27 @@ window.__ModuleLoader__.load({
               chars.map((ch, i) => {
                 const typedChar = state.typed[i]
                 const letterState = typedChar === undefined ? 'idle' : typedChar === ch ? 'ok' : 'bad'
-                return h('span', { key: `${i}-${ch}`, className: 'qat-letter', 'data-state': letterState }, ch === ' ' ? '␣' : ch)
+                const hidden = typedChar === undefined && masked[i]
+                return h('span', {
+                  key: `${i}-${ch}`,
+                  className: 'qat-letter',
+                  'data-state': letterState,
+                  'data-mask': hidden ? 'true' : 'false',
+                }, hidden ? '·' : (ch === ' ' ? '␣' : ch))
               }),
             ),
             showMeta && (ipaText || gloss)
               ? h('div', { className: 'qat-gloss' },
                 ipaText ? h('div', { className: 'qat-gloss-ipa' }, ipaText) : null,
                 gloss ? h('div', { className: 'qat-gloss-zh' }, gloss) : null,
+                current && voiceOn
+                  ? h('span', {
+                    ...pressable(() => speak(current)),
+                    className: 'qat-speak',
+                    title: t('speak'),
+                    'aria-label': t('speak'),
+                  }, '🔊')
+                  : null,
               )
               : null,
             h('input', {
@@ -533,24 +2155,32 @@ window.__ModuleLoader__.load({
                 if (event.key === 'Enter' || event.key === 'Tab') event.preventDefault()
                 if (event.key === 'Escape' && onClose) onClose()
                 event.stopPropagation()
+                const action = resolveHotkey({
+                  key: event.key,
+                  meta: event.metaKey,
+                  ctrl: event.ctrlKey,
+                  alt: event.altKey,
+                  shift: event.shiftKey,
+                })
+                if (!action) return
+                event.preventDefault()
+                if (action === 'prev') goPrev()
+                else if (action === 'skip') goSkip()
+                else if (action === 'loop') goLoop()
+                else if (action === 'pause') applyPaused(!pausedRef.current)
+                else if (action === 'close' && onClose) onClose()
               },
               onKeyUp: (event) => event.stopPropagation(),
             }),
             h('div', { className: 'qat-row' },
               h('span', {
-                role: 'button',
-                tabIndex: -1,
+                ...pressable(() => setAuto((value) => !value)),
                 className: 'qat-btn',
                 'data-active': auto ? 'true' : 'false',
-                onMouseDown: (event) => event.preventDefault(),
-                onClick: () => setAuto((value) => !value),
               }, auto ? t('autoStop') : t('auto')),
               h('span', {
-                role: 'button',
-                tabIndex: -1,
+                ...pressable(restart),
                 className: 'qat-btn',
-                onMouseDown: (event) => event.preventDefault(),
-                onClick: restart,
               }, t('restart')),
             ),
             h('div', { className: 'qat-hint' }, t('hint')),
@@ -613,17 +2243,34 @@ window.__ModuleLoader__.load({
       const draft = useInput((snapshot) => snapshot?.draft ?? '')
       const [dictId, setDictId] = useState(readDictId)
       const [round, setRound] = useState(0)
-      const words = useMemo(() => sampleWords(dictId, 20), [dictId, round])
+      const [words, setWords] = useState(() => sampleWords(dictId, 20))
       const [state, setState] = useState({
         index: 0, typed: '', flash: false, hits: 0, retries: 0, finishedAt: null,
       })
       const [auto, setAuto] = useState(false)
       const [barWidth, setBarWidth] = useState(null)
+      const settings = useSyncExternalStore(subscribeSettings, getSettings, getSettings)
+      const [loopOn, setLoopOn] = useState(false)
       const stateRef = useRef(state)
       const wordsRef = useRef(words)
       const lockRef = useRef({ locked: false, timer: null })
       const draftRef = useRef('')
       const startedAt = useRef(Date.now())
+
+      // 词库词条按需加载：加载好后重新抽 20 个，失败保留内置兜底
+      useEffect(() => {
+        let cancelled = false
+        loadDictWords(dictId)
+          .then((all) => {
+            if (!cancelled && all?.length) setWords(sampleFromWords(all, 20))
+          })
+          .catch((err) => {
+            if (!cancelled) setWords(sampleFromWords(err?.fallbackWords ?? wordsSync(dictId), 20))
+          })
+        return () => {
+          cancelled = true
+        }
+      }, [dictId, round])
 
       useEffect(() => { stateRef.current = state }, [state])
       useEffect(() => { draftRef.current = draft }, [draft])
@@ -635,11 +2282,22 @@ window.__ModuleLoader__.load({
       const total = words.length
       const done = total > 0 && state.index >= total
       const current = done ? '' : (words[state.index] ?? '')
+      const judgeOptions = useMemo(
+        () => ({ caseSensitive: settings.caseSensitive, ignorePunct: settings.ignorePunct }),
+        [settings.caseSensitive, settings.ignorePunct],
+      )
+      const target = effectiveTarget(current, judgeOptions)
+      const masked = maskLetters(target, settings.dictation, state.index)
       const entry = lookup(current)
       const ipa = entry?.ipa ?? ''
       const meaning = entry?.zh ?? ''
 
       const advance = useCallback(() => {
+        // 循环当前词：原地重打
+        if (loopRef.current) {
+          setState((prev) => ({ ...prev, typed: '', flash: false, hits: prev.hits + 1 }))
+          return
+        }
         const next = stateRef.current.index + 1
         setState((prev) => ({
           ...prev,
@@ -651,18 +2309,49 @@ window.__ModuleLoader__.load({
         }))
       }, [])
 
+      const loopRef = useRef(false)
+      const pausedRef = useRef(false)
+
+      /** 暂停只意味着「不吃键」，条上没有计时器 */
+      const applyPaused = useCallback((next) => {
+        pausedRef.current = next
+      }, [])
+
+      const goPrev = useCallback(() => {
+        const prev = Math.max(0, stateRef.current.index - 1)
+        setState((state) => ({ ...state, index: prev, typed: '', flash: false, finishedAt: null }))
+      }, [])
+
+      const goSkip = useCallback(() => {
+        const next = Math.min(wordsRef.current.length, stateRef.current.index + 1)
+        setState((state) => ({
+          ...state,
+          index: next,
+          typed: '',
+          flash: false,
+          finishedAt: next >= wordsRef.current.length ? Date.now() : null,
+        }))
+      }, [])
+
+      const goLoop = useCallback(() => {
+        loopRef.current = !loopRef.current
+        setLoopOn(loopRef.current)
+      }, [])
+
       /** 吃下一个字符（键盘和自动打都走这里，判定只有一份） */
       const feed = useCallback((ch) => {
+        if (pausedRef.current) return
         if (lockRef.current.locked) return
-        const target = wordsRef.current[stateRef.current.index] ?? ''
-        if (!target) return
-        const stepped = pushChar(target, stateRef.current.typed, ch)
+        const goal = effectiveTarget(wordsRef.current[stateRef.current.index] ?? '', judgeOptions)
+        if (!goal) return
+        const stepped = pushChar(goal, stateRef.current.typed, ch)
         if (stepped.result === 'over') return
         if (stepped.result === 'ok') {
           setState((prev) => ({ ...prev, typed: stepped.typed }))
           return
         }
         if (stepped.result === 'done') {
+          playClick('hit')
           setState((prev) => ({ ...prev, typed: stepped.typed }))
           lockRef.current.locked = true
           lockRef.current.timer = setTimeout(() => {
@@ -673,6 +2362,7 @@ window.__ModuleLoader__.load({
           return
         }
         // 打错：标红抖动 → 清空 → 整词重打
+        playClick('miss')
         lockRef.current.locked = true
         setState((prev) => ({ ...prev, typed: stepped.typed, flash: true }))
         lockRef.current.timer = setTimeout(() => {
@@ -680,7 +2370,7 @@ window.__ModuleLoader__.load({
           lockRef.current.locked = false
           setState((prev) => ({ ...prev, typed: '', flash: false, retries: prev.retries + 1 }))
         }, 320)
-      }, [advance])
+      }, [advance, judgeOptions.caseSensitive, judgeOptions.ignorePunct])
 
       // 打开时把焦点交给 composer 编辑器：用户直接就能打
       useEffect(() => {
@@ -727,17 +2417,19 @@ window.__ModuleLoader__.load({
       // Tab 快速启动：输入框为空、且跟打条没开时，按 Tab 打开
       useEffect(() => {
         const onKeyDown = (event) => {
-          if (event.key !== 'Tab') return
-          if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return
-          if (getOpen()) return
           const target = event.target
-          if (!(target instanceof HTMLElement)) return
-          const inComposer = target.isContentEditable
-            || target.closest(COMPOSER_EDITOR) !== null
-            || target.closest('[contenteditable="true"]') !== null
-          if (!inComposer) return
-          const currentDraft = draftRef.current
-          if (currentDraft && !LEXICON.some((entry) => entry.zh === currentDraft)) return
+          const inComposer = target instanceof HTMLElement
+            && (target.isContentEditable
+              || target.closest(COMPOSER_EDITOR) !== null
+              || target.closest('[contenteditable="true"]') !== null)
+          const allow = shouldStartOnTab({
+            key: event.key,
+            open: getOpen(),
+            inComposer,
+            draft: draftRef.current,
+            modifier: event.metaKey || event.ctrlKey || event.altKey || event.shiftKey,
+          })
+          if (!allow) return
           event.preventDefault()
           event.stopPropagation()
           setOpen(true)
@@ -768,8 +2460,28 @@ window.__ModuleLoader__.load({
             setOpen(false)
             return
           }
-          if (event.metaKey || event.ctrlKey || event.altKey) return
           if (!inComposer) return
+          const action = resolveHotkey({
+            key: event.key,
+            meta: event.metaKey,
+            ctrl: event.ctrlKey,
+            alt: event.altKey,
+            shift: event.shiftKey,
+          })
+          if (action) {
+            event.preventDefault()
+            event.stopPropagation()
+            if (action === 'prev') goPrev()
+            else if (action === 'skip') goSkip()
+            else if (action === 'loop') goLoop()
+            else if (action === 'pause') applyPaused(!pausedRef.current)
+            else if (action === 'close') {
+              if (typeof onClose === 'function') onClose()
+              else setOpen(false)
+            }
+            return
+          }
+          if (event.metaKey || event.ctrlKey || event.altKey) return
           if (event.key === 'Backspace') {
             event.preventDefault()
             event.stopPropagation()
@@ -850,18 +2562,16 @@ window.__ModuleLoader__.load({
 
       const elapsed = Math.max(1, Math.round(((done ? state.finishedAt : Date.now()) - startedAt.current) / 1000))
       const icon = (glyph, title, onClick, active) => h('span', {
-        role: 'button',
-        tabIndex: -1,
+        ...pressable(onClick),
         className: 'qat-icon',
         title,
         'aria-label': title,
         'data-active': active ? 'true' : 'false',
-        onMouseDown: (event) => event.preventDefault(),
-        onClick,
       }, glyph)
 
       return h('div', {
         className: 'qat-bar',
+        'aria-live': 'off',
         'data-qat': '',
         style: barWidth === null ? undefined : { width: `${barWidth}px`, marginInline: 'auto' },
       },
@@ -873,8 +2583,16 @@ window.__ModuleLoader__.load({
           onChange: (event) => chooseDict(event.target.value),
           onKeyDown: (event) => event.stopPropagation(),
         },
-          groupByCategory(dictionaries()).map((group) => h('optgroup', { key: group.category, label: group.category },
-            group.dicts.map((dict) => h('option', { key: dict.id, value: dict.id }, `${dict.name}（${dict.words?.length ?? 0}）`)),
+          readRecent().length
+            ? h('optgroup', { label: t('recent') },
+              readRecent().map((id) => {
+                const item = catalog().find((entry) => entry.id === id)
+                return item ? h('option', { key: `recent-${item.id}`, value: item.id }, item.name) : null
+              }),
+            )
+            : null,
+          groupByCategory(catalog()).map((group) => h('optgroup', { key: group.category, label: group.category },
+            group.dicts.map((dict) => h('option', { key: dict.id, value: dict.id }, dict.name)),
           )),
         ),
         h('span', { className: 'qat-grow' }),
@@ -882,10 +2600,16 @@ window.__ModuleLoader__.load({
           ? h('span', { className: 'qat-bar-done' }, t('doneShort', { total, sec: elapsed }))
           : h('span', { className: 'qat-wordblock' },
             h('span', { className: 'qat-word', 'data-flash': state.flash ? 'true' : 'false' },
-              current.split('').map((ch, i) => {
+              target.split('').map((ch, i) => {
                 const typedChar = state.typed[i]
                 const letterState = typedChar === undefined ? 'idle' : typedChar === ch ? 'ok' : 'bad'
-                return h('span', { key: `${i}-${ch}`, className: 'qat-letter', 'data-state': letterState }, ch === ' ' ? '␣' : ch)
+                const hidden = typedChar === undefined && masked[i]
+                return h('span', {
+                  key: `${i}-${ch}`,
+                  className: 'qat-letter',
+                  'data-state': letterState,
+                  'data-mask': hidden ? 'true' : 'false',
+                }, hidden ? '·' : (ch === ' ' ? '␣' : ch))
               }),
             ),
             ipa ? h('span', { className: 'qat-ipa' }, ipa) : null,
@@ -893,6 +2617,10 @@ window.__ModuleLoader__.load({
         h('span', { className: 'qat-grow' }),
         h('span', { className: 'qat-meta' }, `${Math.min(state.index, total)}/${total}`, h('span', { className: 'qat-meta-sep' }, '·'), `✓${state.hits}`, h('span', { className: 'qat-meta-sep' }, '·'), `↻${state.retries}`),
         h('span', { className: 'qat-acts' },
+          settings.voice && !done ? icon('🔊', t('speak'), () => speak(current), false) : null,
+          done ? null : icon('⏮', t('prevTip'), goPrev, false),
+          done ? null : icon('⏭', t('skipTip'), goSkip, false),
+          icon('🔁', t('loopTip'), goLoop, loopOn),
           done ? icon('↻', t('again'), restart, false) : null,
           icon(auto ? '⏸' : '▶', auto ? t('autoStop') : t('auto'), () => setAuto((value) => !value), auto),
           icon('×', t('close'), () => setOpen(false), false),
@@ -913,51 +2641,597 @@ window.__ModuleLoader__.load({
     }
 
     /** 顶层面板：词库分类 + 大字跟打 */
+    /** 词库选择器（面板内二级页）：搜索 + 分类 + 最近使用 + 列表 */
+    function DictPicker({ t, dictId, query, category, recent, categories, list, onQuery, onCategory, onPick, onClose }) {
+      const dictButton = (item, active) => h('button', {
+        key: item.id,
+        type: 'button',
+        className: 'qat-dictrow',
+        'data-active': active ? 'true' : 'false',
+        onClick: () => onPick(item.id),
+      },
+        h('span', { className: 'qat-dictname' }, item.name),
+        h('span', { className: 'qat-dictmeta' }, `${item.length} 词 · ${chapterCount(item)} 章`),
+      )
+
+      return h('div', { className: 'qat-picker' },
+        h('div', { className: 'qat-picker-head' },
+          h('input', {
+            className: 'qat-search',
+            value: query,
+            placeholder: t('searchDict'),
+            'aria-label': t('searchDict'),
+            onInput: (event) => onQuery(event.target.value),
+          }),
+          h('span', {
+            ...pressable(onClose),
+            className: 'qat-btn',
+          }, t('close')),
+        ),
+        h('div', { className: 'qat-chips' },
+          h('button', {
+            type: 'button',
+            className: 'qat-chip',
+            'data-active': category === '' ? 'true' : 'false',
+            onClick: () => onCategory(''),
+          }, t('allCategories')),
+          categories.map((group) => h('button', {
+            key: group.category,
+            type: 'button',
+            className: 'qat-chip',
+            'data-active': category === group.category ? 'true' : 'false',
+            onClick: () => onCategory(group.category),
+          }, `${group.category} ${group.dicts.length}`)),
+        ),
+        !query.trim() && !category && recent.length
+          ? h('div', { className: 'qat-dictgroup' },
+            h('div', { className: 'qat-dictgroup-title' }, t('recent')),
+            recent.map((item) => dictButton(item, item.id === dictId)),
+          )
+          : null,
+        h('div', { className: 'qat-dictgroup' },
+          h('div', { className: 'qat-dictgroup-title' }, query.trim() ? t('searchResult') : (category || t('allCategories'))),
+          h('div', { className: 'qat-dictscroll' }, list.map((item) => dictButton(item, item.id === dictId))),
+        ),
+      )
+    }
+
+    /** 设置页里的一行开关 */
+    function SettingRow({ t, label, hint, control }) {
+      return h('div', { className: 'qat-setrow' },
+        h('div', { className: 'qat-settext' },
+          h('div', { className: 'qat-setlabel' }, label),
+          hint ? h('div', { className: 'qat-sethint' }, hint) : null,
+        ),
+        h('div', { className: 'qat-setcontrol' }, control),
+      )
+    }
+
+    /** 设置页：大小写 / 标点 / 发音 / 键音 / 默写形态 + 数据管理 */
+    function SettingsSection() {
+      const t = useT(PLUGIN_CTX)
+      const settings = useSyncExternalStore(subscribeSettings, getSettings, getSettings)
+      const [flash, setFlash] = useState('')
+      const fileRef = useRef(null)
+
+      const say = (message) => {
+        setFlash(message)
+        setTimeout(() => setFlash(''), 2600)
+      }
+
+      const onExport = () => {
+        exportBackup().then((text) => {
+          try {
+            const blob = new Blob([text], { type: 'application/json' })
+            const url = URL.createObjectURL(blob)
+            const link = document.createElement('a')
+            link.href = url
+            link.download = `qwerty-autotype-backup-${new Date().toISOString().slice(0, 10)}.json`
+            document.body.appendChild(link)
+            link.click()
+            link.remove()
+            setTimeout(() => URL.revokeObjectURL(url), 1000)
+            say(t('backupExported'))
+          } catch {
+            say(t('backupFailed'))
+          }
+        })
+      }
+
+      const onImportFile = (event) => {
+        const file = event?.target?.files?.[0]
+        if (!file || typeof file.text !== 'function') return
+        file.text().then((text) => {
+          let parsed
+          try {
+            parsed = parseBackup(text)
+          } catch (error) {
+            say(`${t('backupBadFile')} (${error.message})`)
+            return
+          }
+          importData(parsed).then((result) => {
+            for (const [key, value] of Object.entries(parsed.settings || {})) setSetting(key, value)
+            if (parsed.mastered?.length) writeMastered(parsed.mastered)
+            say(t('backupImported', { n: result.restored }))
+          })
+        })
+      }
+
+      const onClear = () => say(t('clearConfirm'))
+      const toggle = (key) => h('span', {
+        role: 'switch',
+        tabIndex: 0,
+        'aria-checked': settings[key] ? 'true' : 'false',
+        className: 'qat-switch',
+        'data-on': settings[key] ? 'true' : 'false',
+        'data-setting': key,
+        onClick: () => setSetting(key, !settings[key]),
+      }, settings[key] ? '开' : '关')
+
+      return h('div', { className: 'qat-settings' },
+        h('div', { className: 'qat-settings-title' }, t('settingsTitle')),
+        h(SettingRow, {
+          t,
+          label: t('settingCaseSensitive'),
+          hint: t('settingCaseSensitiveHint'),
+          control: toggle('caseSensitive'),
+        }),
+        h(SettingRow, {
+          t,
+          label: t('settingIgnorePunct'),
+          hint: t('settingIgnorePunctHint'),
+          control: toggle('ignorePunct'),
+        }),
+        h(SettingRow, {
+          t,
+          label: t('settingVoice'),
+          hint: t('settingVoiceHint'),
+          control: toggle('voice'),
+        }),
+        h(SettingRow, {
+          t,
+          label: t('settingSound'),
+          hint: t('settingSoundHint'),
+          control: toggle('sound'),
+        }),
+        h(SettingRow, {
+          t,
+          label: t('settingDictation'),
+          hint: t('settingDictationHint'),
+          control: h('select', {
+            className: 'qat-select',
+            value: settings.dictation,
+            onChange: (event) => setSetting('dictation', event.target.value),
+          }, DICTATION_MODES.map((mode) => h('option', { key: mode, value: mode }, t(`dictation_${mode}`)))),
+        }),
+        h('div', { className: 'qat-settings-title qat-datablock' }, t('hotkeysTitle')),
+        h('div', { className: 'qat-sethint qat-hotkeys' }, t('hotkeysList')),
+        h('div', { className: 'qat-settings-title qat-datablock' }, t('dataTitle')),
+        h('div', { className: 'qat-databtns' },
+          h('span', {
+            role: 'button',
+            tabIndex: 0,
+            className: 'qat-btn',
+            'data-act': 'export',
+            onClick: onExport,
+            onKeyDown: (event) => {
+              if (event.key === 'Enter' || event.key === ' ') onExport()
+            },
+          }, t('backupExport')),
+          h('span', {
+            role: 'button',
+            tabIndex: 0,
+            className: 'qat-btn',
+            'data-act': 'import',
+            onClick: () => fileRef.current?.click?.(),
+            onKeyDown: (event) => {
+              if (event.key === 'Enter' || event.key === ' ') fileRef.current?.click?.()
+            },
+          }, t('backupImport')),
+          h('input', {
+            ref: fileRef,
+            type: 'file',
+            accept: 'application/json,.json',
+            style: { display: 'none' },
+            onChange: onImportFile,
+          }),
+          h('span', {
+            role: 'button',
+            tabIndex: 0,
+            className: 'qat-btn',
+            'data-act': 'clear',
+            onClick: () => {
+              if (flash === t('clearConfirm')) {
+                clearData().then(() => say(t('clearedDone')))
+                return
+              }
+              onClear()
+            },
+            onKeyDown: (event) => {
+              if (event.key === 'Enter' || event.key === ' ') onClear()
+            },
+          }, t('backupClear')),
+        ),
+        flash ? h('div', { className: 'qat-sethint', 'data-flash': 'true' }, flash) : null,
+      )
+    }
+
+    /** 错词本浮层：列出打错过的词，可一键重练前 N 个 */
+    function WrongBookPanel({ t, rows, query, sort, dicts, mastered, onQuery, onSort, onMastered, onReview, onClear, onClose }) {
+      return h('div', { className: 'qat-picker' },
+        h('div', { className: 'qat-picker-head' },
+          h('span', { className: 'qat-picker-title' }, t('wrongTitle', { n: rows.length })),
+          h('input', {
+            className: 'qat-search qat-wrongsearch',
+            type: 'text',
+            value: query ?? '',
+            placeholder: t('wrongSearch'),
+            onChange: (event) => onQuery?.(event.target.value),
+          }),
+          dicts && dicts.length > 1
+            ? h('span', { className: 'qat-chips' }, [
+              h('span', {
+                key: '__all',
+                ...pressable(() => onSort?.({ dictId: '' })),
+                className: 'qat-chip',
+                'data-active': !dicts.find((item) => item.active) ? 'true' : 'false',
+              }, t('allDicts')),
+              ...dicts.map((item) => h('span', {
+                key: item.id,
+                ...pressable(() => onSort?.({ dictId: item.active ? '' : item.id })),
+                className: 'qat-chip',
+                'data-active': item.active ? 'true' : 'false',
+              }, `${item.name} ${item.count}`)),
+            ])
+            : null,
+          h('span', {
+            ...pressable(() => onSort?.({ sort: sort === 'recent' ? 'count' : 'recent' })),
+            className: 'qat-btn',
+            'data-act': 'sort',
+          }, sort === 'recent' ? t('sortRecent') : t('sortCount')),
+          h('span', { className: 'qat-grow' }),
+          rows.length
+            ? h('span', {
+              ...pressable(() => onReview(rows.slice(0, 20).map((row) => row.word))),
+              className: 'qat-btn',
+            }, t('reviewTop'))
+            : null,
+          rows.length
+            ? h('span', {
+              ...pressable(onClear),
+              className: 'qat-btn',
+            }, t('clearWrong'))
+            : null,
+          h('span', {
+            ...pressable(onClose),
+            className: 'qat-btn',
+          }, t('close')),
+        ),
+        rows.length === 0
+          ? h('div', { className: 'qat-loading' }, t('wrongEmpty'))
+          : h('div', { className: 'qat-dictscroll' }, rows.map((row) => {
+            const meta = lookup(row.word)
+            return h('div', { key: `${row.dictId}:${row.word}`, className: 'qat-wrongrow' },
+              h('span', { className: 'qat-wrongword' }, row.word),
+              h('span', { className: 'qat-wrongzh' }, meta?.zh ?? ''),
+              h('span', { className: 'qat-wrongcount' }, `×${row.wrongCount}`),
+              h('span', {
+                ...pressable(() => onMastered?.(row)),
+                className: 'qat-icon',
+                'data-act': 'mastered',
+                'data-active': (mastered || []).includes(`${row.dictId || ''}:${row.word}`) ? 'true' : 'false',
+                title: t('markMastered'),
+                'aria-label': t('markMastered'),
+              }, '✓'),
+            )
+          })),
+      )
+    }
+
+    /** 统计浮层：近 14 天柱状 + 汇总数字（纯 SVG/div，不引图表库） */
+    function StatsPanel({ t, days, weeks, letters, summary, onClose }) {
+      const max = Math.max(1, ...days.map((day) => day.words))
+      return h('div', { className: 'qat-picker' },
+        h('div', { className: 'qat-picker-head' },
+          h('span', { className: 'qat-picker-title' }, t('statsTitle')),
+          h('span', { className: 'qat-grow' }),
+          h('span', {
+            ...pressable(onClose),
+            className: 'qat-btn',
+          }, t('close')),
+        ),
+        h('div', { className: 'qat-stats-nums' },
+          h('span', null, t('statWords', { n: summary.words })),
+          h('span', null, t('statChapters', { n: summary.chapters })),
+          h('span', null, t('accuracyShort', { n: summary.accuracy })),
+          h('span', null, `WPM ${summary.wpm}`),
+        ),
+        letters && letters.length
+          ? h('div', { className: 'qat-letters' },
+            h('span', { className: 'qat-letters-label' }, t('lettersTitle')),
+            ...letters.map((item) => h('span', {
+              key: item.letter,
+              className: 'qat-chip qat-letterchip',
+            }, `${item.letter} ×${item.count}`)))
+          : null,
+        h('div', { className: 'qat-heat' }, (weeks || []).map((col, index) =>
+          h('div', { key: index, className: 'qat-heatcol' }, col.days.map((day) =>
+            h('div', {
+              key: day.day,
+              className: 'qat-heatcell',
+              'data-level': day.future ? 'future' : String(day.level),
+              title: `${day.day} · ${t('statWords', { n: day.words })}`,
+            }))))),
+        h('div', { className: 'qat-bars' }, days.map((day) =>
+          h('div', { key: day.day, className: 'qat-barcol', title: `${day.day} · ${t('statWords', { n: day.words })}` },
+            h('div', {
+              className: 'qat-barfill',
+              'data-empty': day.words === 0 ? 'true' : 'false',
+              style: { height: `${Math.round((day.words / max) * 100)}%` },
+            }),
+            h('span', { className: 'qat-barlabel' }, day.day.slice(5)),
+          ))),
+      )
+    }
+
     function PracticePanel({ ctx }) {
       const t = useT(ctx)
       const [dictId, setDictId] = useState(readDictId)
+      const [chapter, setChapter] = useState(0)
       const [round, setRound] = useState(0)
-      const words = useMemo(() => sampleWords(dictId, 20), [dictId, round])
-      const dict = dictionaryById(dictId)
+      // 内置词库可直接同步出词条 → 首帧就能练；其余词库先显示加载态
+      const [all, setAll] = useState(() => (builtinById(readDictId()) ?? {}).words ?? null)
+      const [loading, setLoading] = useState(() => !(builtinById(readDictId()) ?? {}).words)
+      const [error, setError] = useState('')
+      const [picker, setPicker] = useState(false)
+      const [query, setQuery] = useState('')
+      const [category, setCategory] = useState('')
+      const [progress, setProgress] = useState({})
+      const [today, setToday] = useState(null)
+      const [view, setView] = useState('practice')  // practice | wrong | stats
+      const [wrongRows, setWrongRows] = useState([])
+      const [wrongQuery, setWrongQuery] = useState('')
+      const [wrongDict, setWrongDict] = useState('')
+      const [wrongSort, setWrongSort] = useState('count')
+      const [mastered, setMastered] = useState([])
+      const [stats, setStats] = useState({ days: [], weeks: [], letters: [], summary: summarize([]) })
+      const [review, setReview] = useState(null)
+
+      const settings = useSyncExternalStore(subscribeSettings, getSettings, getSettings)
+      const judgeOptions = useMemo(
+        () => ({ caseSensitive: settings.caseSensitive, ignorePunct: settings.ignorePunct }),
+        [settings.caseSensitive, settings.ignorePunct],
+      )
+      const meta = dictionaryById(dictId)
+      const chapterTotal = chapterCount(meta)
+
+      // 词库词条：内存 → IndexedDB → 网络；拉不到才退回内置采样
+      useEffect(() => {
+        let cancelled = false
+        setLoading(true)
+        setError('')
+        loadDictWords(dictId)
+          .then((words) => {
+            if (!cancelled) setAll(words)
+          })
+          .catch((err) => {
+            if (cancelled) return
+            setAll(err?.fallbackWords ?? wordsSync(dictId))
+            setError(t('loadFailed'))
+          })
+          .finally(() => {
+            if (!cancelled) setLoading(false)
+          })
+        return () => {
+          cancelled = true
+        }
+      }, [dictId])
+
+      // 进度（哪些章打完了）+ 今日统计
+      const refreshStats = useCallback(() => {
+        let cancelled = false
+        Promise.all([readProgress(dictId), readChapterRecords(600), readWordRecords(4000)]).then(([rows, chapters, words]) => {
+          if (cancelled) return
+          const map = {}
+          for (const row of rows || []) map[row.chapter] = row
+          setProgress(map)
+          const [day] = lastDays(chapters, 1)
+          setToday(day && day.words > 0 ? day : null)
+          setWrongRows(collectWrongWords(words, 200))
+          setStats({
+            days: lastDays(chapters, 14),
+            weeks: heatmapWeeks(chapters, 12),
+            letters: topWrongLetters(chapters, 5),
+            summary: summarize(chapters),
+          })
+        })
+        return () => {
+          cancelled = true
+        }
+      }, [dictId])
+
+      useEffect(() => refreshStats(), [refreshStats])
+
+      // 章内词条 → 单词字符串（音标/中文由 lookup 从已加载词库里查）
+      const chapterWords = useMemo(() => {
+        const words = all || []
+        if (!words.length) return []
+        const picked = round === 0 ? wordsOfChapter(words, chapter) : sampleFromWords(words, 20)
+        return picked.map((entry) => (typeof entry === 'string' ? entry : entry.w))
+      }, [all, chapter, round])
 
       const choose = (id) => {
+        if (!id) return
         setDictId(id)
         writeDictId(id)
-        setRound((value) => value + 1)
+        setChapter(0)
+        setRound(0)
+        setPicker(false)
+        setQuery('')
+        setCategory('')
+      }
+      const chooseChapter = (index) => {
+        setChapter(index)
+        setRound(0)
       }
       const again = () => setRound((value) => value + 1)
+
+      const recent = readRecent()
+        .map((id) => catalog().find((item) => item.id === id))
+        .filter(Boolean)
+      const categories = groupByCategory(catalog())
+      const list = query.trim()
+        ? searchCatalog(query, 80)
+        : (category ? catalog().filter((item) => item.category === category) : catalog())
 
       return h('div', { className: 'qat-panel' },
         h(Styles),
         h('div', { className: 'qat-panel-head' },
           h('span', { className: 'qat-panel-title' }, t('title')),
-          h('select', {
-            className: 'qat-select',
-            value: dictId,
+          h('button', {
+            type: 'button',
+            className: 'qat-select qat-dictbtn',
             title: t('dictTitle'),
-            onChange: (event) => choose(event.target.value),
+            'data-picker': picker ? 'open' : 'closed',
+            onClick: () => {
+              setReview(null)
+              setView('practice')
+              setPicker((value) => !value)
+            },
+          }, `${meta.name} ▾`),
+          h('select', {
+            className: 'qat-select qat-chapter',
+            value: chapter,
+            title: t('chapterTitle'),
+            onChange: (event) => chooseChapter(Number(event.target.value)),
           },
-            groupByCategory(dictionaries()).map((group) => h('optgroup', { key: group.category, label: group.category },
-              group.dicts.map((item) => h('option', { key: item.id, value: item.id }, `${item.name}（${item.words?.length ?? 0}）`)),
-            )),
+            Array.from({ length: chapterTotal }, (_, index) => {
+              const done = progress[index]?.done
+              return h('option', { key: index, value: index }, `${index + 1} / ${chapterTotal}${done ? ' ✓' : ''}`)
+            }),
           ),
-          h('span', { className: 'qat-panel-sub' }, `${dict.category} · 本轮 ${words.length} 词`),
+          h('select', {
+            className: 'qat-select qat-dictation',
+            value: settings.dictation,
+            title: t('dictation'),
+            onChange: (event) => setSetting('dictation', event.target.value),
+          },
+            DICTATION_MODES.map((mode) => h('option', { key: mode, value: mode }, t(`dictation_${mode}`))),
+          ),
+          h('span', { className: 'qat-panel-sub' }, `${meta.category} · ${meta.length} 词 · ${chapterTotal} 章`),
+          today
+            ? h('span', { className: 'qat-panel-sub qat-today' },
+              t('todayStats', { words: today.words, accuracy: today.accuracy, wpm: today.wpm }))
+            : null,
           h('span', { className: 'qat-grow' }),
           h('span', {
-            role: 'button',
-            tabIndex: -1,
+            ...pressable(() => setView((current) => (current === 'wrong' ? 'practice' : 'wrong'))),
             className: 'qat-btn',
-            onMouseDown: (event) => event.preventDefault(),
-            onClick: again,
+            'data-act': 'wrong',
+          }, t('wrongBook')),
+          h('span', {
+            ...pressable(() => setView((current) => (current === 'stats' ? 'practice' : 'stats'))),
+            className: 'qat-btn',
+            'data-act': 'stats',
+          }, t('stats')),
+          h('span', {
+            ...pressable(again),
+            className: 'qat-btn',
           }, t('again')),
         ),
-        h(Trainer, {
-          key: `${dictId}:${round}`,
-          words,
-          variant: 'panel',
-          showMeta: true,
-          ctx,
-        }),
+        error ? h('div', { className: 'qat-note' }, error) : null,
+        review
+          ? h(Trainer, {
+            key: `review:${review.join(',')}`,
+            words: review,
+            variant: 'panel',
+            showMeta: true,
+            options: judgeOptions,
+            dictation: settings.dictation,
+            dictId: '',
+            chapter: null,
+            onFinish: refreshStats,
+            onReview: (words) => setReview(words),
+            ctx,
+          })
+          : loading
+          ? h('div', { className: 'qat-loading' }, t('loading'))
+          : picker
+            ? h(DictPicker, {
+              t,
+              dictId,
+              query,
+              category,
+              recent,
+              categories,
+              list,
+              onQuery: setQuery,
+              onCategory: setCategory,
+              onPick: choose,
+              onClose: () => setPicker(false),
+            })
+            : view === 'wrong'
+              ? h(WrongBookPanel, {
+                t,
+                rows: filterWrongWords(wrongRows, {
+                  query: wrongQuery,
+                  dictId: wrongDict,
+                  sort: wrongSort,
+                  mastered,
+                }),
+                mastered,
+                onMastered: (row) => {
+                  toggleMastered(row.dictId, row.word)
+                  setMastered(readMastered())
+                },
+                query: wrongQuery,
+                sort: wrongSort,
+                dicts: [...new Set(wrongRows.map((row) => row.dictId))].filter(Boolean).map((id) => ({
+                  id,
+                  name: dictionaryById(id).name,
+                  count: wrongRows.filter((row) => row.dictId === id).length,
+                  active: wrongDict === id,
+                })),
+                onQuery: setWrongQuery,
+                onSort: (patch) => {
+                  if (patch.dictId !== undefined) setWrongDict(patch.dictId)
+                  if (patch.sort !== undefined) setWrongSort(patch.sort)
+                },
+                onReview: (words) => {
+                  setReview(words)
+                  setView('practice')
+                },
+                onClear: refreshStats,
+                onClose: () => setView('practice'),
+              })
+              : view === 'stats'
+                ? h(StatsPanel, {
+                  t,
+                  days: stats.days,
+                  weeks: stats.weeks,
+                  letters: stats.letters,
+                  summary: stats.summary,
+                  onClose: () => setView('practice'),
+                })
+                : h(Trainer, {
+              key: `${dictId}:${chapter}:${round}`,
+              words: chapterWords,
+              variant: 'panel',
+              showMeta: true,
+              options: judgeOptions,
+              dictation: settings.dictation,
+              dictId,
+              chapter: round === 0 ? chapter : null,
+              onFinish: refreshStats,
+              onReview: (words) => {
+                setReview(words)
+                setChapter(0)
+              },
+              onNextChapter: chapter + 1 < chapterTotal
+                ? () => setChapter((value) => Math.min(value + 1, chapterTotal - 1))
+                : null,
+              ctx,
+            }),
       )
     }
 
@@ -967,11 +3241,23 @@ window.__ModuleLoader__.load({
       // 纯逻辑导出，只给测试用；Harness 不读这个字段
       __test: {
         judgeTyping, parseWords, format, pushChar, lookup, dictionaries, sampleWords, groupByCategory,
+        catalog, normalizeWord, normalizeWords, chapterCount, wordsOfChapter, sampleFromWords,
+        searchCatalog, readRecent, catalogSize: () => catalog().length, wordsSync, loadDictWords,
+        effectiveTarget, stripPunct, maskLetters, DICTATION_MODES, readSettings, getSettings, setSetting,
+        subscribeSettings, SETTING_DEFAULTS, DICT, heatLevel,
+        dayKey, aggregateDaily, summarize, lastDays, readProgress, readChapterRecords, readWordRecords,
+        recordWord, recordChapter, saveProgress,
+        dictSourceList, DICT_PIN, activeMs, resolveHotkey, calcWpm, calcAccuracy, shouldStartOnTab, saveSession, readSession, clearSession, sameSession,
         setOpen, getOpen,
-        components: { Trainer, PracticePanel, PanelGlyph, ComposerTrainer, SidebarButton },
+        components: { Trainer, PracticePanel, PanelGlyph, ComposerTrainer, SidebarButton, DictPicker, WrongBookPanel, StatsPanel, SettingsSection, SettingRow },
+        collectWrongWords, heatmapWeeks, heatLevel, filterWrongWords, DICT,
+        serializeBackup, parseBackup, BACKUP_VERSION, BACKUP_LIMITS, playClick, pressable,
+        topWrongLetters, readMastered, writeMastered, toggleMastered, masteredKey, MASTERED_KEY,
+        exportBackup, importData, clearData, readMirror, writeMirror, MIRROR_KEY,
       },
       inject: ['slots', 'locale'],
       apply(ctx) {
+        PLUGIN_CTX = ctx
         ctx.effect(() => ctx.locale.register(NS, 'zh', DICT.zh))
         ctx.effect(() => ctx.locale.register(NS, 'en', DICT.en))
         ctx.on('locale/change', bumpLocale)
@@ -994,7 +3280,13 @@ window.__ModuleLoader__.load({
           (props) => h(ComposerTrainer, { useInput: props.useInput, inputActions: props.inputActions, ctx }),
         )))
 
-        // 3) `/qwerty-autotype` 指令行：同一张卡片
+        // 3) 设置页：判定规则与默写形态
+        ctx.effect(() => ctx.slots.inject('settings.section', () => ctx.slots.register(
+          { name: 'settings.section', id: `${COMMAND}-settings`, order: 25, label: () => '跟打' },
+          () => h(SettingsSection),
+        )))
+
+        // 4) `/qwerty-autotype` 指令行：同一张卡片
         ctx.effect(() => ctx.slots.inject('conversation.chat.commandview', () => ctx.slots.register(
           { name: 'conversation.chat.commandview', key: COMMAND },
           (props) => h(Trainer, {
