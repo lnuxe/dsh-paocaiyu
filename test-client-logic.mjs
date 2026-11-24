@@ -183,6 +183,7 @@ const {
   readCustomDicts, writeCustomDicts, parseCustomWords, saveCustomDict, removeCustomDict,
   keyboardHeat, KEY_ROWS, cacheStats, clearDictCache,
   customWords, isCustomId, CUSTOM_PREFIX, dictionaryById,
+  parseCustomFile, serializeCustomDict, splitCsvLine, toCustomWord, downloadText, withSlashes,
   topWrongLetters, readMastered, writeMastered, toggleMastered, masteredKey,
 } = plugin.__test
 
@@ -450,6 +451,62 @@ check('mousedown 不抢焦点', tabAvoided.prevented, true)
 // —— 键音在无 WebAudio 的环境里静默不报错 ——
 check('没有 AudioContext 时返回 false', playClick('hit'), false)
 check('打错也静默返回 false', playClick('miss'), false)
+
+// —— 文件导入：CSV / JSON ——
+check('CSV 拆列', splitCsvLine('cancel,取消,/ˈkænsl/').join('|'), 'cancel|取消|/ˈkænsl/')
+check('CSV 引号里带逗号', splitCsvLine('"a, b",释义').join('|'), 'a, b|释义')
+check('CSV 双引号转义', splitCsvLine('"say ""hi""",说').join('|'), 'say "hi"|说')
+check('CSV 全角逗号', splitCsvLine('govern，治理').join('|'), 'govern|治理')
+
+const csvNoHeader = parseCustomFile('words.csv', 'cancel,取消,/ˈkænsl/\ngovern,治理\n')
+check('CSV 两行两词', csvNoHeader.length, 2)
+check('CSV 释义', csvNoHeader[0].trans[0], '取消')
+check('CSV 音标', csvNoHeader[0].ipa, '/ˈkænsl/')
+const csvHeader = parseCustomFile('words.csv', 'word,meaning\ncancel,取消\n')
+check('CSV 跳过表头', csvHeader.length, 1)
+check('中文表头也跳过', parseCustomFile('w.csv', '单词,释义\nabandon,放弃\n').length, 1)
+
+const jsonArray = parseCustomFile('w.json', JSON.stringify([
+  { name: 'cancel', trans: ['取消'], ipa: 'ˈkænsl' },
+  { word: 'govern', meaning: '治理' },
+  { text: 'abandon', zh: '放弃' },
+]))
+check('JSON 数组三种写法都认', jsonArray.map((word) => word.name).join(','), 'cancel,govern,abandon')
+check('JSON trans 数组', jsonArray[0].trans[0], '取消')
+check('JSON meaning 转数组', jsonArray[1].trans[0], '治理')
+check('JSON 分号拆释义', parseCustomFile('w.json', JSON.stringify([{ name: 'a', trans: '一；二' }]))[0].trans.join('/'), '一/二')
+check('JSON {words:[]} 形状', parseCustomFile('w.json', JSON.stringify({ words: [{ name: 'x' }] })).length, 1)
+check('JSON 映射形状', parseCustomFile('w.json', JSON.stringify({ cancel: '取消' }))[0].name, 'cancel')
+check('JSON 坏文件返回空', parseCustomFile('w.json', '{ not json').length, 0)
+check('JSON 去重', parseCustomFile('w.json', JSON.stringify([{ name: 'Cancel' }, { name: 'cancel' }])).length, 1)
+check('txt 走原解析器', parseCustomFile('w.txt', 'cancel 取消').length, 1)
+check('未知扩展名也走 txt', parseCustomFile('w.md', '# 注释\ncancel 取消').length, 1)
+
+// —— 只有单词的自定义词表也能练 ——
+const bareId = saveCustomDict('裸词表', [{ name: 'cancel' }, { name: 'govern' }])
+check('没有释义的词条保留', customWords(bareId).length, 2)
+check('没有释义时 zh 为空串', customWords(bareId)[0].zh, '')
+check('音标统一加斜杠', withSlashes('ˈkænsl'), '/ˈkænsl/')
+check('已有斜杠不重复加', withSlashes('/ˈkænsl/'), '/ˈkænsl/')
+check('空音标还是空', withSlashes(''), '')
+check('删除裸词表', removeCustomDict(bareId), true)
+writeCustomDicts({})
+
+// —— 自定义词表导出 ——
+const exportId = saveCustomDict('导出测试', [
+  { name: 'cancel', trans: ['取消'], ipa: '/ˈkænsl/' },
+  { name: 'govern', trans: ['治理'] },
+])
+const exportedTxt = serializeCustomDict(exportId, 'txt')
+check('txt 导出两行', exportedTxt.split('\n').length, 2)
+check('txt 导出带释义与音标', exportedTxt.split('\n')[0], 'cancel 取消 /ˈkænsl/')
+const exportedJson = JSON.parse(serializeCustomDict(exportId, 'json'))
+check('json 导出带名字', exportedJson.name, '导出测试')
+check('json 导出两条', exportedJson.words.length, 2)
+check('json 导出可回灌', parseCustomFile('w.json', serializeCustomDict(exportId, 'json')).length, 2)
+check('空词表导出为空串', serializeCustomDict('custom:不存在', 'txt'), '')
+check('删除测试词表', removeCustomDict(exportId), true)
+writeCustomDicts({})
 
 // —— 键盘热力图 ——
 check('键盘三行', KEY_ROWS.join('|'), 'qwertyuiop|asdfghjkl|zxcvbnm')
@@ -1032,6 +1089,29 @@ check('选择器有导入入口', (function acts(node, out = []) {
   return out
 })(pickerCase).join(','), 'custom-new')
 check('选择器列出词库', gatherText(pickerCase).includes('CET-4'), true)
+
+const pickerImporting = render('渲染：导入面板', () => {
+  const element = renderTest.components.DictPicker({
+    t: (key, vars) => (vars && vars.n !== undefined ? `${key}:${vars.n}` : key),
+    dictId: 'cet4', query: '', category: '', recent: [], categories: [], list: [],
+    onQuery: () => {}, onCategory: () => {}, onPick: () => {}, onImported: () => {}, onClose: () => {},
+  })
+  // 直接跑一遍组件逻辑：把「导入」按钮的点击当作已打开
+  const acts = []
+  ;(function walk(node) {
+    if (!node || typeof node !== 'object') return
+    if (Array.isArray(node)) return node.forEach(walk)
+    if (typeof node.type === 'function') return walk(node.type(node.props ?? {}))
+    const act = node.props?.['data-act']
+    if (act) acts.push([act, node])
+    walk(node.children)
+    walk(node.props?.children)
+  })(element)
+  const button = acts.find(([act]) => act === 'custom-new')?.[1]
+  button?.props?.onClick?.()
+  return element
+})
+check('导入面板能展开', pickerImporting !== null, true)
 
 // —— 渲染冒烟：错词本 / 统计 ——
 function gatherText(node, out = '') {

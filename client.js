@@ -205,25 +205,26 @@ window.__ModuleLoader__.load({
      * 不合法返回 null（空词、空释义、超长、含控制字符）
      * 大小写：en 一律小写（判定不因大小写卡人）；code 保留原样（SQL 等有意义）
      */
-    function normalizeWord(raw, languageCategory) {
+    function normalizeWord(raw, languageCategory, options) {
       if (!raw || typeof raw !== 'object') return null
       const isCode = languageCategory === 'code'
       let w = (raw.name ?? raw.w ?? '').toString().replace(/\s+/g, ' ').trim()
       if (!w || w.length > 40) return null
       if (!WORD_OK.test(w)) return null
       if (!isCode) w = w.toLowerCase()
-      const zh = cleanZh(Array.isArray(raw.trans) ? raw.trans.join('；') : raw.trans)
-      if (!zh) return null
-      const ipa = isCode ? '' : buildIpa(raw.ukphone || raw.usphone)
+      const zh = cleanZh(Array.isArray(raw.trans) ? raw.trans.join('；') : (raw.trans ?? raw.zh))
+      // 自定义词表允许只给单词（没释义也能练），内置/网络词库仍要求有中文
+      if (!zh && options?.allowNoZh !== true) return null
+      const ipa = isCode ? '' : buildIpa(raw.ukphone || raw.usphone || raw.ipa)
       return { w, ipa, zh }
     }
 
     /** 批量归一化 + 去重（保序） */
-    function normalizeWords(list, languageCategory) {
+    function normalizeWords(list, languageCategory, options) {
       const seen = new Set()
       const out = []
       for (const raw of list || []) {
-        const word = normalizeWord(raw, languageCategory)
+        const word = normalizeWord(raw, languageCategory, options)
         if (!word) continue
         const key = word.w.toLowerCase()
         if (seen.has(key)) continue
@@ -553,6 +554,138 @@ window.__ModuleLoader__.load({
       return out
     }
 
+    /** 拆一行 CSV（支持双引号包裹、内部逗号与 "" 转义） */
+    function splitCsvLine(line) {
+      const out = []
+      let cell = ''
+      let quoted = false
+      for (let index = 0; index < line.length; index += 1) {
+        const ch = line[index]
+        if (quoted) {
+          if (ch === '"') {
+            if (line[index + 1] === '"') {
+              cell += '"'
+              index += 1
+            } else {
+              quoted = false
+            }
+          } else {
+            cell += ch
+          }
+          continue
+        }
+        if (ch === '"' && !cell) {
+          quoted = true
+          continue
+        }
+        if (ch === ',' || ch === '，') {
+          out.push(cell.trim())
+          cell = ''
+          continue
+        }
+        cell += ch
+      }
+      out.push(cell.trim())
+      return out
+    }
+
+    /** 一条外部数据 → 词条（兼容 {name,trans,ipa} 与 {word,meaning,phonetic} 两种写法） */
+    function toCustomWord(entry) {
+      if (typeof entry === 'string') {
+        const parts = splitCsvLine(entry)
+        return { name: parts[0] ?? '', trans: parts[1] ? [parts[1]] : [], ...(parts[2] ? { ipa: parts[2] } : {}) }
+      }
+      if (!entry || typeof entry !== 'object') return null
+      const name = String(entry.name ?? entry.word ?? entry.text ?? '').trim()
+      if (!name) return null
+      const rawTrans = entry.trans ?? entry.translation ?? entry.meaning ?? entry.zh
+      const trans = Array.isArray(rawTrans)
+        ? rawTrans.map((item) => String(item ?? '').trim()).filter(Boolean)
+        : String(rawTrans ?? '').split(/[;；]/).map((item) => item.trim()).filter(Boolean)
+      const ipa = String(entry.ipa ?? entry.phonetic ?? entry.ukphone ?? '').trim()
+      return { name, trans, ...(ipa ? { ipa } : {}) }
+    }
+
+    /**
+     * 解析导入文件：按扩展名分派
+     *   .json  → 数组 / { words: [...] } / { 单词: 释义 } 三种形状
+     *   .csv   → word,meaning,ipa（首行是表头就跳过，支持引号）
+     *   其它   → 交给 parseCustomWords（一行一个词）
+     * 统一去重、限长、限条数。
+     */
+    function parseCustomFile(fileName, text) {
+      const ext = String(fileName ?? '').toLowerCase().split('.').pop() || ''
+      let entries = []
+      if (ext === 'json') {
+        let raw
+        try {
+          raw = JSON.parse(String(text ?? ''))
+        } catch {
+          return []
+        }
+        if (Array.isArray(raw)) entries = raw
+        else if (Array.isArray(raw?.words)) entries = raw.words
+        else if (raw?.dicts && typeof raw.dicts === 'object' && !Array.isArray(raw.dicts)) {
+          // 备份文件里的自定义词表
+          const first = Object.values(raw.dicts)[0]
+          entries = Array.isArray(first) ? first : []
+        } else if (raw && typeof raw === 'object') {
+          entries = Object.entries(raw).map(([word, meaning]) => ({ name: word, trans: meaning }))
+        }
+      } else if (ext === 'csv') {
+        const lines = String(text ?? '').split(/\r?\n/).filter((line) => line.trim())
+        const first = lines[0] ? splitCsvLine(lines[0]) : []
+        const headerWords = /^(word|name|单词|词汇)$/i
+        const start = first.length && headerWords.test(first[0]) ? 1 : 0
+        entries = lines.slice(start).map((line) => ({
+          name: splitCsvLine(line)[0] ?? '',
+          trans: splitCsvLine(line)[1] ?? '',
+          ipa: splitCsvLine(line)[2] ?? '',
+        }))
+      } else {
+        return parseCustomWords(text)
+      }
+
+      const seen = new Set()
+      const out = []
+      for (const entry of entries) {
+        const word = toCustomWord(entry)
+        if (!word || word.name.length > 40) continue
+        const key = word.name.toLowerCase()
+        if (seen.has(key)) continue
+        seen.add(key)
+        out.push(word)
+        if (out.length >= CUSTOM_LIMIT) break
+      }
+      return out
+    }
+
+    /** 音标统一成 /…/（内部存的有可能已经带斜杠） */
+    function withSlashes(ipa) {
+      const text = String(ipa ?? '').trim()
+      if (!text) return ''
+      return text.startsWith('/') ? text : `/${text}/`
+    }
+
+    /** 导出自定义词表为文本（txt 一行一个 / json 带结构），用于换机或分享 */
+    function serializeCustomDict(id, format) {
+      const words = customWords(id)
+      if (!words.length) return ''
+      if (String(format).toLowerCase() === 'json') {
+        return JSON.stringify({
+          name: String(id).replace(CUSTOM_PREFIX, ''),
+          words: words.map((word) => ({
+            name: word.w,
+            trans: word.zh ? [word.zh] : [],
+            ...(word.ipa ? { ipa: withSlashes(word.ipa) } : {}),
+          })),
+        }, null, 2)
+      }
+      return words
+        .map((word) => `${word.w}${word.zh ? ` ${word.zh}` : ''}${word.ipa ? ` ${withSlashes(word.ipa)}` : ''}`)
+        .join('\n')
+    }
+
     /** 保存/覆盖一个自定义词表（名字去首尾空格，空名字返回 null） */
     function saveCustomDict(name, words) {
       const key = String(name ?? '').trim().slice(0, 24)
@@ -581,7 +714,7 @@ window.__ModuleLoader__.load({
     function customWords(id) {
       if (!isCustomId(id)) return []
       const name = id.slice(CUSTOM_PREFIX.length)
-      return normalizeWords(readCustomDicts()[name] || [], 'en')
+      return normalizeWords(readCustomDicts()[name] || [], 'en', { allowNoZh: true })
     }
 
     /** 「已掌握」的词：`${dictId}:${word}` 集合，存 localStorage（不占 IndexedDB 版本位） */
@@ -1310,6 +1443,9 @@ window.__ModuleLoader__.load({
         customName: '词表名字（可留空）',
         customPlaceholder: '一行一个词：word 中文\n也支持 word,中文,/音标/\n# 开头是注释',
         customSave: '保存并开始',
+        customFile: '从文件导入（.txt / .csv / .json）',
+        customFileLoaded: '已读取文件，解析出 {n} 个词，确认后保存',
+        customExport: '导出这个词表',
         customEmpty: '没解析出任何单词，检查一下格式',
         customSaved: '已保存 {n} 个词',
         cancel: '取消',
@@ -1409,6 +1545,9 @@ window.__ModuleLoader__.load({
         customName: 'List name (optional)',
         customPlaceholder: 'One word per line: word meaning\nalso word,meaning,/ipa/\n# starts a comment',
         customSave: 'Save and start',
+        customFile: 'Import from file (.txt / .csv / .json)',
+        customFileLoaded: 'File loaded — {n} words parsed, save to confirm',
+        customExport: 'Export this list',
         customEmpty: 'No words parsed — check the format',
         customSaved: 'Saved {n} words',
         cancel: 'Cancel',
@@ -1542,6 +1681,8 @@ window.__ModuleLoader__.load({
 .qat-sethint{font-size:12px;color:var(--dsw-alias-label-tertiary)}
 .qat-import{display:flex;flex-direction:column;gap:8px;padding:10px 0 2px;border-top:1px solid var(--dsw-alias-border-l1);margin-top:6px}
 .qat-importopen{padding-top:10px;border-top:1px solid var(--dsw-alias-border-l1);margin-top:6px}
+.qat-filepick{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--dsw-alias-brand-primary);cursor:pointer}
+.qat-filepick input{display:none}
 .qat-textarea{width:100%;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical}
 .qat-textarea:focus{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-1px}
 .qat-datablock{margin-top:6px}
@@ -1637,6 +1778,24 @@ window.__ModuleLoader__.load({
         }
         return (key, vars) => format(translate?.(key) ?? DICT.zh[key] ?? key, vars)
       }, [ctx, current])
+    }
+
+    /** 浏览器下载一段文本（txt / json / csv），失败返回 false */
+    function downloadText(fileName, text) {
+      try {
+        const blob = new Blob([String(text ?? '')], { type: 'text/plain;charset=utf-8' })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = fileName
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        setTimeout(() => URL.revokeObjectURL(url), 1000)
+        return true
+      } catch {
+        return false
+      }
     }
 
     /**
@@ -2916,6 +3075,15 @@ window.__ModuleLoader__.load({
       },
         h('span', { className: 'qat-dictname' }, item.name),
         h('span', { className: 'qat-dictmeta' }, `${item.length} 词 · ${chapterCount(item)} 章`),
+        isCustomId(item.id)
+          ? h('span', {
+            ...pressable(() => downloadText(`${item.name}.txt`, serializeCustomDict(item.id, 'txt'))),
+            className: 'qat-icon',
+            'data-act': 'custom-export',
+            title: t('customExport'),
+            'aria-label': t('customExport'),
+          }, '⤓')
+          : null,
       )
 
       return h('div', { className: 'qat-picker' },
@@ -2974,6 +3142,25 @@ window.__ModuleLoader__.load({
               rows: 5,
               onInput: (event) => setDraftText(event.target.value),
             }),
+            h('label', { className: 'qat-filepick' },
+              t('customFile'),
+              h('input', {
+                type: 'file',
+                accept: '.txt,.csv,.json,text/plain,text/csv,application/json',
+                'data-act': 'custom-file',
+                onChange: (event) => {
+                  const file = event?.target?.files?.[0]
+                  if (!file) return
+                  if (typeof file.text === 'function') {
+                    file.text().then((raw) => {
+                      setDraftText(raw)
+                      if (!draftName) setDraftName(file.name.replace(/\.[^.]+$/, '').slice(0, 24))
+                      setFlash(t('customFileLoaded', { n: parseCustomFile(file.name, raw).length }))
+                    })
+                  }
+                },
+              }),
+            ),
             h('div', { className: 'qat-databtns' },
               h('span', { ...pressable(submitImport), className: 'qat-btn', 'data-act': 'custom-save' }, t('customSave')),
               h('span', {
@@ -3592,6 +3779,7 @@ window.__ModuleLoader__.load({
         customWords, isCustomId, CUSTOM_PREFIX, CUSTOM_LIMIT, dictionaryById, chapterCount,
         exportBackup, importData, clearData, readMirror, writeMirror, MIRROR_KEY,
         keyboardHeat, KEY_ROWS, cacheStats, clearDictCache,
+        parseCustomFile, serializeCustomDict, splitCsvLine, toCustomWord, downloadText, withSlashes,
       },
       inject: ['slots', 'locale'],
       apply(ctx) {

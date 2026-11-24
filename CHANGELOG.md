@@ -9,6 +9,18 @@
 
 无
 
+## [0.4.0] - 2026-11-24
+
+自定义词表从「粘贴文本」扩展到「文件进出」，并修掉两个会让导入静默失效的解析限制。
+自动化测试 **362 条全绿**（`npm run verify`）。
+
+### Added · 自定义词表的文件导入 / 导出
+
+- **三种文件格式**：`.txt`（一行一个词，沿用原解析器）、`.csv`（`word,meaning,ipa`，识别中英文表头、支持双引号包裹与 `""` 转义、全角逗号）、`.json`（数组 / `{words:[]}` / `{单词:释义}` 三种形状，兼容 `name|word|text` 与 `trans|meaning|zh` 字段名）
+- **导入面板加了选文件**：选中后自动填进文本框并提示「解析出 N 个词」，名字留空就用文件名
+- **导出**：自定义词库那一行右侧一个 `⤓`，导出成 `.txt`（`word 中文 /音标/`，可直接改完再导回来）
+- **修了两个旧限制**：`normalizeWord` 现在认 `ipa` 字段（原来只认 `ukphone/usphone`），自定义词表允许**只给单词不给释义**（内置与网络词库仍要求有中文）
+
 ## [0.3.0] - 2026-11-24
 
 词库来源从「内置 371 个」扩展到「内置 + 用户自己的词表」，并把练习产生的错误数据变成看得见的图。
@@ -122,7 +134,8 @@
 - 隐藏焦点守卫：练习期间输入框区域的回车 / 制表符 / `Cmd+Enter` 与发送按钮点击全部被吃掉，草稿发不出去
 - 45 条测试（`test-client-logic.mjs`）：判定 / `pushChar` / 词库 / 渲染冒烟（一次性 React 桩真的调一遍组件），不需要浏览器
 
-[Unreleased]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/lnuxe/qwerty-autotype-ui/releases/tag/v0.1.0
