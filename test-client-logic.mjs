@@ -180,6 +180,9 @@ const {
   collectWrongWords, activeMs, resolveHotkey, dictSourceList, DICT_PIN,
   heatmapWeeks, heatLevel, filterWrongWords, DICT,
   serializeBackup, parseBackup, BACKUP_VERSION, BACKUP_LIMITS, pressable, playClick,
+  readCustomDicts, writeCustomDicts, parseCustomWords, saveCustomDict, removeCustomDict,
+  keyboardHeat, KEY_ROWS, cacheStats, clearDictCache,
+  customWords, isCustomId, CUSTOM_PREFIX, dictionaryById,
   topWrongLetters, readMastered, writeMastered, toggleMastered, masteredKey,
 } = plugin.__test
 
@@ -448,6 +451,62 @@ check('mousedown 不抢焦点', tabAvoided.prevented, true)
 check('没有 AudioContext 时返回 false', playClick('hit'), false)
 check('打错也静默返回 false', playClick('miss'), false)
 
+// —— 键盘热力图 ——
+check('键盘三行', KEY_ROWS.join('|'), 'qwertyuiop|asdfghjkl|zxcvbnm')
+const heat = keyboardHeat([{ letter: 'e', count: 8 }, { letter: 'a', count: 4 }, { letter: 'q', count: 1 }])
+check('三行都画出来', heat.length, 3)
+check('第一行 10 键', heat[0].length, 10)
+check('第二行 9 键', heat[1].length, 9)
+check('第三行 7 键', heat[2].length, 7)
+check('最多的键是 4 档', heat[0].find((cell) => cell.key === 'e').level, 4)
+check('一半是 3 档', heat[1].find((cell) => cell.key === 'a').level, 3)
+check('最少的是 1 档', heat[0].find((cell) => cell.key === 'q').level, 1)
+check('没打错的键是 0 档', heat[0].find((cell) => cell.key === 'w').level, 0)
+check('没打错的键计数为 0', heat[0].find((cell) => cell.key === 'w').count, 0)
+check('大写输入也能归位', keyboardHeat([{ letter: 'E', count: 5 }])[0].find((cell) => cell.key === 'e').count, 5)
+check('接受对象形式的 wrongLetters', keyboardHeat({ s: 6, d: 3 })[1].find((cell) => cell.key === 's').level, 4)
+check('空输入全是 0 档', keyboardHeat([]).flat().every((cell) => cell.level === 0), true)
+
+// —— 自定义词表 ——
+check('custom: 前缀识别', isCustomId('custom:我的词'), true)
+check('普通词库不是自定义', isCustomId('cet4'), false)
+
+const parsedCustom = parseCustomWords(`
+# 这一行是注释
+// 这一行也是
+cancel 取消
+govern,治理
+apparent,显而易见的,/əˈpærənt/
+abandon
+abandon  放弃
+` + 'x'.repeat(41))
+
+check('跳过注释行', parsedCustom.some((word) => word.name.startsWith('#') || word.name.startsWith('//')), false)
+check('空格分隔', parsedCustom.find((word) => word.name === 'cancel').trans[0], '取消')
+check('逗号分隔', parsedCustom.find((word) => word.name === 'govern').trans[0], '治理')
+check('识别音标', parsedCustom.find((word) => word.name === 'apparent').ipa, 'əˈpærənt')
+check('音标不进释义', parsedCustom.find((word) => word.name === 'apparent').trans[0], '显而易见的')
+check('只有单词也可以', parsedCustom.find((word) => word.name === 'abandon').trans.length, 0)
+check('大小写去重', parsedCustom.filter((word) => word.name.toLowerCase() === 'abandon').length, 1)
+check('超长词被丢', parsedCustom.some((word) => word.name.length > 40), false)
+check('空文本得空数组', parseCustomWords('   \n\n  ').length, 0)
+
+check('空名字不保存', saveCustomDict('  ', [{ name: 'a' }]), null)
+check('空词表不保存', saveCustomDict('空的', []), null)
+const customId = saveCustomDict('我的词', [
+  { name: 'cancel', trans: ['取消'] },
+  { name: 'govern', trans: ['治理'] },
+])
+check('保存返回 id', customId, 'custom:我的词')
+check('读回自定义词表', Object.keys(readCustomDicts()).length, 1)
+check('归一化后两条', customWords(customId).length, 2)
+check('自定义词库进目录', catalog().some((dict) => dict.id === customId), true)
+check('目录里分类是自定义', dictionaryById(customId).category, '自定义')
+check('自定义词表章数为 1', chapterCount(dictionaryById(customId)), 1)
+check('删除自定义词表', removeCustomDict(customId), true)
+check('删除后目录里没有', catalog().some((dict) => dict.id === customId), false)
+writeCustomDicts({})
+
 // —— 备份导出 / 导入 ——
 const backupText = serializeBackup({
   settings: { dictation: 'hideVowel', caseSensitive: true, junk: 1 },
@@ -497,6 +556,14 @@ check('备份上限有界', BACKUP_LIMITS.wordRecords >= 1000, true)
 
 const withMastered = parseBackup(serializeBackup({ mastered: ['cet4:cancel', 'bad', ''] }))
 check('备份带上掌握列表', withMastered.mastered.join(','), 'cet4:cancel,bad')
+const withCustom = parseBackup(serializeBackup({
+  customDicts: { 我的词: [{ name: 'cancel', trans: ['取消'], ipa: 'ˈkænsl' }, { name: '' }] },
+}))
+check('备份带上自定义词表', withCustom.customDicts['我的词'].length, 1)
+check('自定义词表保留音标', withCustom.customDicts['我的词'][0].ipa, 'ˈkænsl')
+check('空名字的词表被丢', Object.keys(parseBackup(JSON.stringify({
+  kind: 'qwerty-autotype-backup', version: 1, customDicts: { '  ': [{ name: 'a' }] },
+})).customDicts).length, 0)
 const noMastered = parseBackup(JSON.stringify({ kind: 'qwerty-autotype-backup', version: 1 }))
 check('老备份没有 mastered 也不报错', noMastered.mastered.length, 0)
 
@@ -578,7 +645,7 @@ const wait = () => new Promise((resolve) => setTimeout(resolve, 0))
 const recordFlow = (async () => {
   const {
     recordWord, recordChapter, saveProgress, readProgress, readWordRecords, readChapterRecords,
-    importData, clearData, writeMirror, readMirror,
+    importData, clearData, writeMirror, readMirror, loadDictWords, cacheStats, clearDictCache,
   } = plugin.__test
 
   await recordWord({ word: 'cancel', dictId: 'cet4', chapter: 0, wrongCount: 2, at: at(2026, 11, 24, 10) })
@@ -626,6 +693,27 @@ const recordFlow = (async () => {
   check('镜像写入可回读', readMirror().wordRecords[0].word, 'fallback')
   writeMirror({ wordRecords: [], chapterRecords: [], progress: [] })
   check('镜像可清空', readMirror().wordRecords.length, 0)
+
+  // 词库缓存统计与清理（同一套 fake IndexedDB；网络用桩顶掉）
+  sandbox.fetch = async () => ({
+    ok: true,
+    status: 200,
+    json: async () => [
+      { name: 'cancel', trans: ['取消'], ukphone: 'ˈkænsl' },
+      { name: 'govern', trans: ['治理'], ukphone: 'ˈɡʌvn' },
+    ],
+  })
+  const stats0 = await cacheStats()
+  check('空缓存条数为 0', stats0.count, 0)
+  check('空缓存字节为 0', stats0.bytes, 0)
+  await loadDictWords('cet4', { force: true })
+  const stats1 = await cacheStats()
+  check('加载后缓存里有词库', stats1.count >= 1, true)
+  check('缓存占用大于 0', stats1.bytes > 0, true)
+  const cleared = await clearDictCache()
+  check('清理缓存成功', cleared, true)
+  check('清理后条数归零', (await cacheStats()).count, 0)
+  check('清理后仍能重新加载', (await loadDictWords('cet4', { force: true })).length > 0, true)
 })()
 
 // —— 渲染冒烟：用一次性 React 桩真的调一遍组件，抓 ReferenceError / undefined ——
@@ -866,7 +954,7 @@ check('样式里有读屏隐藏类', collectCss(cardA11y).join('').includes('.qa
 
 // —— 渲染冒烟：设置页 ——
 const settingsCase = render('渲染：设置页', () => renderTest.components.SettingsSection({}))
-check('设置页有五个开关位', collectClasses(settingsCase).filter((name) => name === 'qat-setrow').length, 5)
+check('设置页有六个设置行（含词库缓存）', collectClasses(settingsCase).filter((name) => name === 'qat-setrow').length, 6)
 check('设置页含大小写开关', (function find(node) {
   if (!node || typeof node !== 'object') return false
   if (Array.isArray(node)) return node.some(find)
@@ -911,6 +999,39 @@ const doneCase = render('渲染：结果页', () => renderTest.components.Traine
   ctx: ctxStub,
 }))
 check('结果页有控制区', collectClasses(doneCase).includes('qat-card'), true)
+
+// —— 渲染冒烟：词库选择器里的自定义导入 ——
+const pickerCase = render('渲染：词库选择器', () => renderTest.components.DictPicker({
+  t: (key, vars) => (vars && vars.n !== undefined ? `${key}:${vars.n}` : key),
+  dictId: 'cet4',
+  query: '',
+  category: '',
+  recent: [],
+  categories: groupByCategory(catalog()).slice(0, 3),
+  list: catalog().slice(0, 5),
+  onQuery: () => {},
+  onCategory: () => {},
+  onPick: () => {},
+  onImported: () => {},
+  onClose: () => {},
+}))
+check('选择器有导入入口', (function acts(node, out = []) {
+  if (!node || typeof node !== 'object') return out
+  if (Array.isArray(node)) {
+    node.forEach((item) => acts(item, out))
+    return out
+  }
+  if (typeof node.type === 'function') {
+    acts(node.type(node.props ?? {}), out)
+    return out
+  }
+  const act = node.props?.['data-act']
+  if (act) out.push(act)
+  acts(node.children, out)
+  acts(node.props?.children, out)
+  return out
+})(pickerCase).join(','), 'custom-new')
+check('选择器列出词库', gatherText(pickerCase).includes('CET-4'), true)
 
 // —— 渲染冒烟：错词本 / 统计 ——
 function gatherText(node, out = '') {
@@ -963,6 +1084,22 @@ check('统计每根柱一个列', (gatherText(statsCase).match(/\d\d-\d\d/g) || 
 check('统计显示词数', gatherText(statsCase).includes('statWords'), true)
 check('统计显示易错字母', gatherText(statsCase).includes('e ×5'), true)
 check('统计有热力图格子', collectClasses(statsCase).filter((name) => name === 'qat-heatcell').length, 84)
+check('统计画出 26 个键位', collectClasses(statsCase).filter((name) => name === 'qat-key').length, 26)
+check('键位有分档', (function keys(node, out = []) {
+  if (!node || typeof node !== 'object') return out
+  if (Array.isArray(node)) {
+    node.forEach((item) => keys(item, out))
+    return out
+  }
+  if (typeof node.type === 'function') {
+    keys(node.type(node.props ?? {}), out)
+    return out
+  }
+  if (node.props?.className === 'qat-key') out.push(node.props['data-level'])
+  keys(node.children, out)
+  keys(node.props?.children, out)
+  return out
+})(statsCase).includes('4'), true)
 
 await recordFlow
 

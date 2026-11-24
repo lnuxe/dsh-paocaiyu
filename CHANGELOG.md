@@ -9,6 +9,23 @@
 
 无
 
+## [0.3.0] - 2026-11-24
+
+词库来源从「内置 371 个」扩展到「内置 + 用户自己的词表」，并把练习产生的错误数据变成看得见的图。
+自动化测试 **328 条全绿**（`npm run verify`）。
+
+### Added · 键盘热力图 / 词库缓存管理
+
+- **键盘热力图**：`keyboardHeat` 把已错的字母铺到 QWERTY 三行（10/9/7 键），按「本次最多的键」分 0–4 档上色，统计浮层里配合易错字母 chip 一起显示；大小写输入都归位
+- **词库缓存管理**：设置页新增「词库缓存」一行，显示已缓存词库数与近似占用（`cacheStats` 读 IndexedDB `dicts` store），一键清理（`clearDictCache` 同时清内存缓存）；记录、设置、自定义词表都不动
+
+### Added · 自定义词表
+
+- **粘贴即用**：词库选择器底部「＋ 导入自定义词表」，一行一个词，支持 `word` / `word 中文` / `word,中文,/音标/` / Tab 分隔；`#` 与 `//` 开头的行当注释跳过，大小写去重，单表上限 2000 条
+- **自成一类**：存 `qwerty-autotype:custom-dicts`，以 `custom:<名字>` 进目录、分类显示「自定义」，不需要网络，`loadDictWords` 直接命中本地
+- **保存即开始**：导入成功后自动切到新词表；重名覆盖、`removeCustomDict` 可删
+- **随备份迁移**：`customDicts` 进导出/导入，跨设备可带走（含音标，脏条目逐条丢弃）
+
 ## [0.2.0] - 2026-11-24
 
 把 qwerty-learner 的完整单词与模块功能迁进来：全量词库、章节、记录、错词本、统计、备份、默写、快捷键与无障碍。
@@ -105,6 +122,7 @@
 - 隐藏焦点守卫：练习期间输入框区域的回车 / 制表符 / `Cmd+Enter` 与发送按钮点击全部被吃掉，草稿发不出去
 - 45 条测试（`test-client-logic.mjs`）：判定 / `pushChar` / 词库 / 渲染冒烟（一次性 React 桩真的调一遍组件），不需要浏览器
 
-[Unreleased]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/lnuxe/qwerty-autotype-ui/releases/tag/v0.1.0

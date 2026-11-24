@@ -123,9 +123,20 @@ window.__ModuleLoader__.load({
 
     /** 全量词库元数据（371 条）；缺失时回落到内置 7 库 */
     function catalog() {
+      const custom = Object.entries(readCustomDicts()).map(([name, words]) => ({
+        id: CUSTOM_PREFIX + name,
+        name,
+        category: '自定义',
+        tags: ['自定义'],
+        length: words.length,
+        url: '',
+        languageCategory: 'en',
+      }))
       const list = DICT_INDEX?.dicts
-      if (Array.isArray(list) && list.length > 0) return list
-      return builtinDicts().map((dict) => ({
+      if (Array.isArray(list) && list.length > 0) {
+        return custom.length ? [...custom, ...list] : list
+      }
+      const builtin = builtinDicts().map((dict) => ({
         id: dict.id,
         name: dict.name,
         category: dict.category,
@@ -134,6 +145,7 @@ window.__ModuleLoader__.load({
         url: '',
         languageCategory: 'en',
       }))
+      return custom.length ? [...custom, ...builtin] : builtin
     }
 
     function dictionaries() {
@@ -440,6 +452,138 @@ window.__ModuleLoader__.load({
       }).then((value) => value ?? [])
     }
 
+    /** 词库缓存占用（IndexedDB `dicts` store）：条数 + 近似字节数 */
+    function cacheStats() {
+      return withStore(CACHE_STORE, 'readonly', (tx, done) => {
+        const request = tx.objectStore(CACHE_STORE).getAll()
+        request.onsuccess = () => {
+          const rows = Array.isArray(request.result) ? request.result : []
+          let chars = 0
+          for (const row of rows) {
+            try {
+              chars += JSON.stringify(row?.words ?? []).length
+            } catch {
+              /* 单条坏数据跳过 */
+            }
+          }
+          done({ count: rows.length, bytes: chars * 2 })
+        }
+        request.onerror = () => done({ count: 0, bytes: 0 })
+      }).then((value) => value ?? { count: 0, bytes: 0 })
+    }
+
+    /** 清空词库缓存（含内存缓存），记录与设置不动 */
+    function clearDictCache() {
+      DICT_CACHE.clear()
+      return withStore(CACHE_STORE, 'readwrite', (tx, done) => {
+        try {
+          const request = tx.objectStore(CACHE_STORE).clear()
+          request.onsuccess = () => done(true)
+          request.onerror = () => done(false)
+        } catch {
+          done(false)
+        }
+      }).then((ok) => ok === true)
+    }
+
+    /* ---------------- 自定义词表 ---------------- */
+
+    const CUSTOM_KEY = 'qwerty-autotype:custom-dicts'
+    const CUSTOM_PREFIX = 'custom:'
+    const CUSTOM_LIMIT = 2000
+
+    function isCustomId(id) {
+      return typeof id === 'string' && id.startsWith(CUSTOM_PREFIX)
+    }
+
+    /** 读全部自定义词表：{ [name]: [{ name, trans, ipa }] } */
+    function readCustomDicts() {
+      try {
+        const raw = JSON.parse(window.localStorage.getItem(CUSTOM_KEY) || '{}')
+        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
+        const out = {}
+        for (const [key, words] of Object.entries(raw)) {
+          if (!key || !Array.isArray(words)) continue
+          out[key] = words.filter((word) => word && typeof word.name === 'string' && word.name)
+        }
+        return out
+      } catch {
+        return {}
+      }
+    }
+
+    function writeCustomDicts(map) {
+      try {
+        window.localStorage.setItem(CUSTOM_KEY, JSON.stringify(map))
+      } catch {
+        /* 配额满了就算了 */
+      }
+    }
+
+    /**
+     * 解析用户粘贴的词表：一行一个词，支持
+     *   word
+     *   word 中文
+     *   word,中文        word,中文,音标
+     *   word<Tab>中文
+     * 空行、`#` 注释、以 `//` 开头的行都跳过；大小写去重；上限 CUSTOM_LIMIT 条。
+     */
+    function parseCustomWords(text) {
+      const lines = String(text ?? '').split(/\r?\n/)
+      const seen = new Set()
+      const out = []
+      for (const raw of lines) {
+        const line = raw.trim()
+        if (!line || line.startsWith('#') || line.startsWith('//')) continue
+        const parts = line.split(/\t|,|，|\s{2,}|\s/).map((part) => part.trim()).filter(Boolean)
+        const word = parts[0] ?? ''
+        if (!word || word.length > 40) continue
+        const lower = word.toLowerCase()
+        if (seen.has(lower)) continue
+        seen.add(lower)
+        const trans = parts.slice(1).find((part) => !/^\/[^/]*\/$/.test(part)) ?? ''
+        const ipaRaw = parts.slice(1).find((part) => /^\/[^/]*\/$/.test(part)) ?? ''
+        out.push({
+          name: word,
+          trans: trans ? [trans] : [],
+          ...(ipaRaw ? { ipa: ipaRaw.replace(/^\/|\/$/g, '') } : {}),
+        })
+        if (out.length >= CUSTOM_LIMIT) break
+      }
+      return out
+    }
+
+    /** 保存/覆盖一个自定义词表（名字去首尾空格，空名字返回 null） */
+    function saveCustomDict(name, words) {
+      const key = String(name ?? '').trim().slice(0, 24)
+      if (!key) return null
+      const list = Array.isArray(words) ? words.filter((word) => word?.name).slice(0, CUSTOM_LIMIT) : []
+      if (!list.length) return null
+      const map = readCustomDicts()
+      map[key] = list
+      writeCustomDicts(map)
+      DICT_CACHE.delete(CUSTOM_PREFIX + key)
+      return CUSTOM_PREFIX + key
+    }
+
+    function removeCustomDict(id) {
+      if (!isCustomId(id)) return false
+      const name = id.slice(CUSTOM_PREFIX.length)
+      const map = readCustomDicts()
+      if (!(name in map)) return false
+      delete map[name]
+      writeCustomDicts(map)
+      DICT_CACHE.delete(id)
+      return true
+    }
+
+    /** 自定义词表 → 归一化词条（和网络词库同一形状） */
+    function customWords(id) {
+      if (!isCustomId(id)) return []
+      const name = id.slice(CUSTOM_PREFIX.length)
+      return normalizeWords(readCustomDicts()[name] || [], 'en')
+    }
+
     /** 「已掌握」的词：`${dictId}:${word}` 集合，存 localStorage（不占 IndexedDB 版本位） */
     const MASTERED_KEY = 'qwerty-autotype:mastered'
 
@@ -511,7 +655,7 @@ window.__ModuleLoader__.load({
 
     /** 打包成可下载的 JSON 文本（只含本地练习数据 + 设置，不含词库词条） */
     function serializeBackup(parts) {
-      const { settings, wordRecords, chapterRecords, progress, mastered } = parts || {}
+      const { settings, wordRecords, chapterRecords, progress, mastered, customDicts } = parts || {}
       const trim = (list, limit) => (Array.isArray(list) ? list.slice(0, limit) : [])
       const payload = {
         kind: 'qwerty-autotype-backup',
@@ -527,6 +671,7 @@ window.__ModuleLoader__.load({
         chapterRecords: trim(chapterRecords, BACKUP_LIMITS.chapterRecords),
         progress: trim(progress, BACKUP_LIMITS.progress),
         mastered: trim(mastered, BACKUP_LIMITS.progress),
+        customDicts: customDicts && typeof customDicts === 'object' ? customDicts : {},
       }
       return JSON.stringify(payload, null, 2)
     }
@@ -594,7 +739,25 @@ window.__ModuleLoader__.load({
       const mastered = (Array.isArray(raw.mastered) ? raw.mastered : [])
         .filter((item) => typeof item === 'string' && item)
 
-      return { settings, wordRecords, chapterRecords, progress, mastered }
+      // 自定义词表：只收 { 名字: 词条数组 }，单表超上限就截断
+      const customDicts = {}
+      if (raw.customDicts && typeof raw.customDicts === 'object' && !Array.isArray(raw.customDicts)) {
+        for (const [name, words] of Object.entries(raw.customDicts)) {
+          const key = String(name || '').trim()
+          if (!key || !Array.isArray(words)) continue
+          const list = words
+            .filter((word) => word && typeof word.name === 'string' && word.name)
+            .slice(0, CUSTOM_LIMIT)
+            .map((word) => ({
+              name: word.name,
+              trans: Array.isArray(word.trans) ? word.trans.filter((item) => typeof item === 'string') : [],
+              ...(typeof word.ipa === 'string' && word.ipa ? { ipa: word.ipa } : {}),
+            }))
+          if (list.length) customDicts[key] = list
+        }
+      }
+
+      return { settings, wordRecords, chapterRecords, progress, mastered, customDicts }
     }
 
     /** 清空一张表（IndexedDB 不可用时清镜像） */
@@ -706,6 +869,7 @@ window.__ModuleLoader__.load({
           chapterRecords,
           progress,
           mastered: readMastered(),
+          customDicts: readCustomDicts(),
         }),
       )
     }
@@ -853,6 +1017,38 @@ window.__ModuleLoader__.load({
         .slice(0, Math.max(1, limit ?? 5))
     }
 
+    /** QWERTY 三行布局，热力图直接用 */
+    const KEY_ROWS = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm']
+
+    /**
+     * 把 wrongLetters 铺到键盘上：返回三行按键，每键 { key, count, level }。
+     * level 按「本次最多的键」分 0..4，没打错的键是 0。
+     */
+    function keyboardHeat(letters) {
+      const tally = new Map()
+      const rows = Array.isArray(letters)
+        ? letters.map((item) => [String(item?.letter ?? '').toLowerCase(), Math.max(0, Number(item?.count) || 0)])
+        : Object.entries(letters || {}).map(([letter, count]) => [String(letter).toLowerCase(), Math.max(0, Number(count) || 0)])
+      for (const [key, count] of rows) {
+        if (!key || !count) continue
+        tally.set(key, (tally.get(key) || 0) + count)
+      }
+      const max = Math.max(0, ...tally.values())
+      const levelOf = (count) => {
+        if (!count || !max) return 0
+        const ratio = count / max
+        if (ratio >= 0.75) return 4
+        if (ratio >= 0.5) return 3
+        if (ratio >= 0.25) return 2
+        return 1
+      }
+      return KEY_ROWS.map((row) => [...row].map((key) => ({
+        key,
+        count: tally.get(key) || 0,
+        level: levelOf(tally.get(key) || 0),
+      })))
+    }
+
     /** 错词本筛选：按词库 + 关键词 + 排序方式 */
     function filterWrongWords(rows, filters) {
       const { query, dictId, sort, mastered, showMastered = false } = filters || {}
@@ -911,6 +1107,14 @@ window.__ModuleLoader__.load({
     /** 读词条：内存 → 内置 → IndexedDB → 网络（force=true 时跳过前三级） */
     async function loadDictWords(id, options) {
       const force = Boolean(options?.force)
+      // 自定义词表不走网络
+      if (isCustomId(id)) {
+        if (!force && DICT_CACHE.has(id)) return DICT_CACHE.get(id)
+        const words = customWords(id)
+        if (!words.length) throw new Error(`自定义词表为空：${id}`)
+        DICT_CACHE.set(id, words)
+        return words
+      }
       const meta = dictionaryById(id)
       if (!meta) throw new Error(`未知词库：${id}`)
 
@@ -955,6 +1159,11 @@ window.__ModuleLoader__.load({
     /** 只取已就绪的词条（不触发网络），没有就返回内置兜底 */
     function wordsSync(id) {
       if (DICT_CACHE.has(id)) return DICT_CACHE.get(id)
+      if (isCustomId(id)) {
+        const words = customWords(id)
+        if (words.length) DICT_CACHE.set(id, words)
+        return words
+      }
       const builtin = builtinById(id)
       if (builtin?.words?.length) return builtin.words
       return LEXICON.map((entry) => ({ w: entry.word, ipa: entry.ipa, zh: entry.zh }))
@@ -1097,7 +1306,19 @@ window.__ModuleLoader__.load({
         announceDone: '本轮完成，共 {n} 个词',
         hotkeysList: 'Esc 关闭 · Ctrl/⌘+← 上一个 · Ctrl/⌘+→ 跳过 · Ctrl/⌘+J 循环 · Ctrl/⌘+P 暂停 · 在输入框里按 Tab 开始',
         lettersTitle: '易错字母',
+        customNew: '＋ 导入自定义词表',
+        customName: '词表名字（可留空）',
+        customPlaceholder: '一行一个词：word 中文\n也支持 word,中文,/音标/\n# 开头是注释',
+        customSave: '保存并开始',
+        customEmpty: '没解析出任何单词，检查一下格式',
+        customSaved: '已保存 {n} 个词',
+        cancel: '取消',
         markMastered: '标记已掌握',
+        cacheLabel: '词库缓存',
+        cacheHint: '已缓存 {n} 个词库，约 {size}；清掉后下次用到会重新下载',
+        cacheLoading: '读取中…',
+        cacheClear: '清理缓存',
+        cacheCleared: '词库缓存已清理',
         dataTitle: '数据',
         backupExport: '导出备份',
         backupImport: '导入备份',
@@ -1184,7 +1405,19 @@ window.__ModuleLoader__.load({
         announceDone: 'Round finished, {n} words',
         hotkeysList: 'Esc close · Ctrl/⌘+← prev · Ctrl/⌘+→ skip · Ctrl/⌘+J loop · Ctrl/⌘+P pause · Tab in the composer starts',
         lettersTitle: 'Tricky letters',
+        customNew: '+ Import word list',
+        customName: 'List name (optional)',
+        customPlaceholder: 'One word per line: word meaning\nalso word,meaning,/ipa/\n# starts a comment',
+        customSave: 'Save and start',
+        customEmpty: 'No words parsed — check the format',
+        customSaved: 'Saved {n} words',
+        cancel: 'Cancel',
         markMastered: 'Mark as mastered',
+        cacheLabel: 'Dictionary cache',
+        cacheHint: '{n} dictionaries cached, about {size}; they re-download on next use',
+        cacheLoading: 'Reading…',
+        cacheClear: 'Clear cache',
+        cacheCleared: 'Dictionary cache cleared',
         dataTitle: 'Data',
         backupExport: 'Export backup',
         backupImport: 'Import backup',
@@ -1272,6 +1505,15 @@ window.__ModuleLoader__.load({
 .qat-letters{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--dsw-alias-label-secondary);margin:2px 0 6px}
 .qat-letters-label{color:var(--dsw-alias-label-tertiary)}
 .qat-letterchip{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.qat-kbd{display:flex;flex-direction:column;gap:3px;margin:0 0 10px}
+.qat-kbdrow{display:flex;gap:3px}
+.qat-kbdrow:nth-child(2){margin-left:8px}
+.qat-kbdrow:nth-child(3){margin-left:18px}
+.qat-key{width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border-radius:3px;font-size:9px;line-height:1;color:var(--dsw-alias-label-tertiary);background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l1);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.qat-key[data-level="1"]{background:color-mix(in srgb, var(--dsw-alias-state-error-primary) 22%, transparent);color:var(--dsw-alias-label-secondary)}
+.qat-key[data-level="2"]{background:color-mix(in srgb, var(--dsw-alias-state-error-primary) 40%, transparent);color:var(--dsw-alias-label-primary)}
+.qat-key[data-level="3"]{background:color-mix(in srgb, var(--dsw-alias-state-error-primary) 62%, transparent);color:#fff}
+.qat-key[data-level="4"]{background:var(--dsw-alias-state-error-primary);color:#fff}
 .qat-heat{display:flex;gap:3px;margin:4px 0 10px}
 .qat-heatcol{display:flex;flex-direction:column;gap:3px}
 .qat-heatcell{width:9px;height:9px;border-radius:2px;background:var(--dsw-alias-border-l1)}
@@ -1298,6 +1540,10 @@ window.__ModuleLoader__.load({
 .qat-settext{display:flex;flex-direction:column;gap:2px;min-width:0}
 .qat-setlabel{font-size:13px;color:var(--dsw-alias-label-primary)}
 .qat-sethint{font-size:12px;color:var(--dsw-alias-label-tertiary)}
+.qat-import{display:flex;flex-direction:column;gap:8px;padding:10px 0 2px;border-top:1px solid var(--dsw-alias-border-l1);margin-top:6px}
+.qat-importopen{padding-top:10px;border-top:1px solid var(--dsw-alias-border-l1);margin-top:6px}
+.qat-textarea{width:100%;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);font:inherit;font-size:13px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;resize:vertical}
+.qat-textarea:focus{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-1px}
 .qat-datablock{margin-top:6px}
 .qat-hotkeys{line-height:1.7;margin-top:-6px}
 .qat-databtns{display:flex;gap:8px;flex-wrap:wrap}
@@ -2642,7 +2888,25 @@ window.__ModuleLoader__.load({
 
     /** 顶层面板：词库分类 + 大字跟打 */
     /** 词库选择器（面板内二级页）：搜索 + 分类 + 最近使用 + 列表 */
-    function DictPicker({ t, dictId, query, category, recent, categories, list, onQuery, onCategory, onPick, onClose }) {
+    function DictPicker({ t, dictId, query, category, recent, categories, list, onQuery, onCategory, onPick, onImported, onClose }) {
+      const [importing, setImporting] = useState(false)
+      const [draftName, setDraftName] = useState('')
+      const [draftText, setDraftText] = useState('')
+      const [flash, setFlash] = useState('')
+
+      const submitImport = () => {
+        const words = parseCustomWords(draftText)
+        const id = saveCustomDict(draftName || `我的词 ${new Date().toISOString().slice(5, 10)}`, words)
+        if (!id) {
+          setFlash(t('customEmpty'))
+          return
+        }
+        setFlash(t('customSaved', { n: words.length }))
+        setImporting(false)
+        setDraftText('')
+        onImported?.(id)
+      }
+
       const dictButton = (item, active) => h('button', {
         key: item.id,
         type: 'button',
@@ -2693,6 +2957,39 @@ window.__ModuleLoader__.load({
           h('div', { className: 'qat-dictgroup-title' }, query.trim() ? t('searchResult') : (category || t('allCategories'))),
           h('div', { className: 'qat-dictscroll' }, list.map((item) => dictButton(item, item.id === dictId))),
         ),
+        importing
+          ? h('div', { className: 'qat-import' },
+            h('input', {
+              className: 'qat-search',
+              value: draftName,
+              placeholder: t('customName'),
+              'aria-label': t('customName'),
+              onInput: (event) => setDraftName(event.target.value),
+            }),
+            h('textarea', {
+              className: 'qat-textarea',
+              value: draftText,
+              placeholder: t('customPlaceholder'),
+              'aria-label': t('customPlaceholder'),
+              rows: 5,
+              onInput: (event) => setDraftText(event.target.value),
+            }),
+            h('div', { className: 'qat-databtns' },
+              h('span', { ...pressable(submitImport), className: 'qat-btn', 'data-act': 'custom-save' }, t('customSave')),
+              h('span', {
+                ...pressable(() => {
+                  setImporting(false)
+                  setFlash('')
+                }),
+                className: 'qat-btn',
+                'data-act': 'custom-cancel',
+              }, t('cancel')),
+            ),
+          )
+          : h('div', { className: 'qat-databtns qat-importopen' },
+            h('span', { ...pressable(() => setImporting(true)), className: 'qat-btn', 'data-act': 'custom-new' }, t('customNew')),
+          ),
+        flash ? h('div', { className: 'qat-sethint', 'data-flash': 'true' }, flash) : null,
       )
     }
 
@@ -2752,12 +3049,21 @@ window.__ModuleLoader__.load({
           importData(parsed).then((result) => {
             for (const [key, value] of Object.entries(parsed.settings || {})) setSetting(key, value)
             if (parsed.mastered?.length) writeMastered(parsed.mastered)
+            if (parsed.customDicts && Object.keys(parsed.customDicts).length) writeCustomDicts(parsed.customDicts)
             say(t('backupImported', { n: result.restored }))
           })
         })
       }
 
       const onClear = () => say(t('clearConfirm'))
+
+      const [cache, setCache] = useState(null)
+      const refreshCache = () => {
+        cacheStats().then((stats) => setCache(stats)).catch(() => setCache({ count: 0, bytes: 0 }))
+      }
+      useEffect(() => {
+        refreshCache()
+      }, [])
       const toggle = (key) => h('span', {
         role: 'switch',
         tabIndex: 0,
@@ -2806,6 +3112,23 @@ window.__ModuleLoader__.load({
         }),
         h('div', { className: 'qat-settings-title qat-datablock' }, t('hotkeysTitle')),
         h('div', { className: 'qat-sethint qat-hotkeys' }, t('hotkeysList')),
+        h(SettingRow, {
+          t,
+          label: t('cacheLabel'),
+          hint: cache
+            ? t('cacheHint', { n: cache.count, size: `${(cache.bytes / 1048576).toFixed(1)} MB` })
+            : t('cacheLoading'),
+          control: h('span', {
+            ...pressable(() => {
+              clearDictCache().then(() => {
+                refreshCache()
+                say(t('cacheCleared'))
+              })
+            }),
+            className: 'qat-btn',
+            'data-act': 'cache-clear',
+          }, t('cacheClear')),
+        }),
         h('div', { className: 'qat-settings-title qat-datablock' }, t('dataTitle')),
         h('div', { className: 'qat-databtns' },
           h('span', {
@@ -2947,12 +3270,20 @@ window.__ModuleLoader__.load({
           h('span', null, `WPM ${summary.wpm}`),
         ),
         letters && letters.length
-          ? h('div', { className: 'qat-letters' },
-            h('span', { className: 'qat-letters-label' }, t('lettersTitle')),
-            ...letters.map((item) => h('span', {
-              key: item.letter,
-              className: 'qat-chip qat-letterchip',
-            }, `${item.letter} ×${item.count}`)))
+          ? h('div', null,
+            h('div', { className: 'qat-letters' },
+              h('span', { className: 'qat-letters-label' }, t('lettersTitle')),
+              ...letters.map((item) => h('span', {
+                key: item.letter,
+                className: 'qat-chip qat-letterchip',
+              }, `${item.letter} ×${item.count}`))),
+            h('div', { className: 'qat-kbd' }, keyboardHeat(letters).map((row, rowIndex) =>
+              h('div', { key: rowIndex, className: 'qat-kbdrow' }, row.map((cell) => h('span', {
+                key: cell.key,
+                className: 'qat-key',
+                'data-level': String(cell.level),
+                title: `${cell.key} ×${cell.count}`,
+              }, cell.key.toUpperCase()))))))
           : null,
         h('div', { className: 'qat-heat' }, (weeks || []).map((col, index) =>
           h('div', { key: index, className: 'qat-heatcol' }, col.days.map((day) =>
@@ -3168,6 +3499,10 @@ window.__ModuleLoader__.load({
               onQuery: setQuery,
               onCategory: setCategory,
               onPick: choose,
+              onImported: (id) => {
+                // 新建完直接切到这个词表，省一次点击
+                choose(id)
+              },
               onClose: () => setPicker(false),
             })
             : view === 'wrong'
@@ -3253,7 +3588,10 @@ window.__ModuleLoader__.load({
         collectWrongWords, heatmapWeeks, heatLevel, filterWrongWords, DICT,
         serializeBackup, parseBackup, BACKUP_VERSION, BACKUP_LIMITS, playClick, pressable,
         topWrongLetters, readMastered, writeMastered, toggleMastered, masteredKey, MASTERED_KEY,
+        readCustomDicts, writeCustomDicts, parseCustomWords, saveCustomDict, removeCustomDict,
+        customWords, isCustomId, CUSTOM_PREFIX, CUSTOM_LIMIT, dictionaryById, chapterCount,
         exportBackup, importData, clearData, readMirror, writeMirror, MIRROR_KEY,
+        keyboardHeat, KEY_ROWS, cacheStats, clearDictCache,
       },
       inject: ['slots', 'locale'],
       apply(ctx) {
