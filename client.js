@@ -262,22 +262,84 @@ window.__ModuleLoader__.load({
     const WORD_OK = /^[^\s\u0000-\u001f](?:[^\u0000-\u001f]*[^\s\u0000-\u001f])?$/
 
     /**
-     * 上游裸词条 { name, trans[], usphone, ukphone } → { w, ipa, zh }
-     * 不合法返回 null（空词、空释义、超长、含控制字符）
+     * 单词/词组长度上限。
+     * 上游全库最长的一条 name 是 177 字符（`IELTS-oral-900.json` 的雅思口语句子），
+     * 留一点余量定到 200：再长的基本就是整段文本，逐字打不现实。
+     */
+    const MAX_WORD_LENGTH = 200
+
+    /** 超过这个字数就换小字号排版（长句子/词组不再撑爆一行） */
+    const LONG_WORD_CHARS = 20
+
+    /** inspectWord 的丢弃原因：审计脚本按这个枚举分类，顺序就是判定顺序 */
+    const DROP_REASONS = ['empty', 'tooLong', 'badChars', 'noZh']
+
+    /**
+     * 归一化的「体检」：判定与 normalizeWord 完全一致，只是把丢弃原因说出来。
+     * 顺序固定 empty → tooLong → badChars → noZh（审计报表按这个口径归类）。
+     * @returns {{ ok: boolean, reason: string, word: object|null }}
+     */
+    function inspectWord(raw, languageCategory, options) {
+      const drop = (reason) => ({ ok: false, reason, word: null })
+      if (!raw || typeof raw !== 'object') return drop('empty')
+      const isCode = languageCategory === 'code'
+      let w = (raw.name ?? raw.w ?? '').toString().replace(/\s+/g, ' ').trim()
+      if (!w) return drop('empty')
+      if (w.length > MAX_WORD_LENGTH) return drop('tooLong')
+      if (!WORD_OK.test(w)) return drop('badChars')
+      if (!isCode) w = w.toLowerCase()
+      const zh = cleanZh(Array.isArray(raw.trans) ? raw.trans.join('；') : (raw.trans ?? raw.zh))
+      // 日语假名词库（JapaneseHiragana / Katakana）没有中文释义，但有 notation（假名），
+      // 练的是 name（罗马字）：`zh || notation` 有一即可入库，UI 把假名当副行显示
+      const notation = isCode || raw.notation === undefined || raw.notation === null
+        ? ''
+        : raw.notation.toString().replace(/\s+/g, ' ').trim()
+      // 自定义词表允许只给单词（没释义也能练），内置/网络词库仍要求有中文或假名
+      if (!zh && !notation && options?.allowNoZh !== true) return drop('noZh')
+      // 美音英音各存一份：缺的那支留空串，退回由 phoneticOf 决定（不在这里合并）
+      const us = isCode ? '' : buildIpa(raw.usphone)
+      const uk = isCode ? '' : buildIpa(raw.ukphone)
+      // 两支都缺时才退回上游自带的 ipa（老缓存 / 内置采样只有这一支，别给它编口音）
+      const wantUk = options?.accent === 'uk'
+      const picked = wantUk ? (uk || us) : (us || uk)
+      const word = { w, ipa: picked || (isCode ? '' : buildIpa(raw.ipa)), us, uk, zh }
+      if (notation) word.notation = notation
+      return { ok: true, reason: '', word }
+    }
+
+    /**
+     * 上游裸词条 { name, trans[], usphone, ukphone, notation? }
+     *   → { w, ipa, us, uk, zh, notation? }
+     * 不合法返回 null（空词、超长、含控制字符、既没中文也没假名）
+     * - `ipa` 是「默认展示的音标」（老缓存 / lookup / 错词本还在用它）：取 options.accent
+     *   （默认 us）那一支，缺了退回 uk || us，再缺才用上游自带的 ipa
+     * - `us` / `uk` 只来自各自的 phone 字段，不互相顶替
      * 大小写：en 一律小写（判定不因大小写卡人）；code 保留原样（SQL 等有意义）
      */
     function normalizeWord(raw, languageCategory, options) {
-      if (!raw || typeof raw !== 'object') return null
-      const isCode = languageCategory === 'code'
-      let w = (raw.name ?? raw.w ?? '').toString().replace(/\s+/g, ' ').trim()
-      if (!w || w.length > 40) return null
-      if (!WORD_OK.test(w)) return null
-      if (!isCode) w = w.toLowerCase()
-      const zh = cleanZh(Array.isArray(raw.trans) ? raw.trans.join('；') : (raw.trans ?? raw.zh))
-      // 自定义词表允许只给单词（没释义也能练），内置/网络词库仍要求有中文
-      if (!zh && options?.allowNoZh !== true) return null
-      const ipa = isCode ? '' : buildIpa(raw.ukphone || raw.usphone || raw.ipa)
-      return { w, ipa, zh }
+      const { word } = inspectWord(raw, languageCategory, options)
+      return word || null
+    }
+
+    /**
+     * 按口音取要显示的音标（纯函数，UI 只调它）。
+     * - us 且 word.us 非空 → `AmE: /.../`
+     * - uk 且 word.uk 非空 → `BrE: /.../`
+     * - 对应口音缺失就退回另一支，标签跟着实际取值走（不显示空括号）
+     * - 两支都没有 → 退回老缓存的 `ipa`，不加口音前缀（老数据是美英合并的，标不准）
+     * - 什么都没有 → { text: '', label: '' }，UI 不渲染
+     * @returns {{ text: string, label: string }}
+     */
+    function phoneticOf(word, accent) {
+      const us = String(word?.us ?? '')
+      const uk = String(word?.uk ?? '')
+      const picked = accent === 'uk' ? (uk ? 'uk' : 'us') : (us ? 'us' : 'uk')
+      const value = picked === 'uk' ? uk : us
+      if (value) {
+        const label = picked === 'uk' ? 'BrE' : 'AmE'
+        return { text: `${label}: ${value}`, label }
+      }
+      return { text: String(word?.ipa ?? ''), label: '' }
     }
 
     /** 批量归一化 + 去重（保序） */
@@ -1653,17 +1715,24 @@ window.__ModuleLoader__.load({
       }
     }
 
-    /** 查一个词的中文与音标：已加载词库 → 内置词库 → LEXICON */
+    /**
+     * 查一个词的中文、音标与假名：已加载词库 → 内置词库 → LEXICON。
+     * `us` / `uk` / `notation` 原样带出去（phoneticOf 按口音挑显示哪一支）；
+     * 老缓存条目只有 `ipa`，这三个就是 undefined，phoneticOf 会退回 `ipa`。
+     */
     function lookup(word) {
       if (!word) return undefined
       const needle = String(word).toLowerCase()
+      const hitOf = (entry) => ({
+        word: entry.w, ipa: entry.ipa, zh: entry.zh, us: entry.us, uk: entry.uk, notation: entry.notation,
+      })
       for (const dict of builtinDicts()) {
         const hit = dict.words?.find((entry) => entry.w === needle)
-        if (hit) return { word: hit.w, ipa: hit.ipa, zh: hit.zh }
+        if (hit) return hitOf(hit)
       }
       for (const words of DICT_CACHE.values()) {
         const hit = words.find((entry) => entry.w === needle)
-        if (hit) return { word: hit.w, ipa: hit.ipa, zh: hit.zh }
+        if (hit) return hitOf(hit)
       }
       const fallback = LEXICON.find((entry) => entry.word === needle)
       return fallback ? { word: fallback.word, ipa: fallback.ipa, zh: fallback.zh } : undefined
@@ -2145,6 +2214,11 @@ window.__ModuleLoader__.load({
 .qat-card[data-variant="panel"]{width:100%;box-sizing:border-box;border:1px solid var(--dsw-alias-border-l1);border-radius:14px;padding:28px 24px 22px;background:var(--dsw-alias-bg-layer-1);align-items:center;cursor:text}
 .qat-card[data-variant="panel"] .qat-head{justify-content:center}
 .qat-card[data-variant="panel"] .qat-word{font-size:56px;justify-content:center;gap:2px;margin:8px 0 4px}
+/* 长句子/词组（> LONG_WORD_CHARS）：缩字号 + 允许折行，别把卡片撑爆 */
+.qat-bar .qat-word[data-long="true"],.qat-card[data-variant="panel"] .qat-word[data-long="true"]{font-size:22px;line-height:1.45;letter-spacing:0;gap:0;min-height:26px;flex-wrap:wrap;text-align:center}
+.qat-bar .qat-word[data-long="true"]{font-size:18px}
+/* 假名（notation）当副行时用正文字体，不然假名挤在等宽字体里很难认 */
+.qat-gloss-notation{font-size:15px;line-height:1.4;color:var(--dsw-alias-label-secondary);font-family:inherit}
 .qat-gloss{display:flex;flex-direction:column;align-items:center;gap:4px;margin:6px 0 16px;text-align:center}
 .qat-gloss-ipa{font-size:15px;line-height:1.4;color:var(--dsw-alias-label-tertiary);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 .qat-gloss-zh{font-size:16px;line-height:1.5;color:var(--dsw-alias-label-secondary);max-width:34em}
@@ -3212,8 +3286,12 @@ window.__ModuleLoader__.load({
       const chars = target.split('')
       const masked = maskLetters(target, dictation, state.index)
       const meta = lookup(current)
-      const ipaText = meta?.ipa ?? ''
+      // 音标按设置里的口音显示（AmE / BrE）：日/中/俄等词条没有口音之分时退回 ipa 原文
+      const ipaText = phoneticOf(meta, options?.accent ?? getSettings().accent).text
+      // 日文假名词库没有中文释义：notation（假名）单独一行放在单词上方（对齐上游 Notation）
+      const notation = String(meta?.notation ?? '')
       const gloss = meta?.zh ?? ''
+      const longWord = target.length > LONG_WORD_CHARS
       // 打错提示：3 / 4 / 5 次逐档揭示，打对（advance）归零
       const tip = tipState({ wrongCount: state.wordWrong, word: target, typed: state.typed })
 
@@ -3525,7 +3603,12 @@ window.__ModuleLoader__.load({
             onNextChapter,
           })
           : h('div', null,
-            h('div', { className: 'qat-word', 'data-flash': state.flash ? 'true' : 'false' },
+            notation ? h('div', { className: 'qat-gloss-notation' }, notation) : null,
+            h('div', {
+              className: 'qat-word',
+              'data-flash': state.flash ? 'true' : 'false',
+              'data-long': longWord ? 'true' : 'false',
+            },
               chars.map((ch, i) => {
                 const typedChar = state.typed[i]
                 const letterState = typedChar === undefined ? 'idle' : typedChar === ch ? 'ok' : 'bad'
@@ -3538,7 +3621,8 @@ window.__ModuleLoader__.load({
                 }, hidden ? '·' : (ch === ' ' ? '␣' : ch))
               }),
             ),
-            showMeta && (ipaText || gloss)
+            // 假名词库只有 notation 时也要保留这一块：发音按钮挂在里面
+            showMeta && (ipaText || gloss || notation)
               ? h('div', { className: 'qat-gloss' },
                 ipaText ? h('div', { className: 'qat-gloss-ipa' }, ipaText) : null,
                 gloss ? h('div', { className: 'qat-gloss-zh' }, gloss) : null,
@@ -4001,8 +4085,10 @@ window.__ModuleLoader__.load({
       const target = effectiveTarget(current, judgeOptions)
       const masked = maskLetters(target, settings.dictation, state.index)
       const entry = lookup(current)
-      const ipa = entry?.ipa ?? ''
-      const meaning = entry?.zh ?? ''
+      // 音标按口音显示；日文假名词条没有音标，就把假名顶上（跟面板一样当副行）
+      const ipa = phoneticOf(entry, settings.accent).text || String(entry?.notation ?? '')
+      const meaning = entry?.zh || entry?.notation || ''
+      const longWord = target.length > LONG_WORD_CHARS
 
       /** 上一次读过释义的词：同一个词不重复读 */
       const meaningRef = useRef('')
@@ -4470,7 +4556,11 @@ window.__ModuleLoader__.load({
         h('span', { className: 'qat-bar-speed' }, t('liveSpeed', { wpm: liveWpm })),
         h('span', { className: 'qat-bar-center' },
           h('span', { className: 'qat-wordblock' },
-          h('span', { className: 'qat-word', 'data-flash': state.flash ? 'true' : 'false' },
+          h('span', {
+            className: 'qat-word',
+            'data-flash': state.flash ? 'true' : 'false',
+            'data-long': longWord ? 'true' : 'false',
+          },
             chars.map((ch, i) => {
               const typedChar = state.typed[i]
               const letterState = typedChar === undefined ? 'idle' : typedChar === ch ? 'ok' : 'bad'
@@ -5075,8 +5165,9 @@ window.__ModuleLoader__.load({
 
       const settings = useSyncExternalStore(subscribeSettings, getSettings, getSettings)
       const judgeOptions = useMemo(
-        () => ({ caseSensitive: settings.caseSensitive, ignorePunct: settings.ignorePunct }),
-        [settings.caseSensitive, settings.ignorePunct],
+        // accent 一起带上：面板里的音标要跟着口音设置重渲染
+        () => ({ caseSensitive: settings.caseSensitive, ignorePunct: settings.ignorePunct, accent: settings.accent }),
+        [settings.caseSensitive, settings.ignorePunct, settings.accent],
       )
       const meta = dictionaryById(dictId)
       const chapterTotal = chapterCount(meta)
@@ -5437,6 +5528,7 @@ window.__ModuleLoader__.load({
       __test: {
         judgeTyping, parseWords, format, pushChar, lookup, dictionaries, sampleWords, groupByCategory,
         catalog, normalizeWord, normalizeWords, chapterCount, wordsOfChapter, sampleFromWords,
+        inspectWord, phoneticOf, MAX_WORD_LENGTH, LONG_WORD_CHARS, DROP_REASONS,
         searchCatalog, readRecent, catalogSize: () => catalog().length, wordsSync, loadDictWords,
         effectiveTarget, stripPunct, maskLetters, DICTATION_MODES, readSettings, getSettings, setSetting,
         subscribeSettings, SETTING_DEFAULTS, DICT, heatLevel,
