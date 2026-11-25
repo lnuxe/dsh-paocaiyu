@@ -1679,6 +1679,12 @@ window.__ModuleLoader__.load({
 .qat-bar{position:relative;display:flex;align-items:center;justify-content:center;padding:0 0 5px;background:transparent;border:0;box-sizing:border-box;font-size:12px;color:var(--dsw-alias-label-secondary);min-height:52px}
 .qat-bar .qat-word{font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;font-size:52px;line-height:1.1;min-height:60px;gap:1px;letter-spacing:.01em;font-weight:400}
 .qat-card[data-variant="panel"] .qat-word{font-size:64px;min-height:74px}
+/* 面板按官方 Typing 页的骨架摆：顶部一行工具、中间单词居中、底部一行按钮 + 一行提示 */
+.qat-card[data-variant="panel"]{position:relative;min-height:380px;justify-content:center;padding:56px 24px 52px}
+.qat-card[data-variant="panel"] .qat-head{position:absolute;left:16px;right:16px;top:14px;width:auto;gap:8px}
+.qat-card[data-variant="panel"] > .qat-row{position:absolute;left:0;right:0;bottom:42px;justify-content:center}
+.qat-card[data-variant="panel"] > .qat-hint{position:absolute;left:0;right:0;bottom:14px;text-align:center;margin:0}
+.qat-card[data-variant="panel"] .qat-done{width:100%;align-items:center}
 .qat-bar-empty{font-size:12px;color:var(--dsw-alias-label-tertiary)}
 .qat-bar-center{display:flex;align-items:center;justify-content:center;min-width:0;width:100%}
 .qat-bar-count{position:absolute;left:0;top:50%;transform:translateY(-50%);font-size:11px;color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums}
