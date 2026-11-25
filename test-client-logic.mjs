@@ -10,6 +10,13 @@ import {
   auditRows, mergeStats, emptyStats, ratio, formatPct, formatRow, formatHead, formatReport,
   parseArgs, dictFilePath, REASON_KEYS,
 } from './scripts/audit-dicts.mjs'
+// 音标缺口审计的纯函数：四桶口径 / 覆盖率 / 「有字段却没显示」的判定
+import {
+  PHONETIC_BUCKETS, NO_PHONETIC_CATEGORIES, NOTATION_CATEGORIES,
+  emptyPhoneticStats, bucketOf, classifyCategory, phoneticRows, mergePhonetic,
+  phoneticCoverage, missingPhonetic, sortWorstPhonetic, formatPhoneticReport,
+  formatPhoneticRow, parsePhoneticArgs, upstreamCandidates, pickUpstream,
+} from './scripts/audit-phonetic.mjs'
 
 const file = path.join(import.meta.dirname, 'client.js')
 const source = fs.readFileSync(file, 'utf8')
@@ -2751,6 +2758,70 @@ check('面板音标比释义小一号', /\[data-variant="panel"\] \.qat-gloss-ip
 check('跟打条释义保持单行', /\[data-variant="command"\] \.qat-gloss-zh\{white-space:nowrap/.test(source), true)
 check('释义条目限宽居中不溢出', /\.qat-sense\{[^}]*max-width:30em[^}]*overflow-wrap:break-word/.test(source), true)
 check('释义样式不用写死颜色', /\.qat-(sense|pos|headtag)\{[^}]*#[0-9a-fA-F]{3,6}/.test(source), false)
+
+// —— 音标审计：四桶口径、覆盖率、「有字段却没显示」 ——
+// 归一化桩：raw 上直接写 us/uk，方便钉住「桶怎么分」和「什么算没显示」
+const phNormalize = (raw) => (raw && raw.name
+  ? { w: raw.name, us: raw.us || '', uk: raw.uk || '', ipa: raw.ipa || '', zh: raw.zh || 'x', ...(raw.notation ? { notation: raw.notation } : {}) }
+  : null)
+check('音标桶：both / usOnly / ukOnly / neither',
+  [bucketOf({ us: '/ə/', uk: '/ə/' }), bucketOf({ us: '/ə/' }), bucketOf({ uk: '/ə/' }), bucketOf({})].join(','),
+  'both,usOnly,ukOnly,neither')
+check('音标桶顺序固定', PHONETIC_BUCKETS.join(','), 'both,usOnly,ukOnly,neither')
+check('只有 code 算「没有音标概念」，ja 算「假名代音标」，其余该有 IPA',
+  [classifyCategory('code'), classifyCategory('ja'), classifyCategory('en'), classifyCategory(undefined)].join(','),
+  'noPhoneticConcept,notationInstead,expectsIpa,expectsIpa')
+
+const phStats = phoneticRows([
+  { name: 'both', us: '/b/', uk: '/b/' },
+  { name: 'us', us: '/u/' },
+  { name: 'uk', uk: '/k/' },
+  { name: 'none', notation: 'あ' },
+], 'en', phNormalize, { name: 'x.json' })
+check('音标统计：四桶各一 + 只有假名的单列',
+  [phStats.kept, phStats.both, phStats.usOnly, phStats.ukOnly, phStats.neither, phStats.notationOnly].join(','),
+  '4,1,1,1,1,1')
+check('覆盖率 = 有音标 / 保留，缺音标 = 保留 - 有音标',
+  [phoneticCoverage(phStats), missingPhonetic(phStats)].join(','), '0.75,1')
+check('没给 normalize 时不崩', phoneticRows([{ name: 'a' }], 'en').kept, 0)
+
+// 「有字段却没显示」：原始有 usphone，归一化后 us/uk/ipa 全空 → hidden
+const phLost = phoneticRows([{ name: 'lost', usphone: "ə'bændən", ukphone: '' }], 'en',
+  () => ({ w: 'lost', us: '', uk: '', ipa: '', zh: '丢' }), { name: 'lost.json' })
+check('有字段却没显示：hidden / rawPhone / lostUs / 样例词',
+  [phLost.hidden, phLost.rawPhone, phLost.lostUs, phLost.hiddenSamples[0]?.word].join(','), '1,1,1,lost')
+check('正常显示时 hidden 为 0',
+  phoneticRows([{ name: 'ok', usphone: 'ə' }], 'en', (raw) => ({ w: raw.name, us: '/ə/', uk: '', ipa: '', zh: 'x' })).hidden, 0)
+check('音标合并：保留与四桶、hidden 都相加',
+  (() => {
+    const merged = mergePhonetic([phStats, phLost])
+    return [merged.kept, merged.both + merged.usOnly + merged.ukOnly + merged.neither, merged.hidden].join(',')
+  })(), '5,5,1')
+
+// 最差排序：覆盖率低的在前；code / ja 默认不参与（它们本来就不该有 IPA）
+const phSortList = [
+  { ...emptyPhoneticStats(), name: 'good.json', kept: 100, both: 100 },
+  { ...emptyPhoneticStats(), name: 'bad.json', kept: 100, neither: 100 },
+  { ...emptyPhoneticStats(), name: 'code.json', category: 'code', kept: 100, neither: 100 },
+  { ...emptyPhoneticStats(), name: 'ja.json', category: 'ja', kept: 100, neither: 100 },
+]
+check('最差排序：覆盖率低的在前，code / ja 默认排除，可显式放开',
+  [sortWorstPhonetic(phSortList)[0].name, sortWorstPhonetic(phSortList).length, sortWorstPhonetic(phSortList, { includeNonIpa: true }).length].join(','),
+  'bad.json,2,4')
+const phReport = formatPhoneticReport(phSortList, { top: 2 })
+check('音标报表含全局 / 最差 / 有字段却没显示三段',
+  ['有音标', '最差', '有字段却没显示'].every((key) => phReport.includes(key)), true)
+check('音标报表行含词库名与覆盖率',
+  formatPhoneticRow({ ...emptyPhoneticStats(), name: 'a.json', kept: 4, both: 1 }).includes('25.0%'), true)
+
+check('音标参数默认 top=30 / 可改 / 认 --json',
+  [parsePhoneticArgs(['node', 'x']).top, parsePhoneticArgs(['node', 'x', '--top', '5']).top, parsePhoneticArgs(['node', 'x', '--json']).json].join(','),
+  '30,5,true')
+check('上游候选带默认目录，且优先挑真实存在的那个',
+  [upstreamCandidates('/tmp/nowhere', '/tmp/nowhere/dicts').includes('/tmp/nowhere/dicts'),
+    pickUpstream(['/tmp/definitely-not-here', import.meta.dirname]),
+    pickUpstream(['/tmp/definitely-not-here'])].join('|'),
+  `true|${import.meta.dirname}|/tmp/definitely-not-here`)
 
 await recordFlow
 
