@@ -276,3 +276,20 @@ v0.7.0 的「缺/部分全清零」是**按上一轮的待办清单核对**得�
 剩余口径（v0.9.0 之后）：缺 **11 条**（N12 / N15 / N16 / N17 / N18 / N19 / N20 / N21 / N22 / N24 / N26），
 部分 **7 条**（N1 键音资源、N2 循环次数、N3 快捷键、N4 上下词预览、N6 结算页默写/结语、N8 错词本详情/csv、
 N9 假名 ruby、N10 de/id/kk/罗马字发音 —— 其中 N9/N10 仍是整块没动）。
+
+## 7. v0.10.0 已修
+
+| 编号 | 修了什么 | 还差什么 |
+| --- | --- | --- |
+| N12 | 章内乱序 `shuffle`：`shuffleWords` + `chapterWordList`，代次计数器保证「只在取新词那刻洗」 | 跟打条持有整本词库，乱序在「词库加载 / 重开一轮」洗整本，不按章 |
+| N19 | 面板 `data-act="restart"` + 跟打条 `.qat-bar-restart`，清 index/typed/打错/计时/本轮 mistakes | 上游是 hover 开始按钮浮出 Restart，我们是常驻小按钮（省高度） |
+| N26 | `dictationOpenBy: user|auto`，`auto` 时换章自动回 `none`；`nextDictation` 钉住五条分支 | — |
+| N16 | `answerOnHover`（默认开）+ `answersRevealed`；`maskLetters` 第 4 参 `revealed` | — |
+| N17 | `textSelectable`（默认关）+ `data-selectable`（挂单词/释义块，不挂根） | 上游 Word 用 `select-all`、Translation 用 `select-text`，我们统一 `user-select:text` |
+| N9 | `isKanji` / `notationParts` / `notationNodes`，面板用原生 `<ruby>/<rt>`，`食べる(たべる)` 逐字注音 | 跟打条仍是纯文本（条上太窄）；括号空/片假名两处与上游有意识不同，见 CHANGELOG |
+| N10 | `ACCENTS` → us/uk/de/id/kk/romaji；`kk → &le=ru` 兜底；`romajiToHiragana` 自实现（~104 条映射） | 罗马字表比上游 276 行小：不做长音合并（`ou`），靠断言钉住实际行为 |
+
+剩余口径（v0.10.0 之后）：缺 **5 条**（N15 循环朗读、N18 按住 Tab 偷看、N20 词表点行发音、
+N21 胶囊点读、N22 复习模式出口、N24 发音预取 —— N20–N24 属「入口类」），
+部分 **8 条**（N1 键音资源、N2 循环次数、N3 快捷键四个、N4 上下词预览、N6 结算页默写/结语/撒花、
+N8 错词本详情/csv、N14 发音/释义音量、N7 年度两张热力图）。

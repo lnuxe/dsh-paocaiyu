@@ -7,6 +7,71 @@
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-25
+
+继续收审计清单：三条分支并行做「五个单点交互 + 日文两块」。测试 1120 → 1245 条；
+`client.js` 393,799 → 413,930 字节（占新纪律线 480KB 的 86.2%）。
+
+### Added · 章内乱序（N12）
+
+- 新设置 `shuffle`（默认关），文案照上游「开启后，每次练习章节中单词会随机排序。下一章节生效」
+- 纯函数 `shuffleWords(words, random)`（Fisher–Yates，接受可注入的 random，不改传入数组）+
+  `chapterWordList(words, chapter, round, opts)`
+- **只在取新一批词那一刻洗**：`useMemo` 依赖里带一个 `shuffleGen` 代次，换章 / 换轮 / 重开时 +1，
+  `Math.random()` 不进依赖，否则会边打边变
+
+### Added · 中途重开（N19）
+
+- 面板头部常驻 `data-act="restart"`，跟打条加 `.qat-bar-restart`（条上给速度让位，`right` 24 → 42px）
+- 语义：本章从头再来 —— `index` 归 0、`typed` 清空、打错次数归零、计时归零、**本轮 mistakes 一起清掉**；
+  `shuffle` 开着就重新洗。走 `restartNonce` 信号复用同一份 `restart`，不 remount
+- 不弹确认（与上游一致），全程不碰 `submit()`
+
+### Added · 默写 `openBy=auto`（N26）
+
+- 新设置 `dictationOpenBy: 'user' | 'auto'`。手动改默写形态 → `user`；点「默写本章节」→ `auto`
+- `dictationOpenBy === 'auto'` 时**换章自动回到 `none`** 并复位 `user`；`restart` 不算换章
+- 纯函数 `nextDictation(prev, action)` / `applyDictation(action)`；换章归位的 effect 跳过挂载首帧，
+  否则持久化的 `auto` 会在面板一打开就被清掉
+
+### Added · 默写时悬停显示答案（N16）
+
+- 新设置 `answerOnHover`（默认开，上游 `isShowAnswerOnHoverAtom` 同默认）：
+  悬停单词就露出被遮住的字母；`dictation === 'none'` 时本来就全显示，开关无副作用
+- 纯函数 `answersRevealed({ dictation, answerOnHover, hovering })`，`maskLetters` 新增第 4 参 `revealed`
+- 悬停只改本地 state：不动输入、不发音、不计错、不加边框
+
+### Added · 允许选中文本（N17）
+
+- 新设置 `textSelectable`（默认关，上游同默认：打字时误拖会选中）
+- `data-selectable` 挂在单词块 / 释义块（**不挂根**：面板 root 里有隐形 textarea，挂了会波及输入目标），
+  CSS `user-select: none|text` 两条，无内联样式
+
+### Added · 假名逐字 ruby 注音（N9）
+
+- 纯函数 `isKanji` / `notationParts` / `notationNodes`，对齐上游 `Word/Notation.tsx` + `utils/kana.ts`：
+  `食べる(たべる)` 切成「食 + べる」两段，面板用原生 `<ruby>/<rt>`，跟打条仍是纯文本（条上太窄）
+- 与上游的两处有意识差异：括号内容允许为空（`食べる()` 不出注音）；片假名 base（`コーヒー(こーひー)`）
+  **保留**平假名读音，`あい(あい)` 这种读音与原文相同的才丢
+
+### Added · de / id / kk / 罗马字发音档（N10）
+
+- `ACCENTS` 从 `['us','uk']` 扩到 `['us','uk','de','id','kk','romaji']`，设置下拉多四档
+- `pronunciationSrc` 增 `de → &le=de`、`id → &le=id`、`kk → &le=ru`（**有道不支持哈萨克语，上游原话就是拿俄语兜底**）、
+  `romaji → 先转平假名再 &le=jap`
+- `romajiToHiragana` 自己实现（不搬上游 276 行大表）：小写化 → 撇号当音节边界 → `t`+`c` / 同辅音双写出 `っ`
+  → `n` 后接非元音出 `ん` → 3/2/1 字符贪心匹配（约 104 条映射、1.7KB）→ 匹配不到原样保留不丢字
+- 优先级不变：假名仍判 `ja`、汉字仍判 `zh`，`accent='romaji'` 抢不走
+
+### Changed · 体积纪律线 400KB → 480KB，并加闸门
+
+- 400KB 是 v0.3 拍的软目标，不是宿主限制：宿主把插件 `client.js` 拼成 combo 脚本走普通 HTTP
+  （`packages/client/modules`，唯一的大小检查是 3KB 的 **URL** 上限），同 profile 的 `dsh-purge`
+  客户端脚本就是 498,880 字节
+- 新增 `npm run size`（`scripts/check-size.mjs`）：470,000 报警、480,000 失败，接进 `npm run verify`；
+  测试里那条体积断言改成与闸门**同源**（`judgeSize` / `SIZE_LIMITS`），不再各写一份字面量
+- 文档三处（风险表、性能预算 §7.4、风险登记 R9）同步改口径并写明「这是纪律线」
+
 ## [0.9.0] - 2026-11-25
 
 接着 v0.8.0 的缺口审计，把「数据已经在手、只差画出来」的那批先补完：章节计时、章节进度条、
