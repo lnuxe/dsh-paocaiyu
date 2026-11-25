@@ -9,6 +9,62 @@
 
 无
 
+## [0.6.0] - 2026-11-25
+
+上游 `qwerty-learner` 对照表里最后 6 个缺口（G1–G6）一次补齐，外加三处真 bug。
+做法：六个子 agent 各开一个开发分支并行做，主 agent 逐个合并（冲突按并集处理）。
+
+### Added · 上游有、我们没有的六件事
+
+- **结算页（G1）**：新增 `ResultScreen` 组件。打完一章除了 WPM/准确率/耗时，还列出**本轮打错过的词**
+  （词 + 打错次数 + 中文），可「重练这些词」直接起一轮；另有「下一章」按钮，末章绕回第 1 章。
+  `wordsOfRound` / `nextChapterIndex` 两个纯函数兜住映射与绕回。
+- **实时速度（G2）**：打字过程中显示实时 WPM。`calcLiveWpm`（正确字符 ÷ 5 ÷ 分钟，上限 400）、
+  `pushSpeedSample`（8 秒滑动窗口 + 暂停采样丢弃）、`windowedWpm`。1 秒心跳，面板工具行与跟打条各一处，
+  暂停归 0、打完切成结算值。
+- **词表抽屉（G3）**：面板头部新增词表按钮，展开本章 20 词，显示序号/单词/音标/中文与状态
+  （当前 / 已掌握 / 打错过 / 打过 / 没碰），点一行直接跳到那个词。`wordListRows` 定优先级
+  current > mastered > wrong > done > idle。
+- **首字母提示（G4）**：同一个词打错 3 次给首字母、4 次给前两个、5 次起留最后一个字母，
+  打对即归零重攒；另加一档更轻的提示音。`tipState` 保证永不显示整词、1–2 字母词不越界。
+- **指法图示（G5）**：自绘 26 键纯 SVG 键盘 + 八指分区配色，高亮「下一个要按的键」并标出该用哪根手指。
+  没有迁移上游那张 100KB PNG。默认关闭，设置里 `showFinger` 打开。
+- **译义朗读（G6）**：打完一个词后用 `speechSynthesis` 读释义（含假名走 `ja-JP`），
+  默认关闭，`settings.readMeaning`。`shouldReadMeaning` 把「刚打完 + 有释义 + 不是同一个词」钉死。
+
+### Fixed · 新会话一进来就听到一个单词
+
+跟打卡片的自动发音效果没有 `isOpen` 门禁，而卡片跟着 `conversation.input.dock` 挂载 ——
+每开一个新会话就重挂一次，于是把上一个词读了出来。加 `isOpen` + `getOpen()` 双门禁。
+
+### Fixed · 面板里那个多余的输入框
+
+面板卡片原本有一个可见输入框，跟官方 Typing 页不一致（上游没有框，键盘由隐藏的 `InputHandler` 吃）。
+改成 1px 视觉隐藏但可聚焦的输入目标，键入与输入法照旧；面板挂载即聚焦、点卡片也聚焦。
+
+### Fixed · 卡片按「上一个 / ⌘←」整块掉白
+
+`Trainer.goPrev` 用了 `wordsRef.current.length`，而 `wordsRef` 只在 `ComposerTrainer` 里声明 ——
+面板卡片和 `/qwerty-autotype` 指令卡片按「上一个」就是 `ReferenceError`。改读 `props.words`。
+
+### Fixed · 进度存档是死代码
+
+`readBarProgress` / `writeBarProgress` / `resumeIndex`、`readChapterPos` / `writeChapterPos` / `resumeChapter`
+六个函数与导出早就在，但**一个调用点都没有**，所以 Esc 关掉跟打条再打开总是回到第一个词。
+现在换词即存、换词库重置、章节位置随章落盘、首次挂载恢复（`round > 0` 的「重来」仍回第一个词）。
+
+### Changed · 面板排版对齐官方
+
+- 单词改等宽字体：面板 64px、跟打条 52px，行高 1.1（上游 `font-mono` + `fontSizeConfig.foreignFont`）
+- 音标 15px 次要色、中文 16px 且限宽 34em（上游 `text-lg` 观感）
+- 面板骨架改成「顶部一行工具 / 中间单词居中 / 底部一行按钮 + 一行提示」，`min-height: 380px`
+- 去掉输入框后同步改文案：`placeholder` 降级成 `aria-label` 语义，`hint` 不再说「输入框清空」
+
+### Test
+
+`456 → 644` 条，全绿。六个分支各自带断言，合并后统一跑 `npm run verify`。
+
+
 ## [0.5.1] - 2026-11-25
 
 ### Changed · 插件图标换回矢量
@@ -315,6 +371,7 @@ v0.4.1 在 composer 上写死过 `inputmode="latin"` / `data-qat-ime` / `ime-mod
 - 45 条测试（`test-client-logic.mjs`）：判定 / `pushChar` / 词库 / 渲染冒烟（一次性 React 桩真的调一遍组件），不需要浏览器
 
 [Unreleased]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.5.1...HEAD
+[0.6.0]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.6...v0.5.0
 [0.4.6]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.5...v0.4.6

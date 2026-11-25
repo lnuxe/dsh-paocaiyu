@@ -1929,6 +1929,25 @@ check('样式里提示行不接收鼠标', /\.qat-tip\{[^}]*pointer-events:none/
 check('两份字典都有提示文案', ['tipFirstLetter', 'tipTwoLetters', 'tipReveal'].every((key) => DICT.zh[key] && DICT.en[key]), true)
 check('三种提示文案都带 pattern 占位', ['tipFirstLetter', 'tipTwoLetters', 'tipReveal'].every((key) => DICT.zh[key].includes('{pattern}') && DICT.en[key].includes('{pattern}')), true)
 
+// —— 接着上次练：打过的那章不要重打 ——
+check('没存档 → 第 0 章', resumeChapterSmart({}, null, 'cet4', 131, false), 0)
+check('存档章没打完 → 原地接着',
+  resumeChapterSmart({}, { dictId: 'cet4', chapter: 5 }, 'cet4', 131, false), 5)
+check('存档章已打完 → 跳到下一章',
+  resumeChapterSmart({ 5: { done: true } }, { dictId: 'cet4', chapter: 5 }, 'cet4', 131, false), 6)
+check('后面几章也打完 → 跳到第一个没打的',
+  resumeChapterSmart({ 5: { done: true }, 6: { done: true }, 7: { done: true } },
+    { dictId: 'cet4', chapter: 5 }, 'cet4', 131, false), 8)
+check('末章打完 → 绕回第 0 章',
+  resumeChapterSmart({ 130: { done: true } }, { dictId: 'cet4', chapter: 130 }, 'cet4', 131, false), 0)
+check('章内还有中途存档 → 不跳章',
+  resumeChapterSmart({ 5: { done: true } }, { dictId: 'cet4', chapter: 5 }, 'cet4', 131, true), 5)
+check('整本都打完 → 留在原章',
+  resumeChapterSmart({ 0: { done: true }, 1: { done: true } }, { dictId: 'cet4', chapter: 0 }, 'cet4', 2, false), 0)
+check('不是同一个词库 → 第 0 章',
+  resumeChapterSmart({}, { dictId: 'cet6', chapter: 9 }, 'cet4', 131, false), 0)
+check('词库还没算好 → 第 0 章', resumeChapterSmart({}, { dictId: 'cet4', chapter: 3 }, 'cet4', 0, false), 0)
+
 // —— 进度存档：Esc 关掉跟打条再打开，接着打上次那个词 ——
 // —— 回归：卡片里的「上一个」曾引用只存在于跟打条的 wordsRef，点了必崩 ——
 check('卡片里没有游离的 wordsRef 引用', /const prev = stepIndex\(stateRef\.current\.index, wordsRef/.test(source), false)

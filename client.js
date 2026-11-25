@@ -3849,6 +3849,24 @@ window.__ModuleLoader__.load({
      * 下一章序号（0-based）：末章绕回第 1 章；章数非法时回到 0，越界也收敛到合法范围。
      * 面板的「下一章」按钮和上游 autoNext 用同一套绕回语义。
      */
+    /**
+     * 接着上次练：存档章已经打过（且没有中途存档）就跳到下一章没打完的，
+     * 免得「打完了、Esc 关掉、再打开」又回到第 1 个词重打一遍。
+     */
+    function resumeChapterSmart(progress, saved, dictId, total, hasSession) {
+      const size = Math.floor(Number(total) || 0)
+      if (size <= 0) return 0
+      const start = resumeChapter(saved, dictId, size)
+      if (hasSession) return start                     // 章内还有存档 → 原地接着打
+      const isDone = (index) => Boolean(progress && progress[index] && progress[index].done)
+      if (!isDone(start)) return start
+      for (let step = 1; step <= size; step += 1) {
+        const index = (start + step) % size
+        if (!isDone(index)) return index
+      }
+      return start                                     // 整本都打完了 → 留在原章
+    }
+
     function nextChapterIndex(current, total) {
       const size = Math.floor(Number(total) || 0)
       if (size <= 0) return 0
@@ -5107,6 +5125,22 @@ window.__ModuleLoader__.load({
 
       useEffect(() => refreshStats(), [refreshStats])
 
+      // 挂载后一次性校正章节：上次那章已经打完、又没有中途存档 → 直接接下一章
+      const chapterFixedRef = useRef(false)
+      useEffect(() => {
+        if (chapterFixedRef.current) return
+        if (!all?.length) return
+        chapterFixedRef.current = true
+        const total = chapterCount({ length: all.length })
+        if (!total) return
+        const saved = readSession()
+        const target = resumeChapterSmart(progress, readChapterPos(), dictId, total, Boolean(saved))
+        if (target !== chapter) {
+          setChapter(target)
+          setRound((value) => value + 1)
+        }
+      }, [all, chapter, dictId, progress])
+
       // 章内词条 → 单词字符串（音标/中文由 lookup 从已加载词库里查）
       const chapterWords = useMemo(() => {
         const words = all || []
@@ -5419,7 +5453,7 @@ window.__ModuleLoader__.load({
         parseCustomFile, serializeCustomDict, splitCsvLine, toCustomWord, downloadText, withSlashes,
         stepIndex, toWordList, isRoundDone,
         readBarProgress, writeBarProgress, resumeIndex,
-        readChapterPos, writeChapterPos, resumeChapter, BAR_KEY, CHAPTER_KEY, wordsOfRound, nextChapterIndex, pronunciationSrc, pronunciationType, speakWithTts,
+        readChapterPos, writeChapterPos, resumeChapter, resumeChapterSmart, BAR_KEY, CHAPTER_KEY, wordsOfRound, nextChapterIndex, pronunciationSrc, pronunciationType, speakWithTts,
         speak, speakMeaning, cancelMeaning, meaningLang, shouldReadMeaning, MEANING_DELAY_MS,
       },
       inject: ['slots', 'locale'],

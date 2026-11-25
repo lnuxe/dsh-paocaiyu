@@ -1,6 +1,7 @@
 # 与上游 qwerty-learner 的功能对照扫描
 
-> 生成：2026-11-25 · 插件 `v0.5.0` · 对照上游 `qwerty-learner@master`
+> 更新：2026-11-25 · 插件 `v0.6.0` · 对照上游 `qwerty-learner@master`
+> v0.6.0 记：G1–G6 全部落地，缺/部分两栏清零。
 > 方法：逐个核对上游 `src/pages/Typing/components/*`、`src/components/*` 与插件 `client.js` 的实现/导出，
 > 再用纯函数测试钉住结论。判定口径：**已实现**＝有代码且有测试；**部分**＝有入口但缺关键能力；**缺**＝没有。
 
@@ -8,9 +9,9 @@
 
 | 状态 | 数量 |
 | --- | --- |
-| 已实现 | 24 |
-| 部分实现 | 4 |
-| 缺失 | 4 |
+| 已实现 | 32 |
+| 部分实现 | 0 |
+| 缺失 | 0 |
 | 明确不做 | 6 |
 
 ## 2. 逐项对照
@@ -36,8 +37,8 @@
 | 换词自动发音 | 已实现 | `speak` + `settings.voice` |
 | `PronunciationSwitcher` 美音/英音切换 | **已实现（v0.5.0）** | `settings.accent` + `resolveAccent` |
 | `SoundSwitcher` 键音 | 已实现 | `playClick` + `settings.sound` |
-| 译义朗读（`isTransRead`） | 缺 | 上游用 `speechSynthesis` 单独读中文，我们没做 |
-| `WordPronunciationIcon` 手动点读 | 部分 | 条上已去掉按钮，只靠自动发音；`Ctrl/⌘+J` 可重读 |
+| 译义朗读（`isTransRead`） | **已实现（v0.6.0）** | `speakMeaning` / `shouldReadMeaning` / `meaningLang`，默认关，`settings.readMeaning` |
+| `WordPronunciationIcon` 手动点读 | 已实现 | 面板 `qat-speak` 按钮 + `Ctrl/⌘+J` 重读；跟打条只保留自动发音 |
 
 ### 2.3 记录与统计（DATA）
 
@@ -47,16 +48,16 @@
 | `ErrorBook` 错词本 | 已实现 | `WrongBookPanel` + `collectWrongWords` |
 | `Analysis` 统计页 | 已实现 | `StatsPanel`：日柱 / 周热力 / 易错字母 / 键盘热力图 |
 | 已掌握标记 | 已实现（上游没有） | `toggleMastered` |
-| `ResultScreen` 结算页 | 部分 | 有 WPM/准确率/耗时/再来一次；缺**本轮错词清单**、**导出成绩**、**继续下一章**按钮 |
-| `Speed` 实时速度 | 部分 | 只有结算页的 `calcWpm`，打字过程中不显示实时 WPM |
-| `WordList` 词表抽屉 | 缺 | 上游可展开当前章全部单词并跳转，我们只有章节下拉 |
+| `ResultScreen` 结算页 | **已实现（v0.6.0）** | `ResultScreen` 组件：成绩 + 本轮错词胶囊 + 重练错词 + 继续下一章（末章绕回）；导出成绩仍不做 |
+| `Speed` 实时速度 | **已实现（v0.6.0）** | `calcLiveWpm` / `pushSpeedSample` / `windowedWpm`，8 秒窗口 + 1 秒心跳，面板与条上各一处 |
+| `WordList` 词表抽屉 | **已实现（v0.6.0）** | `WordListPanel` + `wordListRows`：本章 20 词、状态（当前/已掌握/打错/打过）、点行跳词 |
 
 ### 2.4 输入与提示
 
 | 上游 | 状态 | 我们这边 |
 | --- | --- | --- |
-| `TipAlert` 打错后的提示（首字母） | 缺 | 我们只做标红重打，不给字母提示 |
-| `HandPositionIllustration` 指法图示 | 缺 | 上游用 `standard_typing_hand_position.png`，我们没迁移（需图片资源） |
+| `TipAlert` 打错后的提示（首字母） | **已实现（v0.6.0）** | `tipState` / `tipKey` / `nextWrongCount`：3 次首字母、4 次两字母、5 次留最后一个 |
+| `HandPositionIllustration` 指法图示 | **已实现（v0.6.0）** | 自绘 `FingerHint`：26 键纯 SVG + 八指分区配色 + 高亮下一个键（不迁上游 PNG），`settings.showFinger` 默认关 |
 | 快捷键说明 | 已实现 | 设置页 `hotkeysList` |
 | 真实 composer 输入 | 已实现（上游是隐藏 textarea） | 捕获阶段拦 keydown，不调 `submit()` |
 | 输入法兼容 | 已实现 | `shouldStartOnTab` 的 `ownDraft`；不写任何编辑器属性 |
@@ -84,17 +85,19 @@
 
 ## 3. 待办（按性价比排）
 
-| # | 项 | 归属 | 工作量 | 说明 |
+| # | 项 | 状态 | 分支 | 断言 |
 | --- | --- | --- | --- | --- |
-| G1 | 结算页补「本轮错词清单」+「继续下一章」 | 部分→已实现 | 0.5 天 | 数据都在，纯渲染 |
-| G2 | 实时速度（打字中显示 WPM） | 部分→已实现 | 0.5 天 | 已有 `calcWpm`，加 1s 心跳 |
-| G3 | 词表抽屉（当前章 20 词一览 + 跳转） | 缺 | 1 天 | 复用 `wordsOfChapter` |
-| G4 | 首字母提示（打错第 3 次给提示） | 缺 | 0.5 天 | 上游 `TipAlert` 语义 |
-| G5 | 指法图示 | 缺 | 1 天 | 需迁移上游 PNG（约 100KB）或自绘 SVG |
-| G6 | 译义朗读 | 缺 | 0.3 天 | `speechSynthesis` 读中文 |
+| G1 | 结算页「本轮错词清单」+「继续下一章」 | 已合入 | `feat/g1-result` | `wordsOfRound` / `nextChapterIndex` / `ResultScreen`（29） |
+| G2 | 实时速度（打字中显示 WPM） | 已合入 | `feat/g2-speed` | `calcLiveWpm` / `windowedWpm` / `pushSpeedSample`（19） |
+| G3 | 词表抽屉（本章 20 词 + 跳转） | 已合入 | `feat/g3-wordlist` | `wordListRows` / `WordListPanel`（24） |
+| G4 | 首字母提示（打错第 3 次起逐档） | 已合入 | `feat/g4-tip` | `tipState` / `tipKey` / `nextWrongCount`（43） |
+| G5 | 指法图示（纯 SVG 键盘） | 已合入 | `feat/g5-finger` | `fingerOf` / `keyHighlight` / `fingerKeyboardNode`（44） |
+| G6 | 译义朗读 | 已合入 | `feat/g6-readzh` | `shouldReadMeaning` / `meaningLang` / `speakMeaning`（17） |
+
+做法：六个子 agent 各开一个开发分支并行开发，主 agent 逐个合并（冲突按并集处理），合并后统一跑测试。
 
 ## 4. 验收
 
 - 每条「已实现」都能在 `client.js` 找到导出，并在 `test-client-logic.mjs` 有断言。
 - 本轮新增：`ACCENTS` / `resolveAccent`（7 条断言）、`ICONS` / `GLYPH` / `PanelGlyph`（11 条断言）、面板排版（5 条断言）。
-- 测试总数：449 → **456**。
+- 测试总数：449 → **644**（G1–G6 合入 + 进度存档接线 + `goPrev` 回归各一轮）。
