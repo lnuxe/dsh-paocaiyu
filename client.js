@@ -1531,6 +1531,9 @@ window.__ModuleLoader__.load({
         retries: '重打 {n}',
         placeholder: '跟打输入区（键盘直接打，不需要点框）',
         hint: '打中字母变绿、自动进下一个词；打错变红、清空重打整词。回车不会发送消息。',
+        tipFirstLetter: '首字母提示 {pattern}',
+        tipTwoLetters: '再给两个字母 {pattern}',
+        tipReveal: '只剩最后一个字母 {pattern}',
         auto: '自动打',
         autoStop: '停止自动',
         restart: '重开',
@@ -1655,6 +1658,9 @@ window.__ModuleLoader__.load({
         retries: '{n} retry',
         placeholder: 'Dictation input (just type; no need to click a box)',
         hint: 'Correct letters turn green and the next word starts; a wrong letter turns red, clears the field, and you retype the whole word. Enter here never sends a message.',
+        tipFirstLetter: 'First letter {pattern}',
+        tipTwoLetters: 'First two letters {pattern}',
+        tipReveal: 'All but the last letter {pattern}',
         auto: 'Auto type',
         autoStop: 'Stop auto',
         restart: 'Restart',
@@ -1948,6 +1954,14 @@ window.__ModuleLoader__.load({
 .qat-btn:hover{border-color:var(--dsw-alias-brand-primary)}
 .qat-btn[data-active="true"]{border-color:var(--dsw-alias-brand-primary);color:var(--dsw-alias-brand-primary)}
 .qat-hint{font-size:12px;color:var(--dsw-alias-label-secondary);line-height:1.5}
+/* 打错提示：小字、次要色、贴在不挡单词的位置；不弹窗、不遮答案 */
+.qat-tip{display:flex;align-items:center;gap:6px;font-size:12px;line-height:1.4;letter-spacing:0;color:var(--dsw-alias-label-tertiary);user-select:none;pointer-events:none}
+.qat-tip[data-tip-level="1"]{color:var(--dsw-alias-label-secondary)}
+.qat-tip[data-tip-level="2"]{color:var(--dsw-alias-label-secondary)}
+.qat-tip[data-tip-level="3"]{color:var(--dsw-alias-label-secondary)}
+.qat-card[data-variant="panel"] .qat-tip{justify-content:center;margin-top:-4px}
+.qat-card[data-variant="command"] .qat-tip{justify-content:center}
+.qat-bar-tip{font-size:11px;line-height:1.3;letter-spacing:0;font-family:inherit;color:var(--dsw-alias-label-tertiary);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;pointer-events:none}
 .qat-done{display:flex;flex-direction:column;gap:8px}
 .qat-done-title{color:var(--dsw-alias-state-success-primary);font-weight:600;font-size:13px}
 .qat-done-acts{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -2120,6 +2134,76 @@ window.__ModuleLoader__.load({
       return { typed: next, result: verdict.state === 'bad' ? 'bad' : verdict.state }
     }
 
+    /* -------------------------------------------------------------- 打错提示 */
+
+    /**
+     * 打错到第几次给提示（对齐上游 TipAlert 的「逐档揭示」语义）：
+     * 第 3 次给首字母、第 4 次给前两个字母、第 5 次起给到只剩最后一个字母。
+     * 想改档位只改这个常量，或者给 tipState 传自己的 thresholds。
+     */
+    const TIP_THRESHOLDS = [3, 4, 5]
+
+    /** 遮住的字母用下划线表示（不画点，避免和默写遮罩混淆） */
+    const TIP_MASK = '_'
+
+    /** 档位 → 文案 key（两份字典都必须有这几个 key） */
+    function tipKey(level) {
+      if (level === 1) return 'tipFirstLetter'
+      if (level === 2) return 'tipTwoLetters'
+      if (level >= 3) return 'tipReveal'
+      return ''
+    }
+
+    /**
+     * 打错计数：打中一次归零，打错一次加一，其他结果原样返回。
+     * 两个训练入口都走这里，「打对后重新攒」的语义只有一份。
+     * @param previous - 当前词这一轮已经打错的次数
+     * @param result - 'hit' | 'miss' | 其他
+     */
+    function nextWrongCount(previous, result) {
+      const count = Math.max(0, Math.floor(Number(previous) || 0))
+      if (result === 'hit') return 0
+      if (result === 'miss') return count + 1
+      return count
+    }
+
+    /**
+     * 纯判定：这一轮打错了几次 → 给到第几档提示、揭示几个字母。
+     * @param input.wrongCount - 当前词这一轮打错的次数（打对后归零）
+     * @param input.word - 目标词（照原样展示，不做大小写归一）
+     * @param input.typed - 已经打对的前缀（这些字母本来就在屏幕上，提示至少要揭示到它）
+     * @param input.thresholds - 档位阈值，默认 TIP_THRESHOLDS
+     * @returns {{level: number, reveal: number, prefix: string, text: string, key: string}}
+     *   level 0 = 不提示（1–2 次）；reveal = 揭示的前导字母个数；
+     *   text = 遮住其余字母的提示串，长度恒等于词长，且永远不会是整词。
+     */
+    function tipState(input) {
+      const { wrongCount, word, typed, thresholds } = input || {}
+      const chars = String(word ?? '').split('')
+      const len = chars.length
+      const count = Math.max(0, Math.floor(Number(wrongCount) || 0))
+      const levels = Array.isArray(thresholds) && thresholds.length ? thresholds : TIP_THRESHOLDS
+      if (len === 0) return { level: 0, reveal: 0, prefix: '', text: '', key: '' }
+      let level = 0
+      for (let i = 0; i < levels.length; i += 1) {
+        const at = Math.max(1, Math.floor(Number(levels[i]) || 0))
+        if (count >= at) level = i + 1
+      }
+      // 1–2 次（或任何没到第一档的次数）一律不提示
+      if (level === 0) return { level: 0, reveal: 0, prefix: '', text: '', key: '' }
+      // 最后一档给到「只剩最后一个字母」；中间档位按档号递增（1 → 首字母，2 → 前两个）
+      const byLevel = level >= levels.length ? len - 1 : level
+      // 已经打对的前缀本来就在屏幕上，提示至少揭示到它；但绝不揭示整词
+      const typedText = String(typed ?? '')
+      let matched = 0
+      while (matched < typedText.length && matched < len && typedText[matched] === chars[matched]) matched += 1
+      const cap = Math.max(0, len - 1)
+      const reveal = Math.min(cap, Math.max(0, byLevel, matched))
+      const prefix = chars.slice(0, reveal).join('')
+      const text = chars.map((ch, i) => (i < reveal ? ch : (ch === ' ' ? ' ' : TIP_MASK))).join('')
+      return { level, reveal, prefix, text, key: tipKey(level) }
+    }
+
     /* -------------------------------------------------- 指标 / Tab 裁决 / 会话 */
 
     /**
@@ -2258,7 +2342,17 @@ window.__ModuleLoader__.load({
     }
 
     /** 读一遍这个词（浏览器内置 TTS，没有就静默返回 false） */
-    /** 键音：打对一声高、打错一声低；没有 WebAudio 或关掉开关就静默 */
+    /**
+     * 键音三档（对齐上游 playHintSound 的"轻提示"）：
+     * hit 打对一声高、miss 打错一声低、hint 打错到出提示时一声更轻的三角波。
+     * 没有 WebAudio、或者设置里关掉 sound，就一律静默（开关语义不变）。
+     */
+    const CLICK_TONES = {
+      hit: { type: 'sine', freq: 880, peak: 0.02, decay: 0.05, stop: 0.13 },
+      miss: { type: 'sine', freq: 220, peak: 0.02, decay: 0.12, stop: 0.13 },
+      hint: { type: 'triangle', freq: 1320, peak: 0.012, decay: 0.09, stop: 0.11 },
+    }
+
     let AUDIO_CTX = null
     function playClick(kind) {
       try {
@@ -2267,19 +2361,18 @@ window.__ModuleLoader__.load({
         if (!Ctor) return false
         AUDIO_CTX = AUDIO_CTX || new Ctor()
         if (AUDIO_CTX.state === 'suspended') AUDIO_CTX.resume?.()
-        const miss = kind === 'miss'
+        const tone = CLICK_TONES[kind] || CLICK_TONES.hit
         const osc = AUDIO_CTX.createOscillator()
         const gain = AUDIO_CTX.createGain()
-        osc.type = 'sine'
-        osc.frequency.value = miss ? 220 : 880
+        osc.type = tone.type
+        osc.frequency.value = tone.freq
         const now = AUDIO_CTX.currentTime
-        const peak = 0.02
-        gain.gain.setValueAtTime(peak, now)
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + (miss ? 0.12 : 0.05))
+        gain.gain.setValueAtTime(tone.peak, now)
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + tone.decay)
         osc.connect(gain)
         gain.connect(AUDIO_CTX.destination)
         osc.start(now)
-        osc.stop(now + 0.13)
+        osc.stop(now + tone.stop)
         return true
       } catch {
         return false
@@ -2500,6 +2593,24 @@ window.__ModuleLoader__.load({
     }
 
     /**
+     * 打错提示行：level 0 时整个不渲染，level > 0 只画一条小字。
+     * 独立成组件，两个入口（跟打条 / 面板卡片）共用同一份 UI，测试也能直接渲染它。
+     * @param props.tip - tipState() 的返回值
+     * @param props.t - useT 出来的翻译函数
+     * @param props.className - 覆盖样式（跟打条用 qat-bar-tip）
+     */
+    function TipLine({ tip, t, className }) {
+      if (!tip || !tip.level || !tip.text) return null
+      const key = tip.key || tipKey(tip.level)
+      // 用 span 而不是 div：跟打条里它嵌在 span（.qat-wordblock）里，div 会造成非法嵌套
+      return h('span', {
+        className: className || 'qat-tip',
+        'data-tip-level': String(tip.level),
+        role: 'note',
+      }, h('span', null, t(key, { pattern: tip.text })))
+    }
+
+    /**
      * 跟打卡片本体。三种入口共用，判定/计数/自动打全都在这。
      * @param props.words - 本轮单词
      * @param props.variant - 'dock' | 'command'（只影响宽度与是否显示收起按钮）
@@ -2512,7 +2623,7 @@ window.__ModuleLoader__.load({
     }) {
       const t = useT(ctx)
       const [state, setState] = useState({
-        index: 0, typed: '', flash: false, hits: 0, retries: 0, finishedAt: null,
+        index: 0, typed: '', flash: false, hits: 0, retries: 0, wordWrong: 0, finishedAt: null,
       })
       const [auto, setAuto] = useState(false)
       const inputRef = useRef(null)
@@ -2573,6 +2684,7 @@ window.__ModuleLoader__.load({
           flash: false,
           hits: saved.hits,
           retries: saved.retries,
+          wordWrong: 0,
           finishedAt: null,
         })
       }, [chapter, dictId, variant, words])
@@ -2632,17 +2744,20 @@ window.__ModuleLoader__.load({
       const goPrev = useCallback(() => {
         const prev = stepIndex(stateRef.current.index, wordsRef.current.length, -1)
         live.current.typed = ''
-        setState((prevState) => ({ ...prevState, index: prev, typed: '', flash: false, finishedAt: null }))
+        wrongRef.current = 0
+        setState((prevState) => ({ ...prevState, index: prev, typed: '', flash: false, wordWrong: 0, finishedAt: null }))
       }, [])
 
       const goSkip = useCallback(() => {
         const next = Math.min(words.length, stateRef.current.index + 1)
         live.current.typed = ''
+        wrongRef.current = 0
         setState((prevState) => ({
           ...prevState,
           index: next,
           typed: '',
           flash: false,
+          wordWrong: 0,
           finishedAt: next >= words.length ? Date.now() : null,
         }))
       }, [words])
@@ -2666,6 +2781,8 @@ window.__ModuleLoader__.load({
       const meta = lookup(current)
       const ipaText = meta?.ipa ?? ''
       const gloss = meta?.zh ?? ''
+      // 打错提示：3 / 4 / 5 次逐档揭示，打对（advance）归零
+      const tip = tipState({ wrongCount: state.wordWrong, word: target, typed: state.typed })
 
       const setTyped = useCallback((value) => {
         live.current.typed = value
@@ -2677,7 +2794,7 @@ window.__ModuleLoader__.load({
         // 循环单词：原地重打，不推进进度、不写记录
         if (loop) {
           live.current = { ...live.current, typed: '' }
-          setState((prev) => ({ ...prev, typed: '', flash: false, hits: prev.hits + 1 }))
+          setState((prev) => ({ ...prev, typed: '', flash: false, wordWrong: 0, hits: prev.hits + 1 }))
           return
         }
         const next = snapshot.index + 1
@@ -2730,6 +2847,7 @@ window.__ModuleLoader__.load({
           ...prev,
           typed: '',
           flash: false,
+          wordWrong: 0,
           hits: prev.hits + 1,
           index: next,
           finishedAt: finished ? at : null,
@@ -2756,7 +2874,11 @@ window.__ModuleLoader__.load({
         }
         // 打错：标红 → 抖动 → 清空并要求整词重打
         wrongRef.current += 1
-        playClick('miss')
+        // 提示档位升了一档（第 3/4/5 次）就给一声更轻的提示音
+        const prevTip = tipState({ wrongCount: stateRef.current.wordWrong, word: target, typed: stateRef.current.typed })
+        const nextWrong = nextWrongCount(stateRef.current.wordWrong, 'miss')
+        if (tipState({ wrongCount: nextWrong, word: target, typed: '' }).level > prevTip.level) playClick('hint')
+        else playClick('miss')
         setAnnounce(t('announceWrong', { word: target }))
         const expect = target[stateRef.current.typed.length]
         if (expect && expect !== ' ') {
@@ -2775,7 +2897,9 @@ window.__ModuleLoader__.load({
           live.current.timer = null
           live.current.locked = false
           live.current.typed = ''
-          setState((prev) => ({ ...prev, typed: '', flash: false, retries: prev.retries + 1 }))
+          setState((prev) => ({
+            ...prev, typed: '', flash: false, retries: prev.retries + 1, wordWrong: nextWrong,
+          }))
         }, 320)
       }, [advance, options, setTyped, words])
 
@@ -2820,7 +2944,7 @@ window.__ModuleLoader__.load({
         setMistakes([])
         if (variant === 'panel') clearSession()
         setAuto(false)
-        setState({ index: 0, typed: '', flash: false, hits: 0, retries: 0, finishedAt: null })
+        setState({ index: 0, typed: '', flash: false, hits: 0, retries: 0, wordWrong: 0, finishedAt: null })
         const input = inputRef.current
         if (input) input.focus()
       }, [])
@@ -2937,6 +3061,7 @@ window.__ModuleLoader__.load({
                   : null,
               )
               : null,
+            h(TipLine, { tip, t }),
             // 上游没有可见输入框（InputHandler 用隐藏元素吃键盘）：这里同样只留一个
             // 视觉隐藏的输入目标，用来接住键入与输入法，界面上不画框。
             h('input', {
@@ -3179,7 +3304,7 @@ window.__ModuleLoader__.load({
       // 跟打条是「一本词库顺着往下打」，不是抽 20 个就结束
       const [words, setWords] = useState(() => toWordList(wordsSync(dictId)))
       const [state, setState] = useState({
-        index: 0, typed: '', flash: false, hits: 0, retries: 0, finishedAt: null,
+        index: 0, typed: '', flash: false, hits: 0, retries: 0, wordWrong: 0, finishedAt: null,
       })
       const [auto, setAuto] = useState(false)
       const [barWidth, setBarWidth] = useState(null)
@@ -3202,7 +3327,7 @@ window.__ModuleLoader__.load({
           .then((all) => {
             if (!cancelled && all?.length) {
               setWords(toWordList(all))
-              setState({ index: 0, typed: '', flash: false, hits: 0, retries: 0, finishedAt: null })
+              setState({ index: 0, typed: '', flash: false, hits: 0, retries: 0, wordWrong: 0, finishedAt: null })
             }
           })
           .catch((err) => {
@@ -3273,7 +3398,7 @@ window.__ModuleLoader__.load({
       const advance = useCallback(() => {
         // 循环当前词：原地重打
         if (loopRef.current) {
-          setState((prev) => ({ ...prev, typed: '', flash: false, hits: prev.hits + 1 }))
+          setState((prev) => ({ ...prev, typed: '', flash: false, wordWrong: 0, hits: prev.hits + 1 }))
           return
         }
         // 打完最后一个就绕回开头接着打，跟原版一样一直往下
@@ -3282,6 +3407,7 @@ window.__ModuleLoader__.load({
           ...prev,
           typed: '',
           flash: false,
+          wordWrong: 0,
           hits: prev.hits + 1,
           index: next,
           finishedAt: null,
@@ -3298,7 +3424,7 @@ window.__ModuleLoader__.load({
 
       const goPrev = useCallback(() => {
         const prev = Math.max(0, stateRef.current.index - 1)
-        setState((state) => ({ ...state, index: prev, typed: '', flash: false, finishedAt: null }))
+        setState((state) => ({ ...state, index: prev, typed: '', flash: false, wordWrong: 0, finishedAt: null }))
       }, [])
 
       const goSkip = useCallback(() => {
@@ -3307,6 +3433,7 @@ window.__ModuleLoader__.load({
           index: stepIndex(state.index, wordsRef.current.length, 1),
           typed: '',
           flash: false,
+          wordWrong: 0,
           finishedAt: null,
         }))
       }, [])
@@ -3340,13 +3467,19 @@ window.__ModuleLoader__.load({
           return
         }
         // 打错：标红抖动 → 清空 → 整词重打
-        playClick('miss')
+        // 提示档位升了一档（第 3 / 4 / 5 次）就给一声更轻的提示音，否则仍是打错音
+        const prevTip = tipState({ wrongCount: stateRef.current.wordWrong, word: goal, typed: stateRef.current.typed })
+        const nextWrong = nextWrongCount(stateRef.current.wordWrong, 'miss')
+        if (tipState({ wrongCount: nextWrong, word: goal, typed: '' }).level > prevTip.level) playClick('hint')
+        else playClick('miss')
         lockRef.current.locked = true
         setState((prev) => ({ ...prev, typed: stepped.typed, flash: true }))
         lockRef.current.timer = setTimeout(() => {
           lockRef.current.timer = null
           lockRef.current.locked = false
-          setState((prev) => ({ ...prev, typed: '', flash: false, retries: prev.retries + 1 }))
+          setState((prev) => ({
+            ...prev, typed: '', flash: false, retries: prev.retries + 1, wordWrong: nextWrong,
+          }))
         }, 320)
       }, [advance, judgeOptions.caseSensitive, judgeOptions.ignorePunct])
 
@@ -3618,7 +3751,7 @@ window.__ModuleLoader__.load({
         lockRef.current = { locked: false, timer: null }
         setAuto(false)
         setRound((value) => value + 1)
-        setState({ index: 0, typed: '', flash: false, hits: 0, retries: 0, finishedAt: null })
+        setState({ index: 0, typed: '', flash: false, hits: 0, retries: 0, wordWrong: 0, finishedAt: null })
       }, [])
 
       /** 切换词库：存起来 + 立刻开新一轮 */
@@ -3628,7 +3761,7 @@ window.__ModuleLoader__.load({
         startedAt.current = Date.now()
         lockRef.current = { locked: false, timer: null }
         setAuto(false)
-        setState({ index: 0, typed: '', flash: false, hits: 0, retries: 0, finishedAt: null })
+        setState({ index: 0, typed: '', flash: false, hits: 0, retries: 0, wordWrong: 0, finishedAt: null })
       }, [])
 
       liveBarRef.current = isOpen && total > 0 && Boolean(current)
@@ -3659,6 +3792,8 @@ window.__ModuleLoader__.load({
       // 位置按整本词库算：1 / 2607
       const position = (state.index % total) + 1
       const chars = target.split('')
+      // 打错提示（跟打条）：3 / 4 / 5 次逐档揭示，打对后 wordWrong 归零
+      const tip = tipState({ wrongCount: state.wordWrong, word: target, typed: state.typed })
 
       return h('div', {
         className: 'qat-bar',
@@ -3685,6 +3820,7 @@ window.__ModuleLoader__.load({
             }),
           ),
             ipa ? h('span', { className: 'qat-ipa' }, ipa) : null,
+            h(TipLine, { tip, t, className: 'qat-bar-tip' }),
           ),
         ),
         h('span', {
@@ -4597,7 +4733,8 @@ window.__ModuleLoader__.load({
         dictSourceList, DICT_PIN, activeMs, resolveHotkey, calcWpm, calcAccuracy, shouldStartOnTab, saveSession, readSession, clearSession, sameSession,
         setOpen, getOpen, readDictId, writeDictId, releaseStuckComposer, ACCENTS, resolveAccent, shouldBlockSend, isSendTrigger, shouldClearDraft,
         ICONS, GLYPH, Icon,
-        components: { Trainer, ResultScreen, PracticePanel, PanelGlyph, ComposerTrainer, SidebarButton, DictPicker, WrongBookPanel, StatsPanel, SettingsSection, SettingRow, WordListPanel },
+        components: { Trainer, ResultScreen, PracticePanel, PanelGlyph, ComposerTrainer, SidebarButton, DictPicker, WrongBookPanel, StatsPanel, SettingsSection, SettingRow, WordListPanel, TipLine },
+        tipState, tipKey, nextWrongCount, TIP_THRESHOLDS, TIP_MASK, CLICK_TONES,
         collectWrongWords, heatmapWeeks, heatLevel, filterWrongWords, DICT,
         wordListRows, WORDLIST_LIMIT, WORDLIST_STATES, WORDLIST_STATE_LABEL,
         serializeBackup, parseBackup, BACKUP_VERSION, BACKUP_LIMITS, playClick, pressable,
