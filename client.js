@@ -3,7 +3,7 @@
  *
  * 三个入口，都落在对话界面上：
  *  1) 侧栏底部一个「跟打」按钮（sidebar.footer.action）—— 开关跟打卡片；
- *  2) 打开后卡片长在输入框正上方（conversation.input.dock），单词就在对话列里，打对变绿、打错整词重打；
+ *  2) 打开后卡片长在输入框正上方（conversation.input.dock），单词在对话列里，打对变绿、打错整词重打；
  *  3) `/qwerty-autotype` 指令行也渲染同一张卡片（conversation.chat.commandview，key = 指令名）。
  *
  * 三种入口共用同一个卡片组件，判定逻辑只有一份。
@@ -261,7 +261,7 @@ window.__ModuleLoader__.load({
      * 1. 字母 + 数字（等级/编号）：CET-4 → C4、GRE3000 → G3、waiyan3 → W3、raz-Z1 → Z1
      * 2. 名字末尾的 1-2 字母独立字段：RAZ 分级阅读 A → A、SAT en-en → EN
      * 3. 两字以上的中文片段：考研 → 考研、雅思听力场景词汇 → 雅思
-     * 4. ASCII 缩写（切词取首字母；只有一个词就取前两字母）：IELTS → IE、js-object → JO、TOEFL → TO
+     * 4. ASCII 缩写（词首字母，单词取前两）：IELTS → IE、js-object → JO、TOEFL → TO
      * 5. 兜底：名字里第一个汉字，再不行 '?'
      */
     function badgeText(meta) {
@@ -1906,7 +1906,7 @@ window.__ModuleLoader__.load({
     /**
      * 词表行的状态，优先级从高到低：
      * current（当前词） > mastered（已掌握） > wrong（打错过） > done（已打过） > idle（没碰过）
-     * 「当前词」永远压过其它状态；「已掌握」压过「打错过」，因为掌握是用户显式确认的结论。
+     * 优先级：当前词 > 已掌握 > 打错过。
      */
     const WORDLIST_STATES = ['current', 'mastered', 'wrong', 'done', 'idle']
 
@@ -2173,7 +2173,7 @@ window.__ModuleLoader__.load({
     }
 
     /**
-     * 查找结果短期缓存：同一个词一次渲染里会被问好几遍（当前词 + 词表抽屉 + 错词本），
+     * 查找结果短期缓存：同一个词一次渲染会被问好几遍，
      * 上限 512 条，满了整体清空（够用且不会无限涨）。
      */
     const LOOKUP_MEMO = new Map()
@@ -2305,6 +2305,13 @@ window.__ModuleLoader__.load({
         settingAutoNextHint: '打完 20 个自动接下一章，不用手动点',
         settingFinger: '指法提示',
         settingFingerHint: '卡片下方画一张键盘，高亮下一个要按的键和该用的手指',
+        settingWordScale: '字号',
+        wordScale_auto: '自动',
+        wordScale_small: '小',
+        wordScale_medium: '中',
+        wordScale_large: '大',
+        settingVoiceRate: '发音倍速',
+        settingClickVolume: '按键音音量',
         fingerLeftPinky: '左小指',
         fingerLeftRing: '左无名指',
         fingerLeftMiddle: '左中指',
@@ -2452,6 +2459,13 @@ window.__ModuleLoader__.load({
         settingAutoNextHint: 'Roll into the next chapter instead of stopping at 20',
         settingFinger: 'Finger guide',
         settingFingerHint: 'Draw a keyboard under the card and light up the next key with the finger to use',
+        settingWordScale: 'Text size',
+        wordScale_auto: 'Auto',
+        wordScale_small: 'Small',
+        wordScale_medium: 'Medium',
+        wordScale_large: 'Large',
+        settingVoiceRate: 'Speech rate',
+        settingClickVolume: 'Key sound volume',
         fingerLeftPinky: 'Left pinky',
         fingerLeftRing: 'Left ring',
         fingerLeftMiddle: 'Left middle',
@@ -3045,7 +3059,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       }
       // 1–2 次（或任何没到第一档的次数）一律不提示
       if (level === 0) return { level: 0, reveal: 0, prefix: '', text: '', key: '' }
-      // 最后一档给到「只剩最后一个字母」；中间档位按档号递增（1 → 首字母，2 → 前两个）
+      // 最后一档只剩一个字母；中间按档号递增
       const byLevel = level >= levels.length ? len - 1 : level
       // 已经打对的前缀本来就在屏幕上，提示至少揭示到它；但绝不揭示整词
       const typedText = String(typed ?? '')
@@ -3186,7 +3200,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       if (modifier) return false
       const text = String(draft ?? '')
       if (text.trim() === '') return true
-      // 残留的是我们自己写进去的提示语，可以当空处理（否则一次没清干净就再也按不开）
+      // 残留的是我们自己写的提示语，当空处理
       return Boolean(ownDraft) && text === String(ownDraft)
     }
 
@@ -3326,6 +3340,31 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       return last
     }
 
+    /** 字号档：auto 走自动排版，三档乘系数 */
+    const WORD_SCALES = ['auto', 'small', 'medium', 'large']
+    const WORD_SCALE_FACTOR = { small: 0.85, medium: 1, large: 1.25 }
+
+    /** 非法值回落 auto */
+    function clampWordScale(value) {
+      const text = String(value ?? '').trim().toLowerCase()
+      return WORD_SCALES.includes(text) ? text : 'auto'
+    }
+
+    /** 字号阶梯按档位缩放（auto 原样返回），再交给 fitWordStyle 重排，行数上限始终成立 */
+    function scaleWordSizes(sizes, scale) {
+      const factor = WORD_SCALE_FACTOR[clampWordScale(scale)]
+      if (factor === undefined || factor === 1) return sizes
+      return sizes.map((size) => Math.max(10, Math.round(size * factor)))
+    }
+
+    /** 面板/跟打条统一入口：自动排版 + 字号档 */
+    function wordStyleFor(text, width, options) {
+      const scale = clampWordScale(options?.scale)
+      const want = Math.max(1, Number(options?.maxLines) || 2)
+      const maxLines = scale === 'large' ? Math.max(4, want) : scale === 'small' ? Math.min(2, want) : want
+      return fitWordStyle(text, width, { maxLines, sizes: scaleWordSizes(options?.sizes ?? FIT_SIZES, scale) })
+    }
+
     /** 断好的行 → 每行的起止（全局索引跨行连续，逐字判定不能被拆行影响） */
     function wordLines(text, perLine) {
       const source = String(text ?? '')
@@ -3387,6 +3426,25 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     }
 
     let AUDIO_CTX = null
+
+    /** 发音倍速档：只乘系数，不加音频文件 */
+    const VOICE_RATES = [0.6, 0.8, 1, 1.2, 1.5]
+    /** 键音音量五档；越界回落 100 */
+    const CLICK_VOLUMES = [0, 40, 60, 80, 100]
+
+    /** 只认表里的值，字符串数字也认 */
+    function clampVoiceRate(value) {
+      const num = Number(value)
+      return VOICE_RATES.includes(num) ? num : 1
+    }
+
+    /** 越界/非数字回落 100，其余吸附最近档 */
+    function clampClickVolume(value) {
+      const num = Number(value)
+      if (!Number.isFinite(num) || num < 0 || num > 100) return 100
+      return CLICK_VOLUMES.reduce((best, step) => (Math.abs(step - num) < Math.abs(best - num) ? step : best), 100)
+    }
+
     function playClick(kind) {
       try {
         if (!getSettings().sound) return false
@@ -3400,7 +3458,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         osc.type = tone.type
         osc.frequency.value = tone.freq
         const now = AUDIO_CTX.currentTime
-        gain.gain.setValueAtTime(tone.peak, now)
+        gain.gain.setValueAtTime(tone.peak * (clampClickVolume(getSettings().clickVolume) / 100), now)
         gain.gain.exponentialRampToValueAtTime(0.0001, now + tone.decay)
         osc.connect(gain)
         gain.connect(AUDIO_CTX.destination)
@@ -3467,7 +3525,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         if (src && typeof window.Audio === 'function') {
           const audio = new window.Audio(src)
           audio.volume = Math.min(1, Math.max(0, Number(options?.volume ?? 1)))
-          audio.playbackRate = Math.min(2, Math.max(0.5, Number(options?.rate ?? 1)))
+          audio.playbackRate = clampVoiceRate(options?.rate ?? getSettings().voiceRate)
           const played = audio.play()
           AUDIO_NODE = audio
           if (played && typeof played.catch === 'function') {
@@ -3492,7 +3550,8 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         synth.cancel()
         const utterance = new window.SpeechSynthesisUtterance(text)
         utterance.lang = type === 'ja' ? 'ja-JP' : type === 'zh' ? 'zh-CN' : 'en-US'
-        utterance.rate = 0.95
+        // TTS 兜底吃同一个倍速（0.95 是原默认语速）
+        utterance.rate = Math.min(2, Math.max(0.5, 0.95 * clampVoiceRate(getSettings().voiceRate)))
         synth.speak(utterance)
         return true
       } catch {
@@ -3628,6 +3687,12 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       readMeaning: false,
       // 面板里显示指法键盘（纯 SVG，默认关）
       showFinger: false,
+      // 字号档：auto 跟自动排版走，三档在自动档位上乘系数
+      wordScale: 'auto',
+      // 发音倍速（audio.playbackRate / TTS rate 同一个系数）
+      voiceRate: 1,
+      // 按键音音量 0..100（五档）
+      clickVolume: 100,
     }
     const SETTING_PREFIX = 'qwerty-autotype:setting:'
 
@@ -3650,6 +3715,10 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         /* 无痕模式：用默认值 */
       }
       if (!DICTATION_MODES.includes(merged.dictation)) merged.dictation = 'none'
+      // 老存档没有这三个 key 或存了脏值：逐个收敛回合法档
+      merged.wordScale = clampWordScale(merged.wordScale)
+      merged.voiceRate = clampVoiceRate(merged.voiceRate)
+      merged.clickVolume = clampClickVolume(merged.clickVolume)
       return merged
     }
 
@@ -3858,7 +3927,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
 
       /**
        * 从词表抽屉跳词：jump 每次点击都是新对象，effect 才会重跑一次。
-       * 只挪索引、清掉半截输入与本词错误计数，不动本轮 hits/retries（不能把已有行为改坏）。
+       * 只挪索引、清半截输入与本词错误计数，不动 hits/retries。
        */
       useEffect(() => {
         if (!jump || !Number.isInteger(jump.index)) return
@@ -3951,10 +4020,10 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const phone = phoneticOf(meta, options?.accent ?? settingsNow.accent ?? getSettings().accent)
       const ipaText = phone.text
       const ipaLabel = phone.label
-      // 日文假名词库没有中文释义：notation（假名）单独一行放在单词上方（对齐上游 Notation）
+      // 假名词库：notation 单独一行放单词上方
       const notation = String(meta?.notation ?? '')
       const gloss = meta?.zh ?? ''
-      // 释义条目：面板卡片按条分行渲染，多的收成 +N；跟打条继续用拼好的整串（不拆，省一次字符串处理）
+      // 释义条目：面板按条分行渲染，多的收成 +N；跟打条用拼接整串
       const senses = variant === 'panel'
         ? (Array.isArray(meta?.senses) ? meta.senses : splitSenses(gloss))
         : []
@@ -4256,8 +4325,8 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
               text: target,
               typed: state.typed,
               masked,
-              // 面板卡片大约 760 宽（max-width 820 减内边距），长句最多排三行
-              ...fitWordStyle(target, 700, { maxLines: 3 }),
+              // 面板卡片约 760 宽（max-width 820 减内边距），长句最多三行，再叠用户字号档
+              ...wordStyleFor(target, 700, { maxLines: 3, scale: settingsNow.wordScale }),
               long: longWord,
               flash: state.flash,
             }),
@@ -4272,7 +4341,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
                     ipaText)
                   : null,
                 // 面板卡片：一条释义一行（词性单独淡色小字），超过三条收成 +N；
-                // 跟打条空间小，还是把释义拼成一行；没有释义（只有假名 / 只有音标）时不画空容器。
+                // 跟打条把释义拼成一行；没释义时不画空容器
                 variant === 'panel'
                   ? (sensesShown.length
                     ? h('div', { className: 'qat-gloss-zh' },
@@ -4413,7 +4482,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
 
     /**
      * 训练中要挡的按钮：发送 / 发送并排队 / 打断。
-     * 只看 aria-label（DSH 的发送按钮带 aria-label={primaryLabel}），中文 '发送消息'、英文 'Send message' 都命中。
+     * 只看 aria-label（中文 '发送消息'、英文 'Send message' 都命中）。
      */
     const SEND_LABEL_RE = /发送|队列|发送消息|Send|Queue|Steer/i
 
@@ -4741,7 +4810,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const masked = maskLetters(target, settings.dictation, state.index)
       const entry = lookup(current)
       // 音标按口音显示（前缀 AmE / BrE 随 accent 设置实时变）；
-      // 日文假名词条没有音标 → 假名走自己的 notation 位（不进音标行，避免同一串画两遍）
+      // 假名词条没音标：notation 走自己的位（不进音标行）
       const phone = phoneticOf(entry, settings.accent)
       const ipa = phone.text
       const ipaLabel = phone.label
@@ -4800,7 +4869,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         setLiveWpm(0)
       }, [])
 
-      // 实时速度心跳：条开着才计时，1 秒一条采样；暂停时一条都不推（数字原地冻住再清空）
+      // 实时速度：条开着才计时，1 秒一条采样；暂停不推
       useEffect(() => {
         if (!isOpen) return undefined
         const tick = () => {
@@ -4958,9 +5027,9 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         releaseStuckComposer()
       }, [isOpen])
 
-      // 收起时把留在输入框里的中文撤掉：**只撤我们自己写进去的那一句**，而且只撤一次。
+      // 收起时只撤我们自己写进去的那一句中文，且只撤一次。
       // 注意：wrote 为空时必须直接返回。之前无条件清空，用户关掉跟打后每敲一个字
-      // 都会被这里抹掉，表现就是「输入框打不了字」（换新输入框也一样，因为草稿是共享的）。
+      // 都会被这里抹掉，表现是「输入框打不了字」；草稿共享，换输入框也一样。
       useEffect(() => {
         if (isOpen) return
         const wrote = wroteDraftRef.current
@@ -4974,7 +5043,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         }
       }, [draft, inputActions, isOpen])
 
-      // 逃生热键：⌘/Ctrl + Alt + Q —— 不管卡在哪，强制关条、擦属性、清掉我们写的提示语
+      // 逃生热键：⌘/Ctrl + Alt + Q，强制关条、擦属性
       useEffect(() => {
         const onPanic = (event) => {
           if (!(event.metaKey || event.ctrlKey) || !event.altKey) return
@@ -5046,7 +5115,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
             && (target.isContentEditable
               || target.closest(COMPOSER_EDITOR) !== null
               || target.closest('[contenteditable="true"]') !== null)
-          // 回车/制表符：只要落在输入框区域，任何修饰键都吞掉（防 Cmd+Enter 把中文发出去）
+          // 回车/制表符落在输入框就吞掉，防 Cmd+Enter 把中文发出去
           if ((event.key === 'Enter' || event.key === 'Tab') && (inComposer || (region && region.contains(target)))) {
             event.preventDefault()
             event.stopPropagation()
@@ -5190,7 +5259,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
             typed: state.typed,
             masked,
             // 条宽要扣掉左边进度、右边速度与关闭按钮，剩下的才是单词能用的宽度
-            ...fitWordStyle(target, Math.max(200, (barWidth ?? 640) - 120), { maxLines: 3 }),
+            ...wordStyleFor(target, Math.max(200, (barWidth ?? 640) - 120), { maxLines: 3, scale: settings.wordScale }),
             long: longWord,
             flash: state.flash,
           }),
@@ -5464,6 +5533,13 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         'data-setting': key,
         onClick: () => setSetting(key, !settings[key]),
       }, settings[key] ? '开' : '关')
+      // 档位下拉：wordScale 存字符串，倍速/音量存数字
+      const pick = (key, options) => h('select', {
+        className: 'qat-select',
+        value: String(settings[key]),
+        'data-setting': key,
+        onChange: (event) => setSetting(key, key === 'wordScale' ? event.target.value : Number(event.target.value)),
+      }, options.map(([value, label]) => h('option', { key: String(value), value: String(value) }, label)))
 
       return h('div', { className: 'qat-settings' },
         h('div', { className: 'qat-settings-title' }, t('settingsTitle')),
@@ -5504,9 +5580,19 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         }),
         h(SettingRow, {
           t,
+          label: t('settingVoiceRate'),
+          control: pick('voiceRate', VOICE_RATES.map((rate) => [rate, `${rate}×`])),
+        }),
+        h(SettingRow, {
+          t,
           label: t('settingSound'),
           hint: t('settingSoundHint'),
           control: toggle('sound'),
+        }),
+        h(SettingRow, {
+          t,
+          label: t('settingClickVolume'),
+          control: pick('clickVolume', CLICK_VOLUMES.map((volume) => [volume, `${volume}%`])),
         }),
         h(SettingRow, {
           t,
@@ -5519,6 +5605,11 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
           label: t('settingFinger'),
           hint: t('settingFingerHint'),
           control: toggle('showFinger'),
+        }),
+        h(SettingRow, {
+          t,
+          label: t('settingWordScale'),
+          control: pick('wordScale', WORD_SCALES.map((scale) => [scale, t(`wordScale_${scale}`)])),
         }),
         h(SettingRow, {
           t,
@@ -5722,7 +5813,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
 
     /**
      * 统计浮层：近 14 天柱状 + 汇总数字（纯 SVG/div，不引图表库）。
-     * 键盘区两个视图（热力键盘 / 次数排行）用本地 state 切，对齐上游 toolbox 里的互切按钮；
+     * 键盘两视图（热力 / 排行）用本地 state 切；
      * defaultView 只给测试和「记住上次视图」留口子，正常入口不传。
      */
     function StatsPanel({ t, days, weeks, letters, summary, onClose, defaultView = 'heat' }) {
@@ -5801,7 +5892,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const [mastered, setMastered] = useState([])
       const [stats, setStats] = useState({ days: [], weeks: [], letters: [], summary: summarize([]) })
       const [review, setReview] = useState(null)
-      /** 重练的「第几遍」：错词清单重练时词可能和上一遍完全一样，靠它把 Trainer 重新挂起来 */
+      /** 重练第几遍：词可能和上遍相同，靠它重挂 Trainer */
       const [reviewNonce, setReviewNonce] = useState(0)
       /** 词表抽屉开没开 */
       const [listOpen, setListOpen] = useState(false)
@@ -6151,7 +6242,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
               dictId,
               chapter: round === 0 ? chapter : null,
               chapterTotal,
-              // 面板头部已有一遍标题；卡片头部这一格换成章号（round > 0 时 chapter 是 null，也得说清在哪一章）
+              // 面板头部已有标题，这格换成章号（chapter 为 null 时说复练）
               headTag: t('panelHeadChapter', { n: chapter + 1 }),
               jump,
               onIndex: handleIndex,
@@ -6212,6 +6303,8 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         parseCustomFile, serializeCustomDict, splitCsvLine, toCustomWord, downloadText, withSlashes,
         stepIndex, toWordList, isRoundDone,
         wrapWord, fitWordStyle, wordLines, FIT_SIZES, CHAR_RATIO,
+        WORD_SCALES, WORD_SCALE_FACTOR, clampWordScale, scaleWordSizes, wordStyleFor,
+        VOICE_RATES, CLICK_VOLUMES, clampVoiceRate, clampClickVolume,
         readBarProgress, writeBarProgress, resumeIndex,
         readChapterPos, writeChapterPos, resumeChapter, resumeChapterSmart, BAR_KEY, CHAPTER_KEY, wordsOfRound, nextChapterIndex, pronunciationSrc, pronunciationType, speakWithTts,
         speak, speakMeaning, cancelMeaning, meaningLang, shouldReadMeaning, MEANING_DELAY_MS,
