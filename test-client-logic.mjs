@@ -185,7 +185,7 @@ const {
   judgeTyping, parseWords, format, pushChar, lookup, dictionaries, sampleWords, groupByCategory,
   catalog, normalizeWord, normalizeWords, chapterCount, wordsOfChapter, sampleFromWords,
   searchCatalog, catalogSize, wordsSync,
-  effectiveTarget, stripPunct, maskLetters, DICTATION_MODES,
+  effectiveTarget, stripPunct, maskLetters, answersRevealed, selectStyle, DICTATION_MODES,
   readSettings, getSettings, setSetting, SETTING_DEFAULTS,
   dayKey, aggregateDaily, summarize, lastDays,
   calcWpm, calcAccuracy, shouldStartOnTab, saveSession, readSession, clearSession, sameSession,
@@ -349,9 +349,20 @@ check('重新读到已存的设置', readSettings().dictation, 'hideVowel')
 setSetting('dictation', 'none')
 
 // —— 新增三项（字号 / 发音倍速 / 按键音音量）：老存档缺 key 时回落默认，且不弄丢别的项 ——
-check('设置键总数 14（原 11 项 + 字号/倍速/音量）', Object.keys(SETTING_DEFAULTS).length, 14)
+check('设置键总数 16（14 项 + 悬停提示 / 选择文本）', Object.keys(SETTING_DEFAULTS).length, 16)
 check('新设置项默认值',
   [SETTING_DEFAULTS.wordScale, SETTING_DEFAULTS.voiceRate, SETTING_DEFAULTS.clickVolume], ['auto', 1, 100])
+check('显示类两项默认值（悬停开 / 选中关）',
+  [SETTING_DEFAULTS.answerOnHover, SETTING_DEFAULTS.textSelectable], [true, false])
+check('老存档没有显示类 key 时回落默认', (function () {
+  store['qwerty-autotype:setting:showZh'] = 'false'
+  delete store['qwerty-autotype:setting:answerOnHover']
+  delete store['qwerty-autotype:setting:textSelectable']
+  const merged = readSettings()
+  const out = [merged.answerOnHover, merged.textSelectable, merged.showZh]
+  store['qwerty-autotype:setting:showZh'] = 'true'
+  return out
+})(), [true, false, false])
 check('老存档没有新 key 时回落默认', (function () {
   store['qwerty-autotype:setting:showZh'] = 'false'
   delete store['qwerty-autotype:setting:wordScale']
@@ -1429,7 +1440,7 @@ check('样式里有读屏隐藏类', collectCss(cardA11y).join('').includes('.qa
 
 // —— 渲染冒烟：设置页 ——
 const settingsCase = render('渲染：设置页', () => renderTest.components.SettingsSection({}))
-check('设置页有十三个设置行（新增字号、发音倍速、按键音音量）', collectClasses(settingsCase).filter((name) => name === 'qat-setrow').length, 13)
+check('设置页有十五个设置行（新增默写悬停提示、允许选中文本）', collectClasses(settingsCase).filter((name) => name === 'qat-setrow').length, 15)
 check('设置页有字号/倍速/音量三个新控件', ['wordScale', 'voiceRate', 'clickVolume'].map((key) => {
   const hit = (function find(node) {
     if (!node || typeof node !== 'object') return null
@@ -3194,6 +3205,89 @@ check('只有 1 条记录同样走空态', findNodesByTag(findNodesByClass(
   renderTest.components.StatsPanel({ ...statsProps, records: [{ at: 1, wpm: 40, accuracy: 90 }] }),
   'qat-trend',
 )[0], 'polyline').length, 0)
+
+// —— N16：默写悬停显示答案（对齐上游 Word/index.tsx:140 getLetterVisible 的第一支） ——
+check('不默写时答案恒放开', [
+  answersRevealed({ dictation: 'none', answerOnHover: false, hovering: false }),
+  answersRevealed({}),
+  answersRevealed({ dictation: 'none', answerOnHover: true, hovering: true }),
+].join(), 'true,true,true')
+check('hideAll + 悬停 + 开关开 → 放开', answersRevealed({ dictation: 'hideAll', answerOnHover: true, hovering: true }), true)
+check('hideAll + 悬停 + 开关关 → 仍遮', answersRevealed({ dictation: 'hideAll', answerOnHover: false, hovering: true }), false)
+check('hideAll 不悬停 → 仍遮', answersRevealed({ dictation: 'hideAll', answerOnHover: true, hovering: false }), false)
+check('遮罩被整体放开后一个字都不遮', maskLetters('cancel', 'hideAll', 0, true).some(Boolean), false)
+check('未放开时照旧全遮', maskLetters('cancel', 'hideAll', 0, false).every(Boolean), true)
+
+// —— N17：允许选中文本（对齐上游 Translation/index.tsx:32 的 select-text） ——
+check('选择文本：开的真值', selectStyle(true), { 'data-selectable': 'true' })
+check('选择文本：关的真值', selectStyle(false), { 'data-selectable': 'false' })
+check('非布尔值一律当关', selectStyle('yes'), { 'data-selectable': 'false' })
+
+/** 默写面板：字母的遮罩位（逐字母 data-mask 拼起来） */
+const dictPanel = (extra) => renderTest.components.Trainer({
+  words: ['cancel'], variant: 'panel', showMeta: true, dictation: 'hideAll', ctx: ctxStub, ...extra,
+})
+const maskOf = (tree) => findNodesByClass(tree, 'qat-letter').map((node) => node.props['data-mask']).join()
+const hiddenAll = 'true,true,true,true,true,true'
+const shownAll = 'false,false,false,false,false,false'
+
+const dictBase = render('渲染：默写面板（不悬停）', () => dictPanel({}))
+check('默写 + 不悬停：字母全部遮住', maskOf(dictBase), hiddenAll)
+const dictWord = findNodeWithClass(dictBase, 'qat-word')
+check('单词块绑了 onMouseEnter / onMouseLeave',
+  [typeof dictWord?.props?.onMouseEnter, typeof dictWord?.props?.onMouseLeave].join(), 'function,function')
+check('悬停回调可安全调用', (function () {
+  try {
+    dictWord.props.onMouseEnter()
+    dictWord.props.onMouseLeave()
+    return true
+  } catch {
+    return false
+  }
+})(), true)
+check('鼠标压上去后同一位置字母全部现身', maskOf(render('渲染：默写面板（悬停）', () => dictPanel({ hovering: true }))), shownAll)
+check('关掉开关后悬停也不放答案', (function () {
+  renderTest.setSetting('answerOnHover', false)
+  const masks = maskOf(dictPanel({ hovering: true }))
+  renderTest.setSetting('answerOnHover', true)
+  return masks
+})(), hiddenAll)
+
+renderTest.setOpen(true)
+const barHover = (extra) => renderTest.components.ComposerTrainer({ useInput: () => '', inputActions: {}, ctx: ctxStub, ...extra })
+const barBase = render('渲染：跟打条默写（不悬停）', () => barHover({}))
+const barWord = findNodeWithClass(barBase, 'qat-word')
+check('跟打条单词块也绑了 onMouseEnter', typeof barWord?.props?.onMouseEnter, 'function')
+check('跟打条悬停后字母同样现身', maskOf(barHover({ hovering: true })), shownAll)
+
+// —— 选择文本接线：单词区 + 释义区跟着开关走，样式表只用 user-select ——
+check('面板默认单词不可选', findNodeWithClass(dictBase, 'qat-word')?.props?.['data-selectable'], 'false')
+check('面板默认释义不可选', findNodeWithClass(dictBase, 'qat-gloss')?.props?.['data-selectable'], 'false')
+check('打开后单词与释义都可选', (function () {
+  renderTest.setSetting('textSelectable', true)
+  const on = [
+    findNodeWithClass(dictPanel({}), 'qat-word')?.props?.['data-selectable'],
+    findNodeWithClass(dictPanel({}), 'qat-gloss')?.props?.['data-selectable'],
+  ].join()
+  renderTest.setSetting('textSelectable', false)
+  return on
+})(), 'true,true')
+check('跟打条单词区跟着开关走', (function () {
+  renderTest.setSetting('textSelectable', true)
+  const on = findNodeWithClass(barHover({}), 'qat-wordblock')?.props?.['data-selectable']
+  renderTest.setSetting('textSelectable', false)
+  return [on, findNodeWithClass(barHover({}), 'qat-wordblock')?.props?.['data-selectable']].join()
+})(), 'true,false')
+const selectCss = collectCss(dictBase).join('')
+const selectRules = '[data-selectable="false"]{user-select:none}[data-selectable="true"]{user-select:text}'
+check('样式表有 user-select 两条规则（关掉不可选 / 打开可选）', selectRules.split('}').filter(Boolean).every((rule) => selectCss.includes(rule)), true)
+check('user-select 规则里不写死颜色', /#fff|#000|:white|:black/.test(selectCss.slice(selectCss.indexOf('[data-selectable='), selectCss.indexOf('[data-selectable=') + 120)), false)
+
+// —— 设置页两行新开关 ——
+check('设置页有默写悬停提示开关', settingNode('answerOnHover')?.props?.['aria-checked'], 'true')
+check('设置页有允许选中文本开关', settingNode('textSelectable')?.props?.['aria-checked'], 'false')
+check('两行新设置的文案中英成对', ['settingAnswerOnHover', 'settingAnswerOnHoverHint', 'settingTextSelectable', 'settingTextSelectableHint']
+  .filter((key) => !DICT.zh[key] || !DICT.en[key]).join(), '')
 
 await recordFlow
 

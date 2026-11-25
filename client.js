@@ -2424,6 +2424,10 @@ window.__ModuleLoader__.load({
     settingReadMeaningHint: '打完一个词后把释义也读一遍（先单词后释义，日语释义走 ja-JP）',
     settingDictation: '默写形态',
     settingDictationHint: '默认遮住哪些字母，练习时仍可临时切换',
+    settingAnswerOnHover: '默写时显示提示',
+    settingAnswerOnHoverHint: '开启后，可以通过鼠标 hover 单词显示正确答案',
+    settingTextSelectable: '允许选中文本',
+    settingTextSelectableHint: '开启后单词与释义可以用鼠标拖选复制（打字时更容易误选）',
     reviewMistakes: '重练这些词',
     nextChapter: '下一章',
     allDicts: '全部',
@@ -2582,6 +2586,10 @@ window.__ModuleLoader__.load({
     settingReadMeaningHint: 'After a word is typed, read its meaning too (word first, then meaning; Japanese glosses use ja-JP)',
     settingDictation: 'Dictation',
     settingDictationHint: 'Which letters stay hidden by default',
+    settingAnswerOnHover: 'Hint while dictating',
+    settingAnswerOnHoverHint: 'Hover the word with the mouse to reveal the correct answer',
+    settingTextSelectable: 'Selectable text',
+    settingTextSelectableHint: 'Drag-select and copy the word and its meaning (easier to mis-select while typing)',
     reviewMistakes: 'Review them',
     nextChapter: 'Next chapter',
     allDicts: 'All',
@@ -2845,6 +2853,9 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
 .qat-word[data-wrap="true"] .qat-word-line{display:flex;align-items:center;justify-content:center;gap:2px;white-space:pre}
 .qat-bar .qat-word[data-wrap="true"]{min-height:0}
 .qat-letter{color:var(--dsw-alias-label-primary);transition:color 90ms linear}
+/* 选择文本（N17，对齐上游 Translation/index.tsx 的 select-text）：默认不可选，开了才可选 */
+[data-selectable="false"]{user-select:none}
+[data-selectable="true"]{user-select:text}
 .qat-letter[data-state="ok"]{color:var(--dsw-alias-state-success-primary)}
 .qat-letter[data-state="bad"]{color:var(--dsw-alias-state-error-primary)}
 .qat-word[data-flash="true"]{animation:qat-shake 220ms ease-in-out}
@@ -3370,9 +3381,12 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     /**
      * 每个字母是否要遮住（true = 默写时打码，打对后自动现身）
      * randomHide 用 (seed, i) 的确定性伪随机，同一个词每次遮的位置一致
+     * revealed = 整词放开（悬停看答案，见 answersRevealed），优先级最高
      */
-    function maskLetters(target, mode, seed) {
+    function maskLetters(target, mode, seed, revealed) {
       const chars = String(target ?? '').split('')
+      // 悬停看答案：整词一次性放开，一个字都不再遮（下游 hover 判定见 answersRevealed）
+      if (revealed) return chars.map(() => false)
       if (!mode || mode === 'none') return chars.map(() => false)
       if (mode === 'hideAll') return chars.map(() => true)
       if (mode === 'hideVowel') return chars.map((ch) => VOWELS.has(ch.toLowerCase()))
@@ -3382,6 +3396,21 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     const noise = Math.abs(Math.sin((Number(seed) + 1) * (index + 7)) * 10000) % 1
     return noise < 0.5
       })
+    }
+
+    /**
+     * 现在这一屏的答案要不要整体放开（对齐上游 Word/index.tsx:140 的
+     * `isShowAnswerOnHover && isHoveringWord` 那一支）
+     * 不默写（dictation === 'none'）本来就全显示，所以恒 true
+     */
+    function answersRevealed({ dictation, answerOnHover, hovering }) {
+      if (!dictation || dictation === 'none') return true
+      return answerOnHover === true && hovering === true
+    }
+
+    /** 选中状态的 data 属性（上游 Translation/index.tsx:32 的 select-text 开关） */
+    function selectStyle(selectable) {
+      return { 'data-selectable': selectable === true ? 'true' : 'false' }
     }
 
     /* ---------------- 长句排版：跟打条只有一条横带，整句雅思口语要缩字号 + 断行 ---------------- */
@@ -3488,7 +3517,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
      * 单行时就是一个 .qat-word；给了 perLine 且断出多行时，每行一个 .qat-word-line。
      * 行内字母的 data-state / data-mask 语义与单行完全一致，只是索引从全局算。
      */
-    function WordLetters({ text, typed, masked, perLine, className, size, flash, long }) {
+    function WordLetters({ text, typed, masked, perLine, className, size, flash, long, selectable, onMouseEnter, onMouseLeave }) {
       const lines = wordLines(text, perLine)
       const renderLetter = (ch, index) => {
     const typedChar = typed[index]
@@ -3507,6 +3536,10 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     'data-flash': flash ? 'true' : 'false',
     'data-wrap': multi ? 'true' : 'false',
     'data-long': long ? 'true' : 'false',
+    // 选择文本（N17）与悬停看答案（N16）都挂在这一块：单词区就是鼠标的落点
+    ...selectStyle(selectable),
+    onMouseEnter,
+    onMouseLeave,
     style: size ? { fontSize: `${size}px` } : undefined,
       }, multi
     ? lines.map((line, lineIndex) => h('div', {
@@ -3798,6 +3831,10 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       voiceRate: 1,
       // 按键音音量 0..100（五档）
       clickVolume: 100,
+      // 默写时鼠标悬停单词就显示被遮住的字母（上游 isShowAnswerOnHoverAtom，默认开）
+      answerOnHover: true,
+      // 单词与释义允许鼠标选中复制（上游 isTextSelectableAtom，默认关：打字时误拖会选中）
+      textSelectable: false,
     }
     const SETTING_PREFIX = 'qwerty-autotype:setting:'
 
@@ -3948,7 +3985,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     function Trainer({
       words, variant, onClose, showMeta = false, options, dictation = 'none',
       dictId = '', chapter = null, chapterTotal = 0, onFinish, onReview, onRetryWrong, onNextChapter, ctx,
-      jump = null, onIndex, onLiveWpm, headTag = '',
+      jump = null, onIndex, onLiveWpm, headTag = '', hovering: hoverStart = false,
     }) {
       const t = useT(ctx)
       const [state, setState] = useState({
@@ -3969,6 +4006,14 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       /** 本轮打错过的词（结果页展示 + 一键重练） */
       const [mistakes, setMistakes] = useState([])
       const [helpOpen, setHelpOpen] = useState(false)
+      /**
+       * 鼠标是否压在这个词上（N16）。hoverStart 是受控入口：外部预览 / 测试直接给值，
+       * 平时永远是 false，真实悬停只走 onMouseEnter / onMouseLeave。
+       */
+      const [hovering, setHovering] = useState(false)
+      const hoveringNow = hovering || hoverStart === true
+      const hoverIn = useCallback(() => setHovering(true), [])
+      const hoverOut = useCallback(() => setHovering(false), [])
       /** 读屏播报：只在状态变化时更新，避免每敲一键都朗读 */
       const [announce, setAnnounce] = useState('')
       const settingsNow = useSyncExternalStore(subscribeSettings, getSettings, getSettings) || {}
@@ -4119,7 +4164,13 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const current = done ? '' : (words[state.index] ?? '')
       // 判定用的目标串（忽略标点 / 大小写）与展示用的遮罩
       const target = effectiveTarget(current, options)
-      const masked = maskLetters(target, dictation, state.index)
+      // 悬停在词上且开了开关：整词放开（对齐上游 getLetterVisible 的第一支）
+      const maskRevealed = answersRevealed({
+    dictation,
+    answerOnHover: settingsNow.answerOnHover,
+    hovering: hoveringNow,
+      })
+      const masked = maskLetters(target, dictation, state.index, maskRevealed)
       const meta = lookup(current)
       // 音标按设置里的口音显示（AmE / BrE）：口音前缀只跟「实际取到的那一支」走，
       // 两支都缺退回合并 ipa 时 label 为空（别给 route 这种实际英音的词标 AmE）
@@ -4445,11 +4496,14 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
           ...wordStyleFor(target, 700, { maxLines: 3, scale: settingsNow.wordScale }),
           long: longWord,
           flash: state.flash,
+          selectable: settingsNow.textSelectable === true,
+          onMouseEnter: hoverIn,
+          onMouseLeave: hoverOut,
         }),
         // 假名词库只有 notation 时也要保留这一块：发音按钮挂在里面。
         // 发音只看 current（读音不依赖音标），所以只有按钮时这块照样挂上
         showMeta && (ipaText || gloss || notation || (current && voiceOn))
-          ? h('div', { className: 'qat-gloss' },
+          ? h('div', { className: 'qat-gloss', ...selectStyle(settingsNow.textSelectable === true) },
             // 音标行只在真有音标时出现（前缀与音标体分开画，前缀更淡）
             ipaText
               ? h('div', { className: 'qat-gloss-ipa' },
@@ -4815,7 +4869,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       return (list || []).map((entry) => (typeof entry === 'string' ? entry : entry?.w)).filter(Boolean)
     }
 
-    function ComposerTrainer({ useInput, inputActions, ctx }) {
+    function ComposerTrainer({ useInput, inputActions, ctx, hovering: hoverStart = false }) {
       const t = useT(ctx)
       const isOpen = useSyncExternalStore(subscribeOpen, getOpen, getOpen)
       const draft = useInput((snapshot) => snapshot?.draft ?? '')
@@ -4835,6 +4889,11 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const liveBarRef = useRef(false)
       const settings = useSyncExternalStore(subscribeSettings, getSettings, getSettings)
       const [loopOn, setLoopOn] = useState(false)
+      /** 鼠标压在词上（N16）：跟打条同样一悬停就放开答案；hoverStart 是受控入口 */
+      const [hovering, setHovering] = useState(false)
+      const hoveringNow = hovering || hoverStart === true
+      const hoverIn = useCallback(() => setHovering(true), [])
+      const hoverOut = useCallback(() => setHovering(false), [])
       const stateRef = useRef(state)
       const wordsRef = useRef(words)
       const lockRef = useRef({ locked: false, timer: null })
@@ -4927,7 +4986,11 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     [settings.caseSensitive, settings.ignorePunct],
       )
       const target = effectiveTarget(current, judgeOptions)
-      const masked = maskLetters(target, settings.dictation, state.index)
+      const masked = maskLetters(target, settings.dictation, state.index, answersRevealed({
+    dictation: settings.dictation,
+    answerOnHover: settings.answerOnHover,
+    hovering: hoveringNow,
+      }))
       const entry = lookup(current)
       // 音标按口音显示（前缀 AmE / BrE 随 accent 设置实时变）；
       // 假名词条没音标：notation 走自己的位（不进音标行）
@@ -5380,7 +5443,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     h('span', { className: 'qat-bar-speed' }, t('liveSpeed', { wpm: liveWpm }),
       clockVisible('command', barMs) ? ` · ${clockText(barMs).text}` : ''),
     h('span', { className: 'qat-bar-center' },
-      h('span', { className: 'qat-wordblock' },
+      h('span', { className: 'qat-wordblock', ...selectStyle(settings.textSelectable === true) },
       h(WordLetters, {
         text: target,
         typed: state.typed,
@@ -5389,6 +5452,9 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         ...wordStyleFor(target, Math.max(200, (barWidth ?? 640) - 120), { maxLines: 3, scale: settings.wordScale }),
         long: longWord,
         flash: state.flash,
+        selectable: settings.textSelectable === true,
+        onMouseEnter: hoverIn,
+        onMouseLeave: hoverOut,
       }),
         ipa
           ? h('span', { className: 'qat-ipa' },
@@ -5747,6 +5813,18 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         value: settings.dictation,
         onChange: (event) => setSetting('dictation', event.target.value),
       }, DICTATION_MODES.map((mode) => h('option', { key: mode, value: mode }, t(`dictation_${mode}`)))),
+    }),
+    h(SettingRow, {
+      t,
+      label: t('settingAnswerOnHover'),
+      hint: t('settingAnswerOnHoverHint'),
+      control: toggle('answerOnHover'),
+    }),
+    h(SettingRow, {
+      t,
+      label: t('settingTextSelectable'),
+      hint: t('settingTextSelectableHint'),
+      control: toggle('textSelectable'),
     }),
     h('div', { className: 'qat-settings-title qat-datablock' }, t('hotkeysTitle')),
     h('div', { className: 'qat-sethint qat-hotkeys' }, t('hotkeysList')),
@@ -6407,7 +6485,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     cleanPhone, bracketPhone, PHONE_PLACEHOLDER,
     splitSense, splitSenses, sensesOf, SENSE_LIMIT,
     searchCatalog, readRecent, catalogSize: () => catalog().length, wordsSync, loadDictWords,
-    effectiveTarget, stripPunct, maskLetters, DICTATION_MODES, readSettings, getSettings, setSetting,
+    effectiveTarget, stripPunct, maskLetters, answersRevealed, selectStyle, DICTATION_MODES, readSettings, getSettings, setSetting,
     subscribeSettings, SETTING_DEFAULTS, DICT, heatLevel,
     dayKey, aggregateDaily, summarize, lastDays, readProgress, readChapterRecords, readWordRecords,
     recordWord, recordChapter, saveProgress,
