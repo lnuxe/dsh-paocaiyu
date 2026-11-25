@@ -2062,6 +2062,26 @@ check('条上首帧就是存档那个词', resumedWord, barWords[2])
 renderTest.setOpen(false)
 renderTest.writeBarProgress('cet4', 0)
 
+// —— 长句的 CSS 不能和 fitWordStyle 抢字号（D1 与 D2 合并后的回归） ——
+{
+  const rule = (source.match(/\.qat-word\[data-long="true"\][^{]*\{([^}]*)\}/g) ?? []).join(' ')
+  check('长句规则里不再写死 font-size', /font-size/.test(rule), false)
+  check('长句规则里不再 flex-wrap（会把多行折成多列）', /flex-wrap/.test(rule), false)
+  check('长句规则仍收行距/字距', /line-height/.test(rule) && /letter-spacing/.test(rule), true)
+  const longWord177 = `${'x'.repeat(176)}.`   // 上游最长的一条 name 就是 177 字符（雅思口语句子）
+  const longCase = renderTest.components.Trainer({ words: [longWord177], variant: 'panel', showMeta: true, ctx: ctxStub })
+  const longNode = (function find(node) {
+    if (!node || typeof node !== 'object') return null
+    if (Array.isArray(node)) return node.map(find).find(Boolean) ?? null
+    if (typeof node.type === 'function') return find(node.type(node.props ?? {}))
+    const cls = String(node.props?.className ?? '')
+    if (cls.split(/\s+/).includes('qat-word')) return node
+    return find(node.children) || find(node.props?.children)
+  })(longCase)
+  check('177 字符长句同时挂 data-long 与 data-wrap', [longNode?.props?.['data-long'], longNode?.props?.['data-wrap']], ['true', 'true'])
+  check('字号走 inline style（CSS 抢不过它）', /px$/.test(String(longNode?.props?.style?.fontSize ?? '')), true)
+}
+
 // —— 样式表只进 head 一份 ——
 const fakeDoc = (() => {
   const nodes = []

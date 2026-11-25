@@ -2390,8 +2390,8 @@ window.__ModuleLoader__.load({
 .qat-card[data-variant="panel"] .qat-head{justify-content:center}
 .qat-card[data-variant="panel"] .qat-word{font-size:56px;justify-content:center;gap:2px;margin:8px 0 4px}
 /* 长句子/词组（> LONG_WORD_CHARS）：缩字号 + 允许折行，别把卡片撑爆 */
-.qat-bar .qat-word[data-long="true"],.qat-card[data-variant="panel"] .qat-word[data-long="true"]{font-size:22px;line-height:1.45;letter-spacing:0;gap:0;min-height:26px;flex-wrap:wrap;text-align:center}
-.qat-bar .qat-word[data-long="true"]{font-size:18px}
+/* 长句：字号与断行由 fitWordStyle 算好写在 inline style 上，CSS 只管行距和字距，别和它抢 */
+.qat-bar .qat-word[data-long="true"],.qat-card[data-variant="panel"] .qat-word[data-long="true"]{line-height:1.3;letter-spacing:0;gap:0;text-align:center}
 /* 假名（notation）当副行时用正文字体，不然假名挤在等宽字体里很难认 */
 .qat-gloss-notation{font-size:15px;line-height:1.4;color:var(--dsw-alias-label-secondary);font-family:inherit}
 .qat-gloss{display:flex;flex-direction:column;align-items:center;gap:4px;margin:6px 0 16px;text-align:center}
