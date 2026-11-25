@@ -1792,7 +1792,6 @@ window.__ModuleLoader__.load({
 .qat-card[data-variant="panel"]{width:100%;box-sizing:border-box;border:1px solid var(--dsw-alias-border-l1);border-radius:12px;padding:24px;background:var(--dsw-alias-bg-layer-1)}
 .qat-card[data-variant="panel"] .qat-head{justify-content:center}
 .qat-card[data-variant="panel"] .qat-word{font-size:56px;justify-content:center;gap:2px;margin:8px 0 4px}
-.qat-card[data-variant="panel"] .qat-input{font-size:18px;text-align:center}
 .qat-gloss{display:flex;flex-direction:column;align-items:center;gap:3px;margin:2px 0 14px}
 .qat-gloss-ipa{font-size:16px;color:var(--dsw-alias-label-secondary);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 .qat-gloss-zh{font-size:13px;color:var(--dsw-alias-label-secondary)}
@@ -1815,6 +1814,8 @@ window.__ModuleLoader__.load({
 .qat-word[data-flash="true"]{animation:qat-shake 220ms ease-in-out}
 @keyframes qat-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
 .qat-input{width:100%;box-sizing:border-box;padding:8px 10px;border-radius:8px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);font:inherit;font-size:14px}
+/* 面板里不画输入框：留一个 1px 的隐形输入目标接住键入与输入法（对齐上游 InputHandler） */
+.qat-input-ghost{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip-path:inset(50%);border:0;background:transparent;opacity:0;pointer-events:none}
 .qat-input:focus{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-1px}
 .qat-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--dsw-alias-label-secondary)}
 .qat-btn{display:inline-flex;align-items:center;gap:4px;user-select:none;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer;line-height:1.6}
@@ -2709,12 +2710,15 @@ window.__ModuleLoader__.load({
                   : null,
               )
               : null,
+            // 上游没有可见输入框（InputHandler 用隐藏元素吃键盘）：这里同样只留一个
+            // 视觉隐藏的输入目标，用来接住键入与输入法，界面上不画框。
             h('input', {
               ref: inputRef,
-              className: 'qat-input',
+              className: 'qat-input qat-input-ghost',
               type: 'text',
               value: state.typed,
-              placeholder: t('placeholder'),
+              'aria-label': t('placeholder'),
+              tabIndex: -1,
               autoFocus: true,
               autoComplete: 'off',
               autoCapitalize: 'none',
@@ -2966,12 +2970,16 @@ window.__ModuleLoader__.load({
       // 换词自动发音：跟打条也读，原来只有按钮能点，摘掉按钮就没声了
       const spokenRef = useRef({ word: '', index: -1 })
       useEffect(() => {
+        // 条没开就一个字都不许读：这个组件跟着 dock 挂载，新开会话会重挂一次，
+        // 少了这两道门禁就会「一进新会话就听到一个单词」。
+        if (!isOpen) return
+        if (getOpen() !== true) return
         if (!settings.voice) return
         if (!current) return
         if (spokenRef.current.word === current && spokenRef.current.index === state.index) return
         spokenRef.current = { word: current, index: state.index }
         speak(current)
-      }, [current, settings.voice, state.index])
+      }, [current, isOpen, settings.voice, state.index])
       const done = false
       const judgeOptions = useMemo(
         () => ({ caseSensitive: settings.caseSensitive, ignorePunct: settings.ignorePunct }),
