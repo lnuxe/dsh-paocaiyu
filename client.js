@@ -57,22 +57,22 @@ window.__ModuleLoader__.load({
       const icon = ICONS[name]
       if (!icon) return null
       const common = {
-        className: `qat-svg qat-svg-${name}`,
-        width: size,
-        height: size,
-        viewBox: '0 0 24 24',
-        'aria-hidden': 'true',
-        focusable: 'false',
+    className: `qat-svg qat-svg-${name}`,
+    width: size,
+    height: size,
+    viewBox: '0 0 24 24',
+    'aria-hidden': 'true',
+    focusable: 'false',
       }
       const paint = icon.filled
-        ? { fill: 'currentColor', stroke: 'none' }
-        : {
-          fill: 'none',
-          stroke: 'currentColor',
-          'stroke-width': strokeWidth,
-          'stroke-linecap': 'round',
-          'stroke-linejoin': 'round',
-        }
+    ? { fill: 'currentColor', stroke: 'none' }
+    : {
+      fill: 'none',
+      stroke: 'currentColor',
+      'stroke-width': strokeWidth,
+      'stroke-linecap': 'round',
+      'stroke-linejoin': 'round',
+    }
       const children = icon.d.map((d, index) => h('path', { key: index, d, ...paint }))
       return h('svg', { ...common, ...paint }, ...children)
     }
@@ -144,18 +144,18 @@ window.__ModuleLoader__.load({
       const list = []
       // 钉住的提交优先：master 漂移或词库被改都不影响；拿不到再回退 master
       if (DICT_PIN) {
-        list.push((file) => `https://cdn.jsdelivr.net/gh/${DICT_REPO}@${DICT_PIN}/public${file}`)
-        list.push((file) => `https://raw.githubusercontent.com/${DICT_REPO}/${DICT_PIN}/public${file}`)
+    list.push((file) => `https://cdn.jsdelivr.net/gh/${DICT_REPO}@${DICT_PIN}/public${file}`)
+    list.push((file) => `https://raw.githubusercontent.com/${DICT_REPO}/${DICT_PIN}/public${file}`)
       }
       list.push((file) => `https://cdn.jsdelivr.net/gh/${DICT_REPO}@${DICT_REF}/public${file}`)
       list.push((file) => `https://raw.githubusercontent.com/${DICT_REPO}/${DICT_REF}/public${file}`)
       try {
-        const { hostname, port } = window.location
-        if (port === '8081' && (hostname === '127.0.0.1' || hostname === 'localhost')) {
-          list.unshift((file) => `http://127.0.0.1:8081${file}`)
-        }
+    const { hostname, port } = window.location
+    if (port === '8081' && (hostname === '127.0.0.1' || hostname === 'localhost')) {
+      list.unshift((file) => `http://127.0.0.1:8081${file}`)
+    }
       } catch {
-        /* 非浏览器环境（测试）忽略 */
+    /* 非浏览器环境（测试）忽略 */
       }
       return list
     }
@@ -195,26 +195,26 @@ window.__ModuleLoader__.load({
 
     function buildCatalog(customMap) {
       const custom = Object.entries(customMap).map(([name, words]) => ({
-        id: CUSTOM_PREFIX + name,
-        name,
-        category: '自定义',
-        tags: ['自定义'],
-        length: words.length,
-        url: '',
-        languageCategory: 'en',
+    id: CUSTOM_PREFIX + name,
+    name,
+    category: '自定义',
+    tags: ['自定义'],
+    length: words.length,
+    url: '',
+    languageCategory: 'en',
       }))
       const list = DICT_INDEX?.dicts
       if (Array.isArray(list) && list.length > 0) {
-        return custom.length ? [...custom, ...list] : list
+    return custom.length ? [...custom, ...list] : list
       }
       const builtin = builtinDicts().map((dict) => ({
-        id: dict.id,
-        name: dict.name,
-        category: dict.category,
-        tags: [],
-        length: (dict.words || []).length,
-        url: '',
-        languageCategory: 'en',
+    id: dict.id,
+    name: dict.name,
+    category: dict.category,
+    tags: [],
+    length: (dict.words || []).length,
+    url: '',
+    languageCategory: 'en',
       }))
       return custom.length ? [...custom, ...builtin] : builtin
     }
@@ -251,9 +251,9 @@ window.__ModuleLoader__.load({
     /** 按 camelCase 与非字母数字切词：jsObject → [js, Object] */
     function badgeWords(text) {
       return String(text)
-        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-        .split(/[^A-Za-z0-9]+/)
-        .filter((value) => value)
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .split(/[^A-Za-z0-9]+/)
+    .filter((value) => value)
     }
 
     /**
@@ -269,23 +269,23 @@ window.__ModuleLoader__.load({
       const id = String(meta?.id ?? '')
       const sources = [name, id].filter((value) => value)
       for (const source of sources) {
-        const hit = source.match(/([A-Za-z]+)[^A-Za-z0-9]{0,2}(\d+)/)
-        if (hit) return (hit[1][0] + hit[2][0]).toUpperCase()
+    const hit = source.match(/([A-Za-z]+)[^A-Za-z0-9]{0,2}(\d+)/)
+    if (hit) return (hit[1][0] + hit[2][0]).toUpperCase()
       }
       // 2. 只看名字：名字末尾的 1-2 字母独立字段才有区分度，id 的尾巴多是拼音碎片
       const nameTokens = name.split(/[^A-Za-z0-9]+/).filter((value) => value)
       const nameTail = nameTokens[nameTokens.length - 1]
       if (nameTokens.length > 1 && /^[A-Za-z]{1,2}$/.test(nameTail)) return nameTail.toUpperCase()
       for (const source of sources) {
-        const hit = source.match(BADGE_CJK_RUN)
-        if (hit) return Array.from(hit[0]).slice(0, 2).join('')
+    const hit = source.match(BADGE_CJK_RUN)
+    if (hit) return Array.from(hit[0]).slice(0, 2).join('')
       }
       for (const source of sources) {
-        const words = badgeWords(source)
-        if (!words.length) continue
-        return words.length === 1
-          ? words[0].slice(0, 2).toUpperCase()
-          : (words[0][0] + words[1][0]).toUpperCase()
+    const words = badgeWords(source)
+    if (!words.length) continue
+    return words.length === 1
+      ? words[0].slice(0, 2).toUpperCase()
+      : (words[0][0] + words[1][0]).toUpperCase()
       }
       const cjk = name.match(BADGE_CJK)
       return cjk ? cjk[0] : '?'
@@ -294,9 +294,9 @@ window.__ModuleLoader__.load({
     /** 词库 → { text, tone, title }：徽标要用的全在这儿算，组件只管画 */
     function dictBadge(meta) {
       return {
-        text: badgeText(meta),
-        tone: badgeTone(meta),
-        title: String(meta?.name ?? meta?.id ?? ''),
+    text: badgeText(meta),
+    tone: badgeTone(meta),
+    title: String(meta?.name ?? meta?.id ?? ''),
       }
     }
 
@@ -311,12 +311,12 @@ window.__ModuleLoader__.load({
     function cleanZh(text) {
       if (!text) return ''
       return String(text)
-        .replace(/\r?\n/g, ' ')
-        .replace(/[\u3000\t]+/g, ' ')
-        .replace(/\s+/g, ' ')
-        .replace(/\s*([，。；：、！？（）「」])\s*/g, '$1')
-        .replace(/^[\s;；,，]+|[\s;；,，]+$/g, '')
-        .trim()
+    .replace(/\r?\n/g, ' ')
+    .replace(/[\u3000\t]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/\s*([，。；：、！？（）「」])\s*/g, '$1')
+    .replace(/^[\s;；,，]+|[\s;；,，]+$/g, '')
+    .trim()
     }
 
     /** 音标占位值：这些等于「没有音标」，一律归一成空串 */
@@ -334,17 +334,17 @@ window.__ModuleLoader__.load({
     function cleanPhone(raw) {
       if (raw === null || raw === undefined) return ''
       let text = String(raw)
-        .replace(/／/g, '/')
-        .replace(/［/g, '[')
-        .replace(/］/g, ']')
-        .replace(/[\u3000\u00a0\t\r\n]+/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim()
+    .replace(/／/g, '/')
+    .replace(/［/g, '[')
+    .replace(/］/g, ']')
+    .replace(/[\u3000\u00a0\t\r\n]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
       if (!text) return ''
       for (let i = 0; i < 4; i += 1) {
-        const stripped = text.replace(/^[/[\]]+/, '').replace(/[/[\]]+$/, '').trim()
-        if (stripped === text) break
-        text = stripped
+    const stripped = text.replace(/^[/[\]]+/, '').replace(/[/[\]]+$/, '').trim()
+    if (stripped === text) break
+    text = stripped
       }
       if (!text || PHONE_PLACEHOLDER.test(text)) return ''
       return text
@@ -403,8 +403,8 @@ window.__ModuleLoader__.load({
       // 日语假名词库（JapaneseHiragana / Katakana）没有中文释义，但有 notation（假名），
       // 练的是 name（罗马字）：`zh || notation` 有一即可入库，UI 把假名当副行显示
       const notation = isCode || raw.notation === undefined || raw.notation === null
-        ? ''
-        : raw.notation.toString().replace(/\s+/g, ' ').trim()
+    ? ''
+    : raw.notation.toString().replace(/\s+/g, ' ').trim()
       // 自定义词表允许只给单词（没释义也能练），内置/网络词库仍要求有中文或假名
       if (!zh && !notation && options?.allowNoZh !== true) return drop('noZh')
       // 美音英音各存一份：缺的那支留空串，退回由 phoneticOf 决定（不在这里合并）
@@ -453,11 +453,11 @@ window.__ModuleLoader__.load({
       const picked = accent === 'uk' ? (uk ? 'uk' : 'us') : (us ? 'us' : 'uk')
       const value = picked === 'uk' ? uk : us
       if (value) {
-        const accented = word?.en !== false
-        return {
-          text: bracketPhone(value),
-          label: accented ? (picked === 'uk' ? 'BrE' : 'AmE') : '',
-        }
+    const accented = word?.en !== false
+    return {
+      text: bracketPhone(value),
+      label: accented ? (picked === 'uk' ? 'BrE' : 'AmE') : '',
+    }
       }
       const legacy = cleanPhone(word?.ipa)
       return legacy ? { text: bracketPhone(legacy), label: '' } : { text: '', label: '' }
@@ -487,21 +487,21 @@ window.__ModuleLoader__.load({
       let pos = ''
       const head = rest.match(POS_HEAD_RE)
       if (head) {
-        pos = head[0].trim().toLowerCase()
-        rest = rest.slice(head[0].length)
-        // 连着写的第二个词性也算词性，正文里不留 `&vi.`
-        let extra = rest.match(new RegExp(`^&\\s*(${POS_TOKEN}\\.)\\s*`, 'i'))
-        while (extra) {
-          pos = `${pos} & ${extra[1].toLowerCase()}`
-          rest = rest.slice(extra[0].length)
-          extra = rest.match(new RegExp(`^&\\s*(${POS_TOKEN}\\.)\\s*`, 'i'))
-        }
+    pos = head[0].trim().toLowerCase()
+    rest = rest.slice(head[0].length)
+    // 连着写的第二个词性也算词性，正文里不留 `&vi.`
+    let extra = rest.match(new RegExp(`^&\\s*(${POS_TOKEN}\\.)\\s*`, 'i'))
+    while (extra) {
+      pos = `${pos} & ${extra[1].toLowerCase()}`
+      rest = rest.slice(extra[0].length)
+      extra = rest.match(new RegExp(`^&\\s*(${POS_TOKEN}\\.)\\s*`, 'i'))
+    }
       } else {
-        const tail = rest.match(POS_TAIL_RE)
-        if (tail) {
-          pos = `${tail[1].toLowerCase()}.`
-          rest = rest.slice(0, tail.index)
-        }
+    const tail = rest.match(POS_TAIL_RE)
+    if (tail) {
+      pos = `${tail[1].toLowerCase()}.`
+      rest = rest.slice(0, tail.index)
+    }
       }
       return { pos: pos.trim(), body: rest.trim() }
     }
@@ -518,10 +518,10 @@ window.__ModuleLoader__.load({
       if (!flat) return []
       const out = []
       for (const chunk of flat.split(/[；;\n]/)) {
-        for (const piece of String(chunk).split(POS_MID_RE)) {
-          const sense = splitSense(piece)
-          if (sense.pos || sense.body) out.push(sense)
-        }
+    for (const piece of String(chunk).split(POS_MID_RE)) {
+      const sense = splitSense(piece)
+      if (sense.pos || sense.body) out.push(sense)
+    }
       }
       return out
     }
@@ -533,11 +533,11 @@ window.__ModuleLoader__.load({
     function sensesOf(entry) {
       const cached = entry?.senses
       if (Array.isArray(cached)) {
-        return cached
-          .map((item) => (typeof item === 'string'
-            ? splitSense(item)
-            : { pos: String(item?.pos ?? ''), body: String(item?.body ?? '') }))
-          .filter((sense) => sense.pos || sense.body)
+    return cached
+      .map((item) => (typeof item === 'string'
+        ? splitSense(item)
+        : { pos: String(item?.pos ?? ''), body: String(item?.body ?? '') }))
+      .filter((sense) => sense.pos || sense.body)
       }
       return splitSenses(entry?.zh)
     }
@@ -547,12 +547,12 @@ window.__ModuleLoader__.load({
       const seen = new Set()
       const out = []
       for (const raw of list || []) {
-        const word = normalizeWord(raw, languageCategory, options)
-        if (!word) continue
-        const key = word.w.toLowerCase()
-        if (seen.has(key)) continue
-        seen.add(key)
-        out.push(word)
+    const word = normalizeWord(raw, languageCategory, options)
+    if (!word) continue
+    const key = word.w.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(word)
       }
       return out
     }
@@ -564,88 +564,88 @@ window.__ModuleLoader__.load({
     function openCacheDb() {
       if (DB_PROMISE) return DB_PROMISE
       DB_PROMISE = new Promise((resolve) => {
-        try {
-          if (!window.indexedDB) return resolve(null)
-          const request = window.indexedDB.open(CACHE_DB_NAME, CACHE_DB_VERSION)
-          request.onupgradeneeded = () => {
-            const db = request.result
-            if (!db.objectStoreNames.contains(CACHE_STORE)) {
-              db.createObjectStore(CACHE_STORE, { keyPath: 'key' })
-            }
-            if (!db.objectStoreNames.contains(WORD_STORE)) {
-              const store = db.createObjectStore(WORD_STORE, { keyPath: 'id', autoIncrement: true })
-              store.createIndex('word', 'word')
-              store.createIndex('dictId', 'dictId')
-              store.createIndex('at', 'at')
-            }
-            if (!db.objectStoreNames.contains(CHAPTER_STORE)) {
-              const store = db.createObjectStore(CHAPTER_STORE, { keyPath: 'id', autoIncrement: true })
-              store.createIndex('dictId', 'dictId')
-              store.createIndex('at', 'at')
-            }
-            if (!db.objectStoreNames.contains(PROGRESS_STORE)) {
-              db.createObjectStore(PROGRESS_STORE, { keyPath: 'key' })
-            }
-          }
-          request.onsuccess = () => {
-            const db = request.result
-            // 别的标签页升级版本时主动让路，避免后续事务全被 blocked
-            db.onversionchange = () => {
-              try {
-                db.close()
-              } catch {
-                /* ignore */
-              }
-              DB_PROMISE = null
-            }
-            resolve(db)
-          }
-          request.onerror = () => resolve(null)
-          request.onblocked = () => resolve(null)
-        } catch {
-          resolve(null)
+    try {
+      if (!window.indexedDB) return resolve(null)
+      const request = window.indexedDB.open(CACHE_DB_NAME, CACHE_DB_VERSION)
+      request.onupgradeneeded = () => {
+        const db = request.result
+        if (!db.objectStoreNames.contains(CACHE_STORE)) {
+          db.createObjectStore(CACHE_STORE, { keyPath: 'key' })
         }
+        if (!db.objectStoreNames.contains(WORD_STORE)) {
+          const store = db.createObjectStore(WORD_STORE, { keyPath: 'id', autoIncrement: true })
+          store.createIndex('word', 'word')
+          store.createIndex('dictId', 'dictId')
+          store.createIndex('at', 'at')
+        }
+        if (!db.objectStoreNames.contains(CHAPTER_STORE)) {
+          const store = db.createObjectStore(CHAPTER_STORE, { keyPath: 'id', autoIncrement: true })
+          store.createIndex('dictId', 'dictId')
+          store.createIndex('at', 'at')
+        }
+        if (!db.objectStoreNames.contains(PROGRESS_STORE)) {
+          db.createObjectStore(PROGRESS_STORE, { keyPath: 'key' })
+        }
+      }
+      request.onsuccess = () => {
+        const db = request.result
+        // 别的标签页升级版本时主动让路，避免后续事务全被 blocked
+        db.onversionchange = () => {
+          try {
+            db.close()
+          } catch {
+            /* ignore */
+          }
+          DB_PROMISE = null
+        }
+        resolve(db)
+      }
+      request.onerror = () => resolve(null)
+      request.onblocked = () => resolve(null)
+    } catch {
+      resolve(null)
+    }
       })
       return DB_PROMISE
     }
 
     function cacheGet(key) {
       return openCacheDb().then(
-        (db) =>
-          new Promise((resolve) => {
-            if (!db) return resolve(null)
-            try {
-              const tx = db.transaction(CACHE_STORE, 'readonly')
-              const request = tx.objectStore(CACHE_STORE).get(key)
-              request.onsuccess = () => resolve(request.result?.words ?? null)
-              request.onerror = () => resolve(null)
-            } catch {
-              resolve(null)
-            }
-          }),
+    (db) =>
+      new Promise((resolve) => {
+        if (!db) return resolve(null)
+        try {
+          const tx = db.transaction(CACHE_STORE, 'readonly')
+          const request = tx.objectStore(CACHE_STORE).get(key)
+          request.onsuccess = () => resolve(request.result?.words ?? null)
+          request.onerror = () => resolve(null)
+        } catch {
+          resolve(null)
+        }
+      }),
       )
     }
 
     function cachePut(key, words, meta) {
       return openCacheDb().then(
-        (db) =>
-          new Promise((resolve) => {
-            if (!db) return resolve(false)
-            try {
-              const tx = db.transaction(CACHE_STORE, 'readwrite')
-              tx.objectStore(CACHE_STORE).put({
-                key,
-                words,
-                count: words.length,
-                dictId: meta?.id ?? key,
-                savedAt: Date.now(),
-              })
-              tx.oncomplete = () => resolve(true)
-              tx.onerror = () => resolve(false)
-            } catch {
-              resolve(false)
-            }
-          }),
+    (db) =>
+      new Promise((resolve) => {
+        if (!db) return resolve(false)
+        try {
+          const tx = db.transaction(CACHE_STORE, 'readwrite')
+          tx.objectStore(CACHE_STORE).put({
+            key,
+            words,
+            count: words.length,
+            dictId: meta?.id ?? key,
+            savedAt: Date.now(),
+          })
+          tx.oncomplete = () => resolve(true)
+          tx.onerror = () => resolve(false)
+        } catch {
+          resolve(false)
+        }
+      }),
       )
     }
 
@@ -654,22 +654,22 @@ window.__ModuleLoader__.load({
     /** 事务包装：拿 store 名 + 回调，无 IndexedDB 时静默跳过 */
     function withStore(names, mode, run) {
       return openCacheDb().then(
-        (db) =>
-          new Promise((resolve) => {
-            if (!db) return resolve(null)
-            try {
-              const tx = db.transaction(names, mode)
-              let result = null
-              run(tx, (value) => {
-                result = value
-              })
-              tx.oncomplete = () => resolve(result)
-              tx.onerror = () => resolve(null)
-              tx.onabort = () => resolve(null)
-            } catch {
-              resolve(null)
-            }
-          }),
+    (db) =>
+      new Promise((resolve) => {
+        if (!db) return resolve(null)
+        try {
+          const tx = db.transaction(names, mode)
+          let result = null
+          run(tx, (value) => {
+            result = value
+          })
+          tx.oncomplete = () => resolve(result)
+          tx.onerror = () => resolve(null)
+          tx.onabort = () => resolve(null)
+        } catch {
+          resolve(null)
+        }
+      }),
       )
     }
 
@@ -677,28 +677,28 @@ window.__ModuleLoader__.load({
     function recordWord(entry) {
       if (!entry || !entry.word) return Promise.resolve(null)
       return withStore(WORD_STORE, 'readwrite', (tx, done) => {
-        const request = tx.objectStore(WORD_STORE).add({
-          word: String(entry.word),
-          dictId: entry.dictId ?? '',
-          chapter: Number.isInteger(entry.chapter) ? entry.chapter : null,
-          at: entry.at ?? Date.now(),
-          wrongCount: Math.max(0, Number(entry.wrongCount) || 0),
-          timing: Array.isArray(entry.timing) ? entry.timing.slice(0, 64) : [],
-        })
-        request.onsuccess = () => done(request.result)
+    const request = tx.objectStore(WORD_STORE).add({
+      word: String(entry.word),
+      dictId: entry.dictId ?? '',
+      chapter: Number.isInteger(entry.chapter) ? entry.chapter : null,
+      at: entry.at ?? Date.now(),
+      wrongCount: Math.max(0, Number(entry.wrongCount) || 0),
+      timing: Array.isArray(entry.timing) ? entry.timing.slice(0, 64) : [],
+    })
+    request.onsuccess = () => done(request.result)
       }).then((id) => {
-        if (id === null) {
-          const mirror = readMirror()
-          mirror.wordRecords.unshift({
-            word: String(entry.word),
-            dictId: entry.dictId ?? '',
-            chapter: Number.isInteger(entry.chapter) ? entry.chapter : null,
-            at: entry.at ?? Date.now(),
-            wrongCount: Math.max(0, Number(entry.wrongCount) || 0),
-          })
-          writeMirror(mirror)
-        }
-        return id
+    if (id === null) {
+      const mirror = readMirror()
+      mirror.wordRecords.unshift({
+        word: String(entry.word),
+        dictId: entry.dictId ?? '',
+        chapter: Number.isInteger(entry.chapter) ? entry.chapter : null,
+        at: entry.at ?? Date.now(),
+        wrongCount: Math.max(0, Number(entry.wrongCount) || 0),
+      })
+      writeMirror(mirror)
+    }
+    return id
       })
     }
 
@@ -706,23 +706,23 @@ window.__ModuleLoader__.load({
     function recordChapter(entry) {
       if (!entry) return Promise.resolve(null)
       return withStore(CHAPTER_STORE, 'readwrite', (tx, done) => {
-        const request = tx.objectStore(CHAPTER_STORE).add({
-          dictId: entry.dictId ?? '',
-          chapter: Number.isInteger(entry.chapter) ? entry.chapter : null,
-          at: entry.at ?? Date.now(),
-          seconds: Math.max(1, Number(entry.seconds) || 1),
-          wordCount: Math.max(0, Number(entry.wordCount) || 0),
-          wrongCount: Math.max(0, Number(entry.wrongCount) || 0),
-          wrongLetters: entry.wrongLetters && typeof entry.wrongLetters === 'object' ? { ...entry.wrongLetters } : {},
-        })
-        request.onsuccess = () => done(request.result)
+    const request = tx.objectStore(CHAPTER_STORE).add({
+      dictId: entry.dictId ?? '',
+      chapter: Number.isInteger(entry.chapter) ? entry.chapter : null,
+      at: entry.at ?? Date.now(),
+      seconds: Math.max(1, Number(entry.seconds) || 1),
+      wordCount: Math.max(0, Number(entry.wordCount) || 0),
+      wrongCount: Math.max(0, Number(entry.wrongCount) || 0),
+      wrongLetters: entry.wrongLetters && typeof entry.wrongLetters === 'object' ? { ...entry.wrongLetters } : {},
+    })
+    request.onsuccess = () => done(request.result)
       }).then((id) => {
-        if (id === null) {
-          const mirror = readMirror()
-          mirror.chapterRecords.unshift({ ...entry })
-          writeMirror(mirror)
-        }
-        return id
+    if (id === null) {
+      const mirror = readMirror()
+      mirror.chapterRecords.unshift({ ...entry })
+      writeMirror(mirror)
+    }
+    return id
       })
     }
 
@@ -730,69 +730,69 @@ window.__ModuleLoader__.load({
     function saveProgress(dictId, chapter, patch) {
       const key = `${dictId}:${chapter}`
       return withStore(PROGRESS_STORE, 'readwrite', (tx, done) => {
-        const store = tx.objectStore(PROGRESS_STORE)
-        const get = store.get(key)
-        get.onsuccess = () => {
-          const next = { ...(get.result || { key, dictId, chapter }), ...patch, updatedAt: Date.now() }
-          const put = store.put(next)
-          put.onsuccess = () => done(next)
-        }
+    const store = tx.objectStore(PROGRESS_STORE)
+    const get = store.get(key)
+    get.onsuccess = () => {
+      const next = { ...(get.result || { key, dictId, chapter }), ...patch, updatedAt: Date.now() }
+      const put = store.put(next)
+      put.onsuccess = () => done(next)
+    }
       })
     }
 
     function readProgress(dictId) {
       return withStore(PROGRESS_STORE, 'readonly', (tx, done) => {
-        const request = tx.objectStore(PROGRESS_STORE).getAll()
-        request.onsuccess = () => {
-          const all = Array.isArray(request.result) ? request.result : []
-          done(dictId ? all.filter((item) => item.dictId === dictId) : all)
-        }
+    const request = tx.objectStore(PROGRESS_STORE).getAll()
+    request.onsuccess = () => {
+      const all = Array.isArray(request.result) ? request.result : []
+      done(dictId ? all.filter((item) => item.dictId === dictId) : all)
+    }
       }).then((value) => {
-        if (value && value.length) return value
-        const mirror = readMirror().progress
-        return dictId ? mirror.filter((item) => item.dictId === dictId) : mirror
+    if (value && value.length) return value
+    const mirror = readMirror().progress
+    return dictId ? mirror.filter((item) => item.dictId === dictId) : mirror
       })
     }
 
     function readWordRecords(limit) {
       return withStore(WORD_STORE, 'readonly', (tx, done) => {
-        const request = tx.objectStore(WORD_STORE).getAll()
-        request.onsuccess = () => {
-          const all = Array.isArray(request.result) ? request.result : []
-          all.sort((a, b) => (b.at || 0) - (a.at || 0))
-          done(limit ? all.slice(0, limit) : all)
-        }
+    const request = tx.objectStore(WORD_STORE).getAll()
+    request.onsuccess = () => {
+      const all = Array.isArray(request.result) ? request.result : []
+      all.sort((a, b) => (b.at || 0) - (a.at || 0))
+      done(limit ? all.slice(0, limit) : all)
+    }
       }).then((value) => (value && value.length ? value : readMirror().wordRecords))
     }
 
     function readChapterRecords(limit) {
       return withStore(CHAPTER_STORE, 'readonly', (tx, done) => {
-        const request = tx.objectStore(CHAPTER_STORE).getAll()
-        request.onsuccess = () => {
-          const all = Array.isArray(request.result) ? request.result : []
-          all.sort((a, b) => (b.at || 0) - (a.at || 0))
-          done(limit ? all.slice(0, limit) : all)
-        }
+    const request = tx.objectStore(CHAPTER_STORE).getAll()
+    request.onsuccess = () => {
+      const all = Array.isArray(request.result) ? request.result : []
+      all.sort((a, b) => (b.at || 0) - (a.at || 0))
+      done(limit ? all.slice(0, limit) : all)
+    }
       }).then((value) => value ?? [])
     }
 
     /** 词库缓存占用（IndexedDB `dicts` store）：条数 + 近似字节数 */
     function cacheStats() {
       return withStore(CACHE_STORE, 'readonly', (tx, done) => {
-        const request = tx.objectStore(CACHE_STORE).getAll()
-        request.onsuccess = () => {
-          const rows = Array.isArray(request.result) ? request.result : []
-          let chars = 0
-          for (const row of rows) {
-            try {
-              chars += JSON.stringify(row?.words ?? []).length
-            } catch {
-              /* 单条坏数据跳过 */
-            }
-          }
-          done({ count: rows.length, bytes: chars * 2 })
+    const request = tx.objectStore(CACHE_STORE).getAll()
+    request.onsuccess = () => {
+      const rows = Array.isArray(request.result) ? request.result : []
+      let chars = 0
+      for (const row of rows) {
+        try {
+          chars += JSON.stringify(row?.words ?? []).length
+        } catch {
+          /* 单条坏数据跳过 */
         }
-        request.onerror = () => done({ count: 0, bytes: 0 })
+      }
+      done({ count: rows.length, bytes: chars * 2 })
+    }
+    request.onerror = () => done({ count: 0, bytes: 0 })
       }).then((value) => value ?? { count: 0, bytes: 0 })
     }
 
@@ -801,13 +801,13 @@ window.__ModuleLoader__.load({
       clearLookupCache()
       DICT_CACHE.clear()
       return withStore(CACHE_STORE, 'readwrite', (tx, done) => {
-        try {
-          const request = tx.objectStore(CACHE_STORE).clear()
-          request.onsuccess = () => done(true)
-          request.onerror = () => done(false)
-        } catch {
-          done(false)
-        }
+    try {
+      const request = tx.objectStore(CACHE_STORE).clear()
+      request.onsuccess = () => done(true)
+      request.onerror = () => done(false)
+    } catch {
+      done(false)
+    }
       }).then((ok) => ok === true)
     }
 
@@ -831,21 +831,21 @@ window.__ModuleLoader__.load({
     function readCustomDicts() {
       if (CUSTOM_CACHE) return CUSTOM_CACHE
       try {
-        const raw = JSON.parse(window.localStorage.getItem(CUSTOM_KEY) || '{}')
-        if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-          CUSTOM_CACHE = {}
-          return CUSTOM_CACHE
-        }
-        const out = {}
-        for (const [key, words] of Object.entries(raw)) {
-          if (!key || !Array.isArray(words)) continue
-          out[key] = words.filter((word) => word && typeof word.name === 'string' && word.name)
-        }
-        CUSTOM_CACHE = out
-        return CUSTOM_CACHE
+    const raw = JSON.parse(window.localStorage.getItem(CUSTOM_KEY) || '{}')
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
+      CUSTOM_CACHE = {}
+      return CUSTOM_CACHE
+    }
+    const out = {}
+    for (const [key, words] of Object.entries(raw)) {
+      if (!key || !Array.isArray(words)) continue
+      out[key] = words.filter((word) => word && typeof word.name === 'string' && word.name)
+    }
+    CUSTOM_CACHE = out
+    return CUSTOM_CACHE
       } catch {
-        CUSTOM_CACHE = {}
-        return CUSTOM_CACHE
+    CUSTOM_CACHE = {}
+    return CUSTOM_CACHE
       }
     }
 
@@ -857,11 +857,11 @@ window.__ModuleLoader__.load({
 
     function writeCustomDicts(map) {
       try {
-        window.localStorage.setItem(CUSTOM_KEY, JSON.stringify(map))
-        CUSTOM_CACHE = map          // 回填缓存，别让下一次读又 parse 一遍
+    window.localStorage.setItem(CUSTOM_KEY, JSON.stringify(map))
+    CUSTOM_CACHE = map          // 回填缓存，别让下一次读又 parse 一遍
       } catch {
-        /* 配额满了就算了 */
-        CUSTOM_CACHE = null
+    /* 配额满了就算了 */
+    CUSTOM_CACHE = null
       }
       clearCatalogCache()
     }
@@ -879,22 +879,22 @@ window.__ModuleLoader__.load({
       const seen = new Set()
       const out = []
       for (const raw of lines) {
-        const line = raw.trim()
-        if (!line || line.startsWith('#') || line.startsWith('//')) continue
-        const parts = line.split(/\t|,|，|\s{2,}|\s/).map((part) => part.trim()).filter(Boolean)
-        const word = parts[0] ?? ''
-        if (!word || word.length > 40) continue
-        const lower = word.toLowerCase()
-        if (seen.has(lower)) continue
-        seen.add(lower)
-        const trans = parts.slice(1).find((part) => !/^\/[^/]*\/$/.test(part)) ?? ''
-        const ipaRaw = parts.slice(1).find((part) => /^\/[^/]*\/$/.test(part)) ?? ''
-        out.push({
-          name: word,
-          trans: trans ? [trans] : [],
-          ...(ipaRaw ? { ipa: ipaRaw.replace(/^\/|\/$/g, '') } : {}),
-        })
-        if (out.length >= CUSTOM_LIMIT) break
+    const line = raw.trim()
+    if (!line || line.startsWith('#') || line.startsWith('//')) continue
+    const parts = line.split(/\t|,|，|\s{2,}|\s/).map((part) => part.trim()).filter(Boolean)
+    const word = parts[0] ?? ''
+    if (!word || word.length > 40) continue
+    const lower = word.toLowerCase()
+    if (seen.has(lower)) continue
+    seen.add(lower)
+    const trans = parts.slice(1).find((part) => !/^\/[^/]*\/$/.test(part)) ?? ''
+    const ipaRaw = parts.slice(1).find((part) => /^\/[^/]*\/$/.test(part)) ?? ''
+    out.push({
+      name: word,
+      trans: trans ? [trans] : [],
+      ...(ipaRaw ? { ipa: ipaRaw.replace(/^\/|\/$/g, '') } : {}),
+    })
+    if (out.length >= CUSTOM_LIMIT) break
       }
       return out
     }
@@ -905,30 +905,30 @@ window.__ModuleLoader__.load({
       let cell = ''
       let quoted = false
       for (let index = 0; index < line.length; index += 1) {
-        const ch = line[index]
-        if (quoted) {
-          if (ch === '"') {
-            if (line[index + 1] === '"') {
-              cell += '"'
-              index += 1
-            } else {
-              quoted = false
-            }
-          } else {
-            cell += ch
-          }
-          continue
+    const ch = line[index]
+    if (quoted) {
+      if (ch === '"') {
+        if (line[index + 1] === '"') {
+          cell += '"'
+          index += 1
+        } else {
+          quoted = false
         }
-        if (ch === '"' && !cell) {
-          quoted = true
-          continue
-        }
-        if (ch === ',' || ch === '，') {
-          out.push(cell.trim())
-          cell = ''
-          continue
-        }
+      } else {
         cell += ch
+      }
+      continue
+    }
+    if (ch === '"' && !cell) {
+      quoted = true
+      continue
+    }
+    if (ch === ',' || ch === '，') {
+      out.push(cell.trim())
+      cell = ''
+      continue
+    }
+    cell += ch
       }
       out.push(cell.trim())
       return out
@@ -937,16 +937,16 @@ window.__ModuleLoader__.load({
     /** 一条外部数据 → 词条（兼容 {name,trans,ipa} 与 {word,meaning,phonetic} 两种写法） */
     function toCustomWord(entry) {
       if (typeof entry === 'string') {
-        const parts = splitCsvLine(entry)
-        return { name: parts[0] ?? '', trans: parts[1] ? [parts[1]] : [], ...(parts[2] ? { ipa: parts[2] } : {}) }
+    const parts = splitCsvLine(entry)
+    return { name: parts[0] ?? '', trans: parts[1] ? [parts[1]] : [], ...(parts[2] ? { ipa: parts[2] } : {}) }
       }
       if (!entry || typeof entry !== 'object') return null
       const name = String(entry.name ?? entry.word ?? entry.text ?? '').trim()
       if (!name) return null
       const rawTrans = entry.trans ?? entry.translation ?? entry.meaning ?? entry.zh
       const trans = Array.isArray(rawTrans)
-        ? rawTrans.map((item) => String(item ?? '').trim()).filter(Boolean)
-        : String(rawTrans ?? '').split(/[;；]/).map((item) => item.trim()).filter(Boolean)
+    ? rawTrans.map((item) => String(item ?? '').trim()).filter(Boolean)
+    : String(rawTrans ?? '').split(/[;；]/).map((item) => item.trim()).filter(Boolean)
       const ipa = String(entry.ipa ?? entry.phonetic ?? entry.ukphone ?? '').trim()
       return { name, trans, ...(ipa ? { ipa } : {}) }
     }
@@ -962,45 +962,45 @@ window.__ModuleLoader__.load({
       const ext = String(fileName ?? '').toLowerCase().split('.').pop() || ''
       let entries = []
       if (ext === 'json') {
-        let raw
-        try {
-          raw = JSON.parse(String(text ?? ''))
-        } catch {
-          return []
-        }
-        if (Array.isArray(raw)) entries = raw
-        else if (Array.isArray(raw?.words)) entries = raw.words
-        else if (raw?.dicts && typeof raw.dicts === 'object' && !Array.isArray(raw.dicts)) {
-          // 备份文件里的自定义词表
-          const first = Object.values(raw.dicts)[0]
-          entries = Array.isArray(first) ? first : []
-        } else if (raw && typeof raw === 'object') {
-          entries = Object.entries(raw).map(([word, meaning]) => ({ name: word, trans: meaning }))
-        }
+    let raw
+    try {
+      raw = JSON.parse(String(text ?? ''))
+    } catch {
+      return []
+    }
+    if (Array.isArray(raw)) entries = raw
+    else if (Array.isArray(raw?.words)) entries = raw.words
+    else if (raw?.dicts && typeof raw.dicts === 'object' && !Array.isArray(raw.dicts)) {
+      // 备份文件里的自定义词表
+      const first = Object.values(raw.dicts)[0]
+      entries = Array.isArray(first) ? first : []
+    } else if (raw && typeof raw === 'object') {
+      entries = Object.entries(raw).map(([word, meaning]) => ({ name: word, trans: meaning }))
+    }
       } else if (ext === 'csv') {
-        const lines = String(text ?? '').split(/\r?\n/).filter((line) => line.trim())
-        const first = lines[0] ? splitCsvLine(lines[0]) : []
-        const headerWords = /^(word|name|单词|词汇)$/i
-        const start = first.length && headerWords.test(first[0]) ? 1 : 0
-        entries = lines.slice(start).map((line) => ({
-          name: splitCsvLine(line)[0] ?? '',
-          trans: splitCsvLine(line)[1] ?? '',
-          ipa: splitCsvLine(line)[2] ?? '',
-        }))
+    const lines = String(text ?? '').split(/\r?\n/).filter((line) => line.trim())
+    const first = lines[0] ? splitCsvLine(lines[0]) : []
+    const headerWords = /^(word|name|单词|词汇)$/i
+    const start = first.length && headerWords.test(first[0]) ? 1 : 0
+    entries = lines.slice(start).map((line) => ({
+      name: splitCsvLine(line)[0] ?? '',
+      trans: splitCsvLine(line)[1] ?? '',
+      ipa: splitCsvLine(line)[2] ?? '',
+    }))
       } else {
-        return parseCustomWords(text)
+    return parseCustomWords(text)
       }
 
       const seen = new Set()
       const out = []
       for (const entry of entries) {
-        const word = toCustomWord(entry)
-        if (!word || word.name.length > 40) continue
-        const key = word.name.toLowerCase()
-        if (seen.has(key)) continue
-        seen.add(key)
-        out.push(word)
-        if (out.length >= CUSTOM_LIMIT) break
+    const word = toCustomWord(entry)
+    if (!word || word.name.length > 40) continue
+    const key = word.name.toLowerCase()
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(word)
+    if (out.length >= CUSTOM_LIMIT) break
       }
       return out
     }
@@ -1017,18 +1017,18 @@ window.__ModuleLoader__.load({
       const words = customWords(id)
       if (!words.length) return ''
       if (String(format).toLowerCase() === 'json') {
-        return JSON.stringify({
-          name: String(id).replace(CUSTOM_PREFIX, ''),
-          words: words.map((word) => ({
-            name: word.w,
-            trans: word.zh ? [word.zh] : [],
-            ...(word.ipa ? { ipa: withSlashes(word.ipa) } : {}),
-          })),
-        }, null, 2)
+    return JSON.stringify({
+      name: String(id).replace(CUSTOM_PREFIX, ''),
+      words: words.map((word) => ({
+        name: word.w,
+        trans: word.zh ? [word.zh] : [],
+        ...(word.ipa ? { ipa: withSlashes(word.ipa) } : {}),
+      })),
+    }, null, 2)
       }
       return words
-        .map((word) => `${word.w}${word.zh ? ` ${word.zh}` : ''}${word.ipa ? ` ${withSlashes(word.ipa)}` : ''}`)
-        .join('\n')
+    .map((word) => `${word.w}${word.zh ? ` ${word.zh}` : ''}${word.ipa ? ` ${withSlashes(word.ipa)}` : ''}`)
+    .join('\n')
     }
 
     /** 保存/覆盖一个自定义词表（名字去首尾空格，空名字返回 null） */
@@ -1071,18 +1071,18 @@ window.__ModuleLoader__.load({
 
     function readMastered() {
       try {
-        const raw = JSON.parse(window.localStorage.getItem(MASTERED_KEY) || '[]')
-        return Array.isArray(raw) ? raw.filter((item) => typeof item === 'string') : []
+    const raw = JSON.parse(window.localStorage.getItem(MASTERED_KEY) || '[]')
+    return Array.isArray(raw) ? raw.filter((item) => typeof item === 'string') : []
       } catch {
-        return []
+    return []
       }
     }
 
     function writeMastered(list) {
       try {
-        window.localStorage.setItem(MASTERED_KEY, JSON.stringify([...new Set(list)].slice(0, 2000)))
+    window.localStorage.setItem(MASTERED_KEY, JSON.stringify([...new Set(list)].slice(0, 2000)))
       } catch {
-        /* ignore */
+    /* ignore */
       }
     }
 
@@ -1101,27 +1101,27 @@ window.__ModuleLoader__.load({
 
     function readMirror() {
       try {
-        const raw = JSON.parse(window.localStorage.getItem(MIRROR_KEY) || 'null')
-        if (!raw || typeof raw !== 'object') return { wordRecords: [], chapterRecords: [], progress: [] }
-        return {
-          wordRecords: Array.isArray(raw.wordRecords) ? raw.wordRecords : [],
-          chapterRecords: Array.isArray(raw.chapterRecords) ? raw.chapterRecords : [],
-          progress: Array.isArray(raw.progress) ? raw.progress : [],
-        }
+    const raw = JSON.parse(window.localStorage.getItem(MIRROR_KEY) || 'null')
+    if (!raw || typeof raw !== 'object') return { wordRecords: [], chapterRecords: [], progress: [] }
+    return {
+      wordRecords: Array.isArray(raw.wordRecords) ? raw.wordRecords : [],
+      chapterRecords: Array.isArray(raw.chapterRecords) ? raw.chapterRecords : [],
+      progress: Array.isArray(raw.progress) ? raw.progress : [],
+    }
       } catch {
-        return { wordRecords: [], chapterRecords: [], progress: [] }
+    return { wordRecords: [], chapterRecords: [], progress: [] }
       }
     }
 
     function writeMirror(mirror) {
       try {
-        window.localStorage.setItem(MIRROR_KEY, JSON.stringify({
-          wordRecords: (mirror.wordRecords || []).slice(0, MIRROR_LIMIT),
-          chapterRecords: (mirror.chapterRecords || []).slice(0, MIRROR_LIMIT),
-          progress: (mirror.progress || []).slice(0, MIRROR_LIMIT),
-        }))
+    window.localStorage.setItem(MIRROR_KEY, JSON.stringify({
+      wordRecords: (mirror.wordRecords || []).slice(0, MIRROR_LIMIT),
+      chapterRecords: (mirror.chapterRecords || []).slice(0, MIRROR_LIMIT),
+      progress: (mirror.progress || []).slice(0, MIRROR_LIMIT),
+    }))
       } catch {
-        /* 配额满了就算了，IndexedDB 才是主存储 */
+    /* 配额满了就算了，IndexedDB 才是主存储 */
       }
     }
 
@@ -1136,20 +1136,20 @@ window.__ModuleLoader__.load({
       const { settings, wordRecords, chapterRecords, progress, mastered, customDicts } = parts || {}
       const trim = (list, limit) => (Array.isArray(list) ? list.slice(0, limit) : [])
       const payload = {
-        kind: 'qwerty-autotype-backup',
-        version: BACKUP_VERSION,
-        exportedAt: new Date().toISOString(),
-        // 只带已知设置项，别把 localStorage 里的杂项搬来搬去
-        settings: Object.fromEntries(
-          Object.keys(SETTING_DEFAULTS)
-            .filter((key) => settings && key in settings)
-            .map((key) => [key, settings[key]]),
-        ),
-        wordRecords: trim(wordRecords, BACKUP_LIMITS.wordRecords),
-        chapterRecords: trim(chapterRecords, BACKUP_LIMITS.chapterRecords),
-        progress: trim(progress, BACKUP_LIMITS.progress),
-        mastered: trim(mastered, BACKUP_LIMITS.progress),
-        customDicts: customDicts && typeof customDicts === 'object' ? customDicts : {},
+    kind: 'qwerty-autotype-backup',
+    version: BACKUP_VERSION,
+    exportedAt: new Date().toISOString(),
+    // 只带已知设置项，别把 localStorage 里的杂项搬来搬去
+    settings: Object.fromEntries(
+      Object.keys(SETTING_DEFAULTS)
+        .filter((key) => settings && key in settings)
+        .map((key) => [key, settings[key]]),
+    ),
+    wordRecords: trim(wordRecords, BACKUP_LIMITS.wordRecords),
+    chapterRecords: trim(chapterRecords, BACKUP_LIMITS.chapterRecords),
+    progress: trim(progress, BACKUP_LIMITS.progress),
+    mastered: trim(mastered, BACKUP_LIMITS.progress),
+    customDicts: customDicts && typeof customDicts === 'object' ? customDicts : {},
       }
       return JSON.stringify(payload, null, 2)
     }
@@ -1161,9 +1161,9 @@ window.__ModuleLoader__.load({
     function parseBackup(text) {
       let raw
       try {
-        raw = JSON.parse(String(text ?? ''))
+    raw = JSON.parse(String(text ?? ''))
       } catch {
-        throw new Error('backup:not-json')
+    throw new Error('backup:not-json')
       }
       if (!raw || typeof raw !== 'object') throw new Error('backup:not-object')
       if (raw.kind !== 'qwerty-autotype-backup') throw new Error('backup:bad-kind')
@@ -1175,64 +1175,64 @@ window.__ModuleLoader__.load({
 
       const settings = {}
       if (raw.settings && typeof raw.settings === 'object') {
-        for (const [key, value] of Object.entries(SETTING_DEFAULTS)) {
-          if (key in raw.settings) settings[key] = typeof value === 'boolean' ? !!raw.settings[key] : String(raw.settings[key])
-        }
+    for (const [key, value] of Object.entries(SETTING_DEFAULTS)) {
+      if (key in raw.settings) settings[key] = typeof value === 'boolean' ? !!raw.settings[key] : String(raw.settings[key])
+    }
       }
 
       const wordRecords = (Array.isArray(raw.wordRecords) ? raw.wordRecords : [])
-        .filter((row) => row && typeof row.word === 'string' && row.word)
-        .map((row) => ({
-          word: row.word,
-          dictId: keepStrings(row.dictId),
-          chapter: Number.isInteger(row.chapter) ? row.chapter : null,
-          at: num(row.at) || Date.now(),
-          wrongCount: Math.max(0, num(row.wrongCount)),
-          timing: Array.isArray(row.timing) ? row.timing.slice(0, 64) : [],
-        }))
+    .filter((row) => row && typeof row.word === 'string' && row.word)
+    .map((row) => ({
+      word: row.word,
+      dictId: keepStrings(row.dictId),
+      chapter: Number.isInteger(row.chapter) ? row.chapter : null,
+      at: num(row.at) || Date.now(),
+      wrongCount: Math.max(0, num(row.wrongCount)),
+      timing: Array.isArray(row.timing) ? row.timing.slice(0, 64) : [],
+    }))
 
       const chapterRecords = (Array.isArray(raw.chapterRecords) ? raw.chapterRecords : [])
-        .filter((row) => row && typeof row === 'object')
-        .map((row) => ({
-          dictId: keepStrings(row.dictId),
-          chapter: Number.isInteger(row.chapter) ? row.chapter : null,
-          at: num(row.at) || Date.now(),
-          seconds: Math.max(1, num(row.seconds) || 1),
-          wordCount: Math.max(0, num(row.wordCount)),
-          wrongCount: Math.max(0, num(row.wrongCount)),
-        }))
+    .filter((row) => row && typeof row === 'object')
+    .map((row) => ({
+      dictId: keepStrings(row.dictId),
+      chapter: Number.isInteger(row.chapter) ? row.chapter : null,
+      at: num(row.at) || Date.now(),
+      seconds: Math.max(1, num(row.seconds) || 1),
+      wordCount: Math.max(0, num(row.wordCount)),
+      wrongCount: Math.max(0, num(row.wrongCount)),
+    }))
 
       const progress = (Array.isArray(raw.progress) ? raw.progress : [])
-        .filter((row) => row && typeof row.dictId === 'string' && Number.isInteger(row.chapter))
-        .map((row) => ({
-          key: `${row.dictId}:${row.chapter}`,
-          dictId: row.dictId,
-          chapter: row.chapter,
-          index: Math.max(0, num(row.index)),
-          words: Math.max(0, num(row.words)),
-          done: !!row.done,
-          updatedAt: num(row.updatedAt) || Date.now(),
-        }))
+    .filter((row) => row && typeof row.dictId === 'string' && Number.isInteger(row.chapter))
+    .map((row) => ({
+      key: `${row.dictId}:${row.chapter}`,
+      dictId: row.dictId,
+      chapter: row.chapter,
+      index: Math.max(0, num(row.index)),
+      words: Math.max(0, num(row.words)),
+      done: !!row.done,
+      updatedAt: num(row.updatedAt) || Date.now(),
+    }))
 
       const mastered = (Array.isArray(raw.mastered) ? raw.mastered : [])
-        .filter((item) => typeof item === 'string' && item)
+    .filter((item) => typeof item === 'string' && item)
 
       // 自定义词表：只收 { 名字: 词条数组 }，单表超上限就截断
       const customDicts = {}
       if (raw.customDicts && typeof raw.customDicts === 'object' && !Array.isArray(raw.customDicts)) {
-        for (const [name, words] of Object.entries(raw.customDicts)) {
-          const key = String(name || '').trim()
-          if (!key || !Array.isArray(words)) continue
-          const list = words
-            .filter((word) => word && typeof word.name === 'string' && word.name)
-            .slice(0, CUSTOM_LIMIT)
-            .map((word) => ({
-              name: word.name,
-              trans: Array.isArray(word.trans) ? word.trans.filter((item) => typeof item === 'string') : [],
-              ...(typeof word.ipa === 'string' && word.ipa ? { ipa: word.ipa } : {}),
-            }))
-          if (list.length) customDicts[key] = list
-        }
+    for (const [name, words] of Object.entries(raw.customDicts)) {
+      const key = String(name || '').trim()
+      if (!key || !Array.isArray(words)) continue
+      const list = words
+        .filter((word) => word && typeof word.name === 'string' && word.name)
+        .slice(0, CUSTOM_LIMIT)
+        .map((word) => ({
+          name: word.name,
+          trans: Array.isArray(word.trans) ? word.trans.filter((item) => typeof item === 'string') : [],
+          ...(typeof word.ipa === 'string' && word.ipa ? { ipa: word.ipa } : {}),
+        }))
+      if (list.length) customDicts[key] = list
+    }
       }
 
       return { settings, wordRecords, chapterRecords, progress, mastered, customDicts }
@@ -1241,23 +1241,23 @@ window.__ModuleLoader__.load({
     /** 清空一张表（IndexedDB 不可用时清镜像） */
     function clearStores(names) {
       return withStore(names, 'readwrite', (tx, done) => {
-        let pending = names.length
-        for (const name of names) {
-          try {
-            const request = tx.objectStore(name).clear()
-            request.onsuccess = () => {
-              pending -= 1
-              if (pending === 0) done(true)
-            }
-            request.onerror = () => {
-              pending -= 1
-              if (pending === 0) done(false)
-            }
-          } catch {
-            pending -= 1
-            if (pending === 0) done(false)
-          }
+    let pending = names.length
+    for (const name of names) {
+      try {
+        const request = tx.objectStore(name).clear()
+        request.onsuccess = () => {
+          pending -= 1
+          if (pending === 0) done(true)
         }
+        request.onerror = () => {
+          pending -= 1
+          if (pending === 0) done(false)
+        }
+      } catch {
+        pending -= 1
+        if (pending === 0) done(false)
+      }
+    }
       })
     }
 
@@ -1265,56 +1265,56 @@ window.__ModuleLoader__.load({
     function importData(parsed) {
       const names = [WORD_STORE, CHAPTER_STORE, PROGRESS_STORE]
       return clearStores(names).then((cleared) => {
-        if (!cleared) {
-          // 没有 IndexedDB：整份进镜像
-          writeMirror({
-            wordRecords: parsed.wordRecords,
-            chapterRecords: parsed.chapterRecords,
-            progress: parsed.progress,
-          })
-          return {
-            restored: parsed.wordRecords.length + parsed.chapterRecords.length + parsed.progress.length,
-            fallback: true,
-          }
+    if (!cleared) {
+      // 没有 IndexedDB：整份进镜像
+      writeMirror({
+        wordRecords: parsed.wordRecords,
+        chapterRecords: parsed.chapterRecords,
+        progress: parsed.progress,
+      })
+      return {
+        restored: parsed.wordRecords.length + parsed.chapterRecords.length + parsed.progress.length,
+        fallback: true,
+      }
+    }
+    return withStore(names, 'readwrite', (tx, done) => {
+      let ok = 0
+      let pending = parsed.wordRecords.length + parsed.chapterRecords.length + parsed.progress.length
+      const settle = (hit) => {
+        if (hit) ok += 1
+        pending -= 1
+        // 全部落库后把条数交给 withStore 的 oncomplete
+        if (pending <= 0) done(ok)
+      }
+      const submit = (storeName, row, method) => {
+        try {
+          const request = tx.objectStore(storeName)[method](row)
+          request.onsuccess = () => settle(true)
+          request.onerror = () => settle(false)
+        } catch {
+          settle(false)
         }
-        return withStore(names, 'readwrite', (tx, done) => {
-          let ok = 0
-          let pending = parsed.wordRecords.length + parsed.chapterRecords.length + parsed.progress.length
-          const settle = (hit) => {
-            if (hit) ok += 1
-            pending -= 1
-            // 全部落库后把条数交给 withStore 的 oncomplete
-            if (pending <= 0) done(ok)
-          }
-          const submit = (storeName, row, method) => {
-            try {
-              const request = tx.objectStore(storeName)[method](row)
-              request.onsuccess = () => settle(true)
-              request.onerror = () => settle(false)
-            } catch {
-              settle(false)
-            }
-          }
-          if (pending <= 0) {
-            done(0)
-            return
-          }
-          for (const row of parsed.wordRecords) {
-            submit(WORD_STORE, {
-              word: row.word,
-              dictId: row.dictId,
-              chapter: row.chapter,
-              at: row.at,
-              wrongCount: row.wrongCount,
-              timing: row.timing || [],
-            }, 'add')
-          }
-          for (const row of parsed.chapterRecords) submit(CHAPTER_STORE, { ...row }, 'add')
-          for (const row of parsed.progress) submit(PROGRESS_STORE, { ...row }, 'put')
-        }).then((count) => ({
-          restored: count ?? parsed.wordRecords.length + parsed.chapterRecords.length,
-          fallback: false,
-        }))
+      }
+      if (pending <= 0) {
+        done(0)
+        return
+      }
+      for (const row of parsed.wordRecords) {
+        submit(WORD_STORE, {
+          word: row.word,
+          dictId: row.dictId,
+          chapter: row.chapter,
+          at: row.at,
+          wrongCount: row.wrongCount,
+          timing: row.timing || [],
+        }, 'add')
+      }
+      for (const row of parsed.chapterRecords) submit(CHAPTER_STORE, { ...row }, 'add')
+      for (const row of parsed.progress) submit(PROGRESS_STORE, { ...row }, 'put')
+    }).then((count) => ({
+      restored: count ?? parsed.wordRecords.length + parsed.chapterRecords.length,
+      fallback: false,
+    }))
       })
     }
 
@@ -1322,34 +1322,34 @@ window.__ModuleLoader__.load({
     function clearData(options) {
       const { keepSettings = true } = options || {}
       return clearStores([WORD_STORE, CHAPTER_STORE, PROGRESS_STORE]).then(() => {
-        writeMirror({ wordRecords: [], chapterRecords: [], progress: [] })
-        writeMastered([])
-        clearSession()
-        clearCustomCache()
-        if (!keepSettings) {
-          for (const key of Object.keys(SETTING_DEFAULTS)) {
-            try {
-              window.localStorage.removeItem(SETTING_PREFIX + key)
-            } catch {
-              /* ignore */
-            }
-          }
+    writeMirror({ wordRecords: [], chapterRecords: [], progress: [] })
+    writeMastered([])
+    clearSession()
+    clearCustomCache()
+    if (!keepSettings) {
+      for (const key of Object.keys(SETTING_DEFAULTS)) {
+        try {
+          window.localStorage.removeItem(SETTING_PREFIX + key)
+        } catch {
+          /* ignore */
         }
-        return true
+      }
+    }
+    return true
       })
     }
 
     /** 导出当前所有本地数据为 JSON 文本 */
     function exportBackup() {
       return Promise.all([readWordRecords(), readChapterRecords(), readProgress()]).then(
-        ([wordRecords, chapterRecords, progress]) => serializeBackup({
-          settings: getSettings(),
-          wordRecords,
-          chapterRecords,
-          progress,
-          mastered: readMastered(),
-          customDicts: readCustomDicts(),
-        }),
+    ([wordRecords, chapterRecords, progress]) => serializeBackup({
+      settings: getSettings(),
+      wordRecords,
+      chapterRecords,
+      progress,
+      mastered: readMastered(),
+      customDicts: readCustomDicts(),
+    }),
       )
     }
 
@@ -1366,24 +1366,24 @@ window.__ModuleLoader__.load({
     function aggregateDaily(chapters) {
       const buckets = new Map()
       for (const item of chapters || []) {
-        const day = dayKey(item.at)
-        const bucket = buckets.get(day) ?? { day, words: 0, chapters: 0, wrong: 0, seconds: 0 }
-        bucket.chapters += 1
-        bucket.words += Number(item.wordCount) || 0
-        bucket.wrong += Number(item.wrongCount) || 0
-        bucket.seconds += Number(item.seconds) || 0
-        buckets.set(day, bucket)
+    const day = dayKey(item.at)
+    const bucket = buckets.get(day) ?? { day, words: 0, chapters: 0, wrong: 0, seconds: 0 }
+    bucket.chapters += 1
+    bucket.words += Number(item.wordCount) || 0
+    bucket.wrong += Number(item.wrongCount) || 0
+    bucket.seconds += Number(item.seconds) || 0
+    buckets.set(day, bucket)
       }
       return [...buckets.values()]
-        .sort((a, b) => (a.day < b.day ? -1 : 1))
-        .map((bucket) => {
-          const total = bucket.words + bucket.wrong
-          return {
-            ...bucket,
-            accuracy: total > 0 ? Math.round((bucket.words / total) * 100) : 0,
-            wpm: bucket.seconds > 0 ? Math.round((bucket.words / bucket.seconds) * 60) : 0,
-          }
-        })
+    .sort((a, b) => (a.day < b.day ? -1 : 1))
+    .map((bucket) => {
+      const total = bucket.words + bucket.wrong
+      return {
+        ...bucket,
+        accuracy: total > 0 ? Math.round((bucket.words / total) * 100) : 0,
+        wpm: bucket.seconds > 0 ? Math.round((bucket.words / bucket.seconds) * 60) : 0,
+      }
+    })
     }
 
     /** 总体指标：词数 / 章数 / 正确率 / WPM */
@@ -1392,17 +1392,17 @@ window.__ModuleLoader__.load({
       let wrong = 0
       let seconds = 0
       for (const item of chapters || []) {
-        words += Number(item.wordCount) || 0
-        wrong += Number(item.wrongCount) || 0
-        seconds += Number(item.seconds) || 0
+    words += Number(item.wordCount) || 0
+    wrong += Number(item.wrongCount) || 0
+    seconds += Number(item.seconds) || 0
       }
       const total = words + wrong
       return {
-        words,
-        wrong,
-        chapters: (chapters || []).length,
-        accuracy: total > 0 ? Math.round((words / total) * 100) : 0,
-        wpm: seconds > 0 ? Math.round((words / seconds) * 60) : 0,
+    words,
+    wrong,
+    chapters: (chapters || []).length,
+    accuracy: total > 0 ? Math.round((words / total) * 100) : 0,
+    wpm: seconds > 0 ? Math.round((words / seconds) * 60) : 0,
       }
     }
 
@@ -1413,24 +1413,24 @@ window.__ModuleLoader__.load({
     function collectWrongWords(records, limit) {
       const map = new Map()
       for (const item of records || []) {
-        const word = item?.word
-        if (!word || !(Number(item.wrongCount) > 0)) continue
-        const key = `${item.dictId ?? ''}::${word}`
-        const prev = map.get(key)
-        if (prev) {
-          prev.wrongCount += Number(item.wrongCount) || 0
-          prev.lastAt = Math.max(prev.lastAt, Number(item.at) || 0)
-        } else {
-          map.set(key, {
-            word,
-            dictId: item.dictId ?? '',
-            wrongCount: Number(item.wrongCount) || 0,
-            lastAt: Number(item.at) || 0,
-          })
-        }
+    const word = item?.word
+    if (!word || !(Number(item.wrongCount) > 0)) continue
+    const key = `${item.dictId ?? ''}::${word}`
+    const prev = map.get(key)
+    if (prev) {
+      prev.wrongCount += Number(item.wrongCount) || 0
+      prev.lastAt = Math.max(prev.lastAt, Number(item.at) || 0)
+    } else {
+      map.set(key, {
+        word,
+        dictId: item.dictId ?? '',
+        wrongCount: Number(item.wrongCount) || 0,
+        lastAt: Number(item.at) || 0,
+      })
+    }
       }
       const list = [...map.values()].sort(
-        (a, b) => (b.wrongCount - a.wrongCount) || (b.lastAt - a.lastAt),
+    (a, b) => (b.wrongCount - a.wrongCount) || (b.lastAt - a.lastAt),
       )
       return limit ? list.slice(0, limit) : list
     }
@@ -1459,41 +1459,89 @@ window.__ModuleLoader__.load({
       const monday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - weekday)
       const columns = []
       for (let w = count - 1; w >= 0; w -= 1) {
-        const days = []
-        for (let d = 0; d < 7; d += 1) {
-          const date = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() - w * 7 + d)
-          const day = dayKey(date.getTime())
-          const hit = byDay.get(day)
-          days.push({
-            day,
-            words: hit ? hit.words : 0,
-            level: heatLevel(hit ? hit.words : 0),
-            future: day > todayKey,
-          })
-        }
-        columns.push({ days })
+    const days = []
+    for (let d = 0; d < 7; d += 1) {
+      const date = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() - w * 7 + d)
+      const day = dayKey(date.getTime())
+      const hit = byDay.get(day)
+      days.push({
+        day,
+        words: hit ? hit.words : 0,
+        level: heatLevel(hit ? hit.words : 0),
+        future: day > todayKey,
+      })
+    }
+    columns.push({ days })
       }
       return columns
+    }
+
+    const TREND_SIZE = { w: 320, h: 80 }
+    const TREND_LIMIT = 20
+    const px = (i, n, w = TREND_SIZE.w) => Math.round((i / Math.max(1, n - 1)) * w)
+    const py = (v, max, h = TREND_SIZE.h) => {
+      const top = max > 0 ? max : 1
+      return Math.round(h - (Math.min(top, Math.max(0, Number(v) || 0)) / top) * h)
+    }
+    const tnum = (v) => (typeof v === 'number' && Number.isFinite(v) ? Math.round(v) : null)
+
+    /** 末 limit 章（升序、脏记录丢弃），wpmMax≥1 */
+    function trendSeries(records, limit = TREND_LIMIT) {
+      const points = (records || []).map((row) => {
+    if (!row || typeof row !== 'object') return null
+    const words = Number(row.wordCount ?? row.words)
+    const wpm = tnum(row.wpm) ?? (words > 0 ? calcWpm(words, row.seconds) || null : null)
+    const acc = tnum(row.accuracy) ?? (words > 0 ? calcAccuracy(words, Number(row.wrongCount) || 0) : null)
+    return Number.isFinite(row.at) && wpm !== null && acc !== null ? { at: row.at, wpm, accuracy: acc } : null
+      }).filter(Boolean).sort((a, b) => a.at - b.at)
+      const tail = points.slice(Math.max(0, points.length - Math.max(1, limit || TREND_LIMIT)))
+      return { points: tail, wpmMax: Math.max(1, ...tail.map((p) => p.wpm)), hasData: tail.length >= 2 }
+    }
+
+    /** "x,y x,y"；<2 点给空串 */
+    function polylineOf(points, key, { width = TREND_SIZE.w, height = TREND_SIZE.h, max = 100 } = {}) {
+      const list = points || []
+      if (list.length < 2) return ''
+      return list.map((p, i) => `${px(i, list.length, width)},${py(p[key], max, height)}`).join(' ')
+    }
+
+    function TrendChart({ t, trend }) {
+      const { points, wpmMax, hasData } = trend
+      return h('div', { className: 'qat-trend' },
+    h('div', { className: 'qat-trendlegend' },
+      h('span', { className: 'qat-twpm' }, 'WPM'), h('span', { className: 'qat-tacc' }, t('trendAcc'))),
+    hasData ? h('div', { className: 'qat-tplot' },
+      h('div', { className: 'qat-ty' }, wpmMax, 0),
+      h('svg', { className: 'qat-tsvg', viewBox: `0 0 ${TREND_SIZE.w} ${TREND_SIZE.h}`, preserveAspectRatio: 'none' },
+        h('line', { className: 'qat-tax', x1: 0, y1: TREND_SIZE.h, x2: TREND_SIZE.w, y2: TREND_SIZE.h }),
+        h('polyline', { className: 'qat-twpm', points: polylineOf(points, 'wpm', { max: wpmMax }) }),
+        h('polyline', { className: 'qat-tacc', points: polylineOf(points, 'accuracy') }),
+        points.map((p, i) => h('circle', {
+          key: i, className: 'qat-tdot', r: 2,
+          cx: px(i, points.length), cy: py(p.wpm, wpmMax),
+          title: `WPM ${p.wpm} · ${t('accuracyShort', { n: p.accuracy })}`,
+        }))))
+      : h('div', null, t('trendEmpty')))
     }
 
     /** 最容易打错的字母：把每章记录里的 wrongLetters 累加，取前 N */
     function topWrongLetters(chapters, limit) {
       const tally = new Map()
       for (const row of chapters || []) {
-        const map = row && row.wrongLetters
-        if (!map || typeof map !== 'object') continue
-        for (const [letter, count] of Object.entries(map)) {
-          const key = String(letter)
-          if (!key) continue
-          const add = Math.max(0, Number(count) || 0)
-          if (!add) continue
-          tally.set(key, (tally.get(key) || 0) + add)
-        }
+    const map = row && row.wrongLetters
+    if (!map || typeof map !== 'object') continue
+    for (const [letter, count] of Object.entries(map)) {
+      const key = String(letter)
+      if (!key) continue
+      const add = Math.max(0, Number(count) || 0)
+      if (!add) continue
+      tally.set(key, (tally.get(key) || 0) + add)
+    }
       }
       return [...tally.entries()]
-        .map(([letter, count]) => ({ letter, count }))
-        .sort((a, b) => b.count - a.count || (a.letter < b.letter ? -1 : 1))
-        .slice(0, Math.max(1, limit ?? 5))
+    .map(([letter, count]) => ({ letter, count }))
+    .sort((a, b) => b.count - a.count || (a.letter < b.letter ? -1 : 1))
+    .slice(0, Math.max(1, limit ?? 5))
     }
 
     /** QWERTY 三行布局，热力图直接用 */
@@ -1506,25 +1554,25 @@ window.__ModuleLoader__.load({
     function keyboardHeat(letters) {
       const tally = new Map()
       const rows = Array.isArray(letters)
-        ? letters.map((item) => [String(item?.letter ?? '').toLowerCase(), Math.max(0, Number(item?.count) || 0)])
-        : Object.entries(letters || {}).map(([letter, count]) => [String(letter).toLowerCase(), Math.max(0, Number(count) || 0)])
+    ? letters.map((item) => [String(item?.letter ?? '').toLowerCase(), Math.max(0, Number(item?.count) || 0)])
+    : Object.entries(letters || {}).map(([letter, count]) => [String(letter).toLowerCase(), Math.max(0, Number(count) || 0)])
       for (const [key, count] of rows) {
-        if (!key || !count) continue
-        tally.set(key, (tally.get(key) || 0) + count)
+    if (!key || !count) continue
+    tally.set(key, (tally.get(key) || 0) + count)
       }
       const max = Math.max(0, ...tally.values())
       const levelOf = (count) => {
-        if (!count || !max) return 0
-        const ratio = count / max
-        if (ratio >= 0.75) return 4
-        if (ratio >= 0.5) return 3
-        if (ratio >= 0.25) return 2
-        return 1
+    if (!count || !max) return 0
+    const ratio = count / max
+    if (ratio >= 0.75) return 4
+    if (ratio >= 0.5) return 3
+    if (ratio >= 0.25) return 2
+    return 1
       }
       return KEY_ROWS.map((row) => [...row].map((key) => ({
-        key,
-        count: tally.get(key) || 0,
-        level: levelOf(tally.get(key) || 0),
+    key,
+    count: tally.get(key) || 0,
+    level: levelOf(tally.get(key) || 0),
       })))
     }
 
@@ -1555,11 +1603,11 @@ window.__ModuleLoader__.load({
       const { w, h, gap, offsets } = KEYBOARD_GEOM
       const pitch = w + gap
       return KEY_ROWS.map((row, rowIndex) => [...row].map((key, colIndex) => ({
-        key,
-        x: (offsets[rowIndex] ?? 0) + colIndex * pitch,
-        y: rowIndex * (h + gap),
-        w,
-        h,
+    key,
+    x: (offsets[rowIndex] ?? 0) + colIndex * pitch,
+    y: rowIndex * (h + gap),
+    w,
+    h,
       })))
     }
 
@@ -1580,10 +1628,10 @@ window.__ModuleLoader__.load({
       if (!limit) return []
       const max = Math.max(...cells.map((cell) => cell.count))
       return cells
-        .slice()
-        .sort((a, b) => b.count - a.count || (a.key < b.key ? -1 : 1))
-        .slice(0, limit)
-        .map((cell) => ({ key: cell.key, count: cell.count, ratio: max ? cell.count / max : 0 }))
+    .slice()
+    .sort((a, b) => b.count - a.count || (a.key < b.key ? -1 : 1))
+    .slice(0, limit)
+    .map((cell) => ({ key: cell.key, count: cell.count, ratio: max ? cell.count / max : 0 }))
     }
 
     /* -------------------------------------------------- 指法图示（纯 SVG） */
@@ -1649,8 +1697,8 @@ window.__ModuleLoader__.load({
       const key = String(letter ?? '').trim().toLowerCase()
       if (key.length !== 1) return null
       for (let row = 0; row < KEY_ROWS.length; row += 1) {
-        const col = KEY_ROWS[row].indexOf(key)
-        if (col >= 0) return { row, col }
+    const col = KEY_ROWS[row].indexOf(key)
+    if (col >= 0) return { row, col }
       }
       return null
     }
@@ -1693,54 +1741,54 @@ window.__ModuleLoader__.load({
       const hit = String(active ?? '').trim().toLowerCase()
       const children = []
       KEY_ROWS.forEach((row, rowIndex) => {
-        [...row].forEach((letter, colIndex) => {
-          const geom = keyGeom(rowIndex, colIndex)
-          const finger = FINGER_MAP[letter] ?? ''
-          const on = letter === hit
-          // f / j 基准键：键帽下沿一个小点，位置提示
-          const bump = letter === 'f' || letter === 'j'
-            ? h('circle', {
-              key: `${letter}-bump`,
-              className: 'qat-fkeybump',
-              cx: geom.x + geom.w / 2,
-              cy: geom.y + geom.h - 5,
-              r: 1.6,
-            })
-            : null
-          children.push(h('g', {
-            key: letter,
-            className: 'qat-fkey',
-            'data-finger': finger,
-            'data-on': on ? 'true' : 'false',
-          },
-            h('rect', {
-              className: 'qat-fkeycap',
-              x: geom.x,
-              y: geom.y,
-              width: geom.w,
-              height: geom.h,
-              rx: 5,
-              ry: 5,
-              style: on ? { fill: FINGER_COLORS[finger] } : undefined,
-            }),
-            h('text', {
-              className: 'qat-fkeylabel',
-              x: geom.x + geom.w / 2,
-              y: geom.y + geom.h / 2 + 4,
-              'text-anchor': 'middle',
-            }, letter.toUpperCase()),
-            bump,
-          ))
+    [...row].forEach((letter, colIndex) => {
+      const geom = keyGeom(rowIndex, colIndex)
+      const finger = FINGER_MAP[letter] ?? ''
+      const on = letter === hit
+      // f / j 基准键：键帽下沿一个小点，位置提示
+      const bump = letter === 'f' || letter === 'j'
+        ? h('circle', {
+          key: `${letter}-bump`,
+          className: 'qat-fkeybump',
+          cx: geom.x + geom.w / 2,
+          cy: geom.y + geom.h - 5,
+          r: 1.6,
         })
+        : null
+      children.push(h('g', {
+        key: letter,
+        className: 'qat-fkey',
+        'data-finger': finger,
+        'data-on': on ? 'true' : 'false',
+      },
+        h('rect', {
+          className: 'qat-fkeycap',
+          x: geom.x,
+          y: geom.y,
+          width: geom.w,
+          height: geom.h,
+          rx: 5,
+          ry: 5,
+          style: on ? { fill: FINGER_COLORS[finger] } : undefined,
+        }),
+        h('text', {
+          className: 'qat-fkeylabel',
+          x: geom.x + geom.w / 2,
+          y: geom.y + geom.h / 2 + 4,
+          'text-anchor': 'middle',
+        }, letter.toUpperCase()),
+        bump,
+      ))
+    })
       })
       return h('svg', {
-        className: 'qat-fingerkbd',
-        viewBox: `0 0 ${FINGER_KEY.width} ${FINGER_KEY.height}`,
-        width: FINGER_KEY.width,
-        height: FINGER_KEY.height,
-        role: 'img',
-        'aria-label': label || 'keyboard',
-        focusable: 'false',
+    className: 'qat-fingerkbd',
+    viewBox: `0 0 ${FINGER_KEY.width} ${FINGER_KEY.height}`,
+    width: FINGER_KEY.width,
+    height: FINGER_KEY.height,
+    role: 'img',
+    'aria-label': label || 'keyboard',
+    focusable: 'false',
       }, children)
     }
 
@@ -1757,48 +1805,48 @@ window.__ModuleLoader__.load({
       const layout = keyLayout()
       const total = cells.flat().reduce((sum, cell) => sum + cell.count, 0)
       return h('div', { className: 'qat-kbd' },
-        h('svg', {
-          className: 'qat-kbdsvg',
-          viewBox: `0 0 ${KEYBOARD_VIEW.width} ${KEYBOARD_VIEW.height}`,
-          role: 'img',
-          'aria-label': t ? t('kbdAria', { n: total }) : `${total}`,
-          focusable: 'false',
-        }, layout.flatMap((row, rowIndex) => row.map((geom, colIndex) => {
-          const cell = cells[rowIndex][colIndex]
-          return h('g', {
-            key: cell.key,
-            className: 'qat-key',
-            'data-level': String(cell.level),
-            // 指法分区：CSS 按这个属性给 0 档键淡染该手指的颜色
-            'data-finger': fingerOf(cell.key) ?? '',
-          },
-            // 悬停提示走 SVG 原生 <title>，不额外挂 tooltip 组件
-            h('title', null, `${cell.key} ×${cell.count}`),
-            h('rect', {
-              className: 'qat-keycap',
-              x: geom.x,
-              y: geom.y,
-              width: geom.w,
-              height: geom.h,
-              rx: 1.6,
-              ry: 1.6,
-            }),
-            h('text', {
-              className: 'qat-keylabel',
-              x: geom.x + geom.w / 2,
-              y: geom.y + geom.h * 0.58,
-              'text-anchor': 'middle',
-            }, cell.key.toUpperCase()),
-            cell.count
-              ? h('text', {
-                className: 'qat-keynum',
-                x: geom.x + geom.w / 2,
-                y: geom.y + geom.h * 0.9,
-                'text-anchor': 'middle',
-              }, String(cell.count))
-              : null,
-          )
-        }))),
+    h('svg', {
+      className: 'qat-kbdsvg',
+      viewBox: `0 0 ${KEYBOARD_VIEW.width} ${KEYBOARD_VIEW.height}`,
+      role: 'img',
+      'aria-label': t ? t('kbdAria', { n: total }) : `${total}`,
+      focusable: 'false',
+    }, layout.flatMap((row, rowIndex) => row.map((geom, colIndex) => {
+      const cell = cells[rowIndex][colIndex]
+      return h('g', {
+        key: cell.key,
+        className: 'qat-key',
+        'data-level': String(cell.level),
+        // 指法分区：CSS 按这个属性给 0 档键淡染该手指的颜色
+        'data-finger': fingerOf(cell.key) ?? '',
+      },
+        // 悬停提示走 SVG 原生 <title>，不额外挂 tooltip 组件
+        h('title', null, `${cell.key} ×${cell.count}`),
+        h('rect', {
+          className: 'qat-keycap',
+          x: geom.x,
+          y: geom.y,
+          width: geom.w,
+          height: geom.h,
+          rx: 1.6,
+          ry: 1.6,
+        }),
+        h('text', {
+          className: 'qat-keylabel',
+          x: geom.x + geom.w / 2,
+          y: geom.y + geom.h * 0.58,
+          'text-anchor': 'middle',
+        }, cell.key.toUpperCase()),
+        cell.count
+          ? h('text', {
+            className: 'qat-keynum',
+            x: geom.x + geom.w / 2,
+            y: geom.y + geom.h * 0.9,
+            'text-anchor': 'middle',
+          }, String(cell.count))
+          : null,
+      )
+    }))),
       )
     }
 
@@ -1809,21 +1857,21 @@ window.__ModuleLoader__.load({
      */
     function KeyboardHeat({ letters, t, view = 'heat', onView }) {
       return h('div', { className: 'qat-kbdwrap', 'data-view': view },
-        h('div', { className: 'qat-kbdhead' },
-          h('span', { className: 'qat-kbdlegend' }, t ? t('kbdLegend') : ''),
-          h('span', { className: 'qat-grow' }),
-          h('span', {
-            ...pressable(() => onView?.('heat')),
-            className: 'qat-btn qat-kbdtab',
-            'data-on': view === 'heat' ? 'true' : 'false',
-          }, t ? t('kbdViewHeat') : 'heat'),
-          h('span', {
-            ...pressable(() => onView?.('bars')),
-            className: 'qat-btn qat-kbdtab',
-            'data-on': view === 'bars' ? 'true' : 'false',
-          }, t ? t('kbdViewBars') : 'bars')),
-        view === 'bars' ? h(KeyboardBars, { letters, t }) : h(KeyboardHeatMap, { letters, t }),
-        h('span', { className: 'qat-kbdfinger' }, t ? t('kbdFingerLegend') : ''),
+    h('div', { className: 'qat-kbdhead' },
+      h('span', { className: 'qat-kbdlegend' }, t ? t('kbdLegend') : ''),
+      h('span', { className: 'qat-grow' }),
+      h('span', {
+        ...pressable(() => onView?.('heat')),
+        className: 'qat-btn qat-kbdtab',
+        'data-on': view === 'heat' ? 'true' : 'false',
+      }, t ? t('kbdViewHeat') : 'heat'),
+      h('span', {
+        ...pressable(() => onView?.('bars')),
+        className: 'qat-btn qat-kbdtab',
+        'data-on': view === 'bars' ? 'true' : 'false',
+      }, t ? t('kbdViewBars') : 'bars')),
+    view === 'bars' ? h(KeyboardBars, { letters, t }) : h(KeyboardHeatMap, { letters, t }),
+    h('span', { className: 'qat-kbdfinger' }, t ? t('kbdFingerLegend') : ''),
       )
     }
 
@@ -1835,21 +1883,21 @@ window.__ModuleLoader__.load({
     function KeyboardBars({ letters, t, topN = KEY_BARS_TOP }) {
       const rows = heatBars(letters, topN)
       if (!rows.length) {
-        return h('div', { className: 'qat-keybars', 'data-empty': 'true' },
-          h('span', { className: 'qat-keybars-empty' }, t ? t('kbdBarsEmpty') : '—'))
+    return h('div', { className: 'qat-keybars', 'data-empty': 'true' },
+      h('span', { className: 'qat-keybars-empty' }, t ? t('kbdBarsEmpty') : '—'))
       }
       return h('div', { className: 'qat-keybars' }, rows.map((row) => h('div', {
-        key: row.key,
-        className: 'qat-keybar',
-        title: `${row.key} ×${row.count}`,
+    key: row.key,
+    className: 'qat-keybar',
+    title: `${row.key} ×${row.count}`,
       },
-        h('span', { className: 'qat-keybar-label' }, row.key.toUpperCase()),
-        h('span', { className: 'qat-keybar-track' },
-          h('span', {
-            className: 'qat-keybar-fill',
-            style: { width: `${Math.round(row.ratio * 100)}%` },
-          })),
-        h('span', { className: 'qat-keybar-count' }, `×${row.count}`))))
+    h('span', { className: 'qat-keybar-label' }, row.key.toUpperCase()),
+    h('span', { className: 'qat-keybar-track' },
+      h('span', {
+        className: 'qat-keybar-fill',
+        style: { width: `${Math.round(row.ratio * 100)}%` },
+      })),
+    h('span', { className: 'qat-keybar-count' }, `×${row.count}`))))
     }
 
     /**
@@ -1861,23 +1909,23 @@ window.__ModuleLoader__.load({
       const hit = keyHighlight({ word, typed })
       const fingerName = hit ? t(FINGER_LABELS[hit.finger]) : ''
       return h('div', {
-        className: 'qat-finger',
-        'data-on': hit ? 'true' : 'false',
-        'data-finger': hit?.finger ?? '',
+    className: 'qat-finger',
+    'data-on': hit ? 'true' : 'false',
+    'data-finger': hit?.finger ?? '',
       },
-        fingerKeyboardNode({
-          active: hit?.letter ?? '',
-          label: hit
-            ? t('fingerAria', { finger: fingerName, letter: hit.letter.toUpperCase() })
-            : t('fingerIdle'),
-        }),
-        h('span', { className: 'qat-fingerlabel' },
-          h('span', {
-            className: 'qat-fingerdot',
-            style: hit ? { background: FINGER_COLORS[hit.finger] } : undefined,
-          }),
-          h('span', null, hit ? t('fingerUse', { finger: fingerName }) : t('fingerIdle')),
-        ),
+    fingerKeyboardNode({
+      active: hit?.letter ?? '',
+      label: hit
+        ? t('fingerAria', { finger: fingerName, letter: hit.letter.toUpperCase() })
+        : t('fingerIdle'),
+    }),
+    h('span', { className: 'qat-fingerlabel' },
+      h('span', {
+        className: 'qat-fingerdot',
+        style: hit ? { background: FINGER_COLORS[hit.finger] } : undefined,
+      }),
+      h('span', null, hit ? t('fingerUse', { finger: fingerName }) : t('fingerIdle')),
+    ),
       )
     }
 
@@ -1887,13 +1935,13 @@ window.__ModuleLoader__.load({
       const needle = String(query ?? '').trim().toLowerCase()
       const known = mastered instanceof Set ? mastered : new Set(mastered || [])
       let list = (rows || []).filter((row) => {
-        if (dictId && row.dictId !== dictId) return false
-        // 已掌握的默认不出现，但要能看到（showMastered）
-        if (!showMastered && known.has(`${row.dictId || ''}:${row.word}`)) return false
-        if (!needle) return true
-        const meta = lookup(row.word)
-        return row.word.toLowerCase().includes(needle)
-          || String(meta?.zh ?? '').toLowerCase().includes(needle)
+    if (dictId && row.dictId !== dictId) return false
+    // 已掌握的默认不出现，但要能看到（showMastered）
+    if (!showMastered && known.has(`${row.dictId || ''}:${row.word}`)) return false
+    if (!needle) return true
+    const meta = lookup(row.word)
+    return row.word.toLowerCase().includes(needle)
+      || String(meta?.zh ?? '').toLowerCase().includes(needle)
       })
       if (sort === 'recent') list = list.slice().sort((a, b) => b.lastAt - a.lastAt)
       else if (sort === 'alpha') list = list.slice().sort((a, b) => (a.word < b.word ? -1 : 1))
@@ -1931,7 +1979,7 @@ window.__ModuleLoader__.load({
      */
     function wordListRows(input) {
       const {
-        words, index, records, mastered, dictId = '', limit = WORDLIST_LIMIT,
+    words, index, records, mastered, dictId = '', limit = WORDLIST_LIMIT,
       } = input || {}
       const list = Array.isArray(words) ? words : []
       const cap = Number.isFinite(limit) ? Math.max(0, Math.floor(limit)) : list.length
@@ -1940,35 +1988,35 @@ window.__ModuleLoader__.load({
       const typed = new Set()
       const wrong = new Set()
       for (const item of records || []) {
-        const word = item?.word
-        if (!word) continue
-        if (dictId && String(item.dictId ?? '') !== String(dictId)) continue
-        typed.add(String(word))
-        if (Number(item.wrongCount) > 0) wrong.add(String(word))
+    const word = item?.word
+    if (!word) continue
+    if (dictId && String(item.dictId ?? '') !== String(dictId)) continue
+    typed.add(String(word))
+    if (Number(item.wrongCount) > 0) wrong.add(String(word))
       }
 
       const known = new Set((mastered || []).map((key) => String(key)))
       const masteredWord = (word) =>
-        known.has(word)
-        || known.has(masteredKey(dictId, word))
-        // 别的词库里标过掌握也认（用户视角里就是"这个词我掌握了"）
-        || [...known].some((key) => key.endsWith(`:${word}`))
+    known.has(word)
+    || known.has(masteredKey(dictId, word))
+    // 别的词库里标过掌握也认（用户视角里就是"这个词我掌握了"）
+    || [...known].some((key) => key.endsWith(`:${word}`))
 
       const rows = []
       for (let i = 0; i < list.length && rows.length < cap; i += 1) {
-        const entry = list[i]
-        const word = String(typeof entry === 'string' ? entry : (entry?.w ?? entry?.word ?? ''))
-        if (!word) continue
-        const meta = lookup(word)
-        const own = typeof entry === 'object' && entry ? entry : null
-        const ipa = String(own?.ipa ?? meta?.ipa ?? '')
-        const zh = String(own?.zh ?? meta?.zh ?? '')
-        let state = 'idle'
-        if (i === current) state = 'current'
-        else if (masteredWord(word)) state = 'mastered'
-        else if (wrong.has(word)) state = 'wrong'
-        else if (typed.has(word)) state = 'done'
-        rows.push({ index: i, word, ipa, zh, state })
+    const entry = list[i]
+    const word = String(typeof entry === 'string' ? entry : (entry?.w ?? entry?.word ?? ''))
+    if (!word) continue
+    const meta = lookup(word)
+    const own = typeof entry === 'object' && entry ? entry : null
+    const ipa = String(own?.ipa ?? meta?.ipa ?? '')
+    const zh = String(own?.zh ?? meta?.zh ?? '')
+    let state = 'idle'
+    if (i === current) state = 'current'
+    else if (masteredWord(word)) state = 'mastered'
+    else if (wrong.has(word)) state = 'wrong'
+    else if (typed.has(word)) state = 'done'
+    rows.push({ index: i, word, ipa, zh, state })
       }
       return rows
     }
@@ -1981,9 +2029,9 @@ window.__ModuleLoader__.load({
       const out = []
       const base = new Date(now ?? Date.now())
       for (let i = count - 1; i >= 0; i -= 1) {
-        const date = new Date(base.getFullYear(), base.getMonth(), base.getDate() - i)
-        const day = dayKey(date.getTime())
-        out.push(byDay.get(day) ?? { day, words: 0, chapters: 0, wrong: 0, seconds: 0, accuracy: 0, wpm: 0 })
+    const date = new Date(base.getFullYear(), base.getMonth(), base.getDate() - i)
+    const day = dayKey(date.getTime())
+    out.push(byDay.get(day) ?? { day, words: 0, chapters: 0, wrong: 0, seconds: 0, accuracy: 0, wpm: 0 })
       }
       return out
     }
@@ -1994,17 +2042,17 @@ window.__ModuleLoader__.load({
       if (!file) throw new Error('该词库没有数据地址')
       let lastError = null
       for (const build of dictSourceList()) {
-        const target = build(file)
-        try {
-          const response = await fetch(target)
-          if (!response.ok) throw new Error(`HTTP ${response.status}`)
-          const data = await response.json()
-          const list = Array.isArray(data) ? data : data[Object.keys(data)[0]]
-          if (!Array.isArray(list)) throw new Error('数据格式不是数组')
-          return list
-        } catch (error) {
-          lastError = error
-        }
+    const target = build(file)
+    try {
+      const response = await fetch(target)
+      if (!response.ok) throw new Error(`HTTP ${response.status}`)
+      const data = await response.json()
+      const list = Array.isArray(data) ? data : data[Object.keys(data)[0]]
+      if (!Array.isArray(list)) throw new Error('数据格式不是数组')
+      return list
+    } catch (error) {
+      lastError = error
+    }
       }
       throw lastError ?? new Error('词库加载失败')
     }
@@ -2014,54 +2062,54 @@ window.__ModuleLoader__.load({
       const force = Boolean(options?.force)
       // 自定义词表不走网络
       if (isCustomId(id)) {
-        if (!force && DICT_CACHE.has(id)) return DICT_CACHE.get(id)
-        const words = customWords(id)
-        if (!words.length) throw new Error(`自定义词表为空：${id}`)
-        DICT_CACHE.set(id, words)
-        clearLookupCache()
-        return words
+    if (!force && DICT_CACHE.has(id)) return DICT_CACHE.get(id)
+    const words = customWords(id)
+    if (!words.length) throw new Error(`自定义词表为空：${id}`)
+    DICT_CACHE.set(id, words)
+    clearLookupCache()
+    return words
       }
       const meta = dictionaryById(id)
       if (!meta) throw new Error(`未知词库：${id}`)
 
       if (!force) {
-        if (DICT_CACHE.has(id)) return DICT_CACHE.get(id)
-        const cached = await cacheGet(id)
-        if (Array.isArray(cached) && cached.length) {
-          DICT_CACHE.set(id, cached)
-          clearLookupCache()
-          return cached
-        }
+    if (DICT_CACHE.has(id)) return DICT_CACHE.get(id)
+    const cached = await cacheGet(id)
+    if (Array.isArray(cached) && cached.length) {
+      DICT_CACHE.set(id, cached)
+      clearLookupCache()
+      return cached
+    }
       }
 
       if (DICT_INFLIGHT.has(id)) return DICT_INFLIGHT.get(id)
 
       const task = (async () => {
-        try {
-          const raw = await fetchDictJson(meta)
-          const words = normalizeWords(raw, meta.languageCategory)
-          if (!words.length) throw new Error('词库解析后没有有效词条')
-          DICT_CACHE.set(id, words)
-          clearLookupCache()
-          cachePut(id, words, meta)
-          return words
-        } catch (error) {
-          // 拉不到就退回内置采样（只对 7 个内置库有效），并让调用方知道降级了
-          const builtin = builtinById(id)
-          if (builtin?.words?.length) {
-            DICT_CACHE.set(id, builtin.words)
-            clearLookupCache()
-            throw Object.assign(error, { fallbackWords: builtin.words })
-          }
-          throw error
-        }
+    try {
+      const raw = await fetchDictJson(meta)
+      const words = normalizeWords(raw, meta.languageCategory)
+      if (!words.length) throw new Error('词库解析后没有有效词条')
+      DICT_CACHE.set(id, words)
+      clearLookupCache()
+      cachePut(id, words, meta)
+      return words
+    } catch (error) {
+      // 拉不到就退回内置采样（只对 7 个内置库有效），并让调用方知道降级了
+      const builtin = builtinById(id)
+      if (builtin?.words?.length) {
+        DICT_CACHE.set(id, builtin.words)
+        clearLookupCache()
+        throw Object.assign(error, { fallbackWords: builtin.words })
+      }
+      throw error
+    }
       })()
 
       DICT_INFLIGHT.set(id, task)
       try {
-        return await task
+    return await task
       } finally {
-        DICT_INFLIGHT.delete(id)
+    DICT_INFLIGHT.delete(id)
       }
     }
 
@@ -2069,12 +2117,12 @@ window.__ModuleLoader__.load({
     function wordsSync(id) {
       if (DICT_CACHE.has(id)) return DICT_CACHE.get(id)
       if (isCustomId(id)) {
-        const words = customWords(id)
-        if (words.length) {
-          DICT_CACHE.set(id, words)
-          clearLookupCache()
-        }
-        return words
+    const words = customWords(id)
+    if (words.length) {
+      DICT_CACHE.set(id, words)
+      clearLookupCache()
+    }
+    return words
       }
       const builtin = builtinById(id)
       if (builtin?.words?.length) return builtin.words
@@ -2083,31 +2131,31 @@ window.__ModuleLoader__.load({
 
     function readDictId() {
       try {
-        const saved = window.localStorage.getItem(DICT_STORAGE_KEY)
-        if (saved && catalog().some((dict) => dict.id === saved)) return saved
+    const saved = window.localStorage.getItem(DICT_STORAGE_KEY)
+    if (saved && catalog().some((dict) => dict.id === saved)) return saved
       } catch {
-        /* 无痕模式等，忽略 */
+    /* 无痕模式等，忽略 */
       }
       return catalog()[0]?.id ?? 'builtin'
     }
 
     function writeDictId(id) {
       try {
-        window.localStorage.setItem(DICT_STORAGE_KEY, id)
-        const recent = readRecent().filter((item) => item !== id)
-        recent.unshift(id)
-        window.localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(recent.slice(0, 5)))
+    window.localStorage.setItem(DICT_STORAGE_KEY, id)
+    const recent = readRecent().filter((item) => item !== id)
+    recent.unshift(id)
+    window.localStorage.setItem(RECENT_STORAGE_KEY, JSON.stringify(recent.slice(0, 5)))
       } catch {
-        /* ignore */
+    /* ignore */
       }
     }
 
     function readRecent() {
       try {
-        const raw = JSON.parse(window.localStorage.getItem(RECENT_STORAGE_KEY) || '[]')
-        return Array.isArray(raw) ? raw.filter((id) => typeof id === 'string') : []
+    const raw = JSON.parse(window.localStorage.getItem(RECENT_STORAGE_KEY) || '[]')
+    return Array.isArray(raw) ? raw.filter((id) => typeof id === 'string') : []
       } catch {
-        return []
+    return []
       }
     }
 
@@ -2123,8 +2171,8 @@ window.__ModuleLoader__.load({
       if (map) return map
       map = new Map()
       for (const entry of words) {
-        if (!entry || !entry.w || map.has(entry.w)) continue   // 同词只留第一条，和 find 的语义一致
-        map.set(entry.w, entry)
+    if (!entry || !entry.w || map.has(entry.w)) continue   // 同词只留第一条，和 find 的语义一致
+    map.set(entry.w, entry)
       }
       WORD_INDEX.set(words, map)
       return map
@@ -2136,28 +2184,28 @@ window.__ModuleLoader__.load({
       // senses 一起带出去：面板卡片按条目分行渲染，跟打条继续用拼好的 zh；
       // 老缓存条目只有 ipa，这几项就是 undefined，phoneticOf 会退回 ipa 且不加前缀
       return entry
-        ? {
-          word: entry.w,
-          ipa: entry.ipa,
-          zh: entry.zh,
-          us: entry.us,
-          uk: entry.uk,
-          notation: entry.notation,
-          en: entry.en,
-          senses: sensesOf(entry),
-        }
-        : undefined
+    ? {
+      word: entry.w,
+      ipa: entry.ipa,
+      zh: entry.zh,
+      us: entry.us,
+      uk: entry.uk,
+      notation: entry.notation,
+      en: entry.en,
+      senses: sensesOf(entry),
+    }
+    : undefined
     }
 
     /** 查一次（不缓存结果）：已加载词库 → 内置词库 → LEXICON */
     function lookupOnce(needle) {
       for (const dict of builtinDicts()) {
-        const hit = wordIndex(dict.words)?.get(needle)
-        if (hit) return hitOf(hit)
+    const hit = wordIndex(dict.words)?.get(needle)
+    if (hit) return hitOf(hit)
       }
       for (const words of DICT_CACHE.values()) {
-        const hit = wordIndex(words)?.get(needle)
-        if (hit) return hitOf(hit)
+    const hit = wordIndex(words)?.get(needle)
+    if (hit) return hitOf(hit)
       }
       const fallback = lexiconIndex()?.get(needle)
       return fallback ? { word: fallback.w, ipa: fallback.ipa, zh: fallback.zh } : undefined
@@ -2167,7 +2215,7 @@ window.__ModuleLoader__.load({
     let LEXICON_INDEX = null
     function lexiconIndex() {
       if (!LEXICON_INDEX) {
-        LEXICON_INDEX = wordIndex(LEXICON.map((entry) => ({ w: entry.word, ipa: entry.ipa, zh: entry.zh })))
+    LEXICON_INDEX = wordIndex(LEXICON.map((entry) => ({ w: entry.word, ipa: entry.ipa, zh: entry.zh })))
       }
       return LEXICON_INDEX
     }
@@ -2197,14 +2245,14 @@ window.__ModuleLoader__.load({
       const groups = []
       const byName = new Map()          // 之前每本词库都 groups.find 一遍，371 本 = 371×分类数
       for (const dict of dicts) {
-        const category = dict.category || '其它'
-        const group = byName.get(category)
-        if (group) group.dicts.push(dict)
-        else {
-          const fresh = { category, dicts: [dict] }
-          byName.set(category, fresh)
-          groups.push(fresh)
-        }
+    const category = dict.category || '其它'
+    const group = byName.get(category)
+    if (group) group.dicts.push(dict)
+    else {
+      const fresh = { category, dicts: [dict] }
+      byName.set(category, fresh)
+      groups.push(fresh)
+    }
       }
       return groups
     }
@@ -2214,10 +2262,10 @@ window.__ModuleLoader__.load({
       const pool = (words || []).map((entry) => entry.w).filter(Boolean)
       const list = pool.slice()
       for (let i = list.length - 1; i > 0; i -= 1) {
-        const j = Math.floor(Math.random() * (i + 1))
-        const swap = list[i]
-        list[i] = list[j]
-        list[j] = swap
+    const j = Math.floor(Math.random() * (i + 1))
+    const swap = list[i]
+    list[i] = list[j]
+    list[j] = swap
       }
       return list.slice(0, count ?? 20)
     }
@@ -2232,330 +2280,334 @@ window.__ModuleLoader__.load({
       const q = String(query || '').trim().toLowerCase()
       if (!q) return []
       const list = catalog().filter((dict) => {
-        const hay = [dict.name, dict.id, ...(dict.tags || [])].join(' ').toLowerCase()
-        return hay.includes(q)
+    const hay = [dict.name, dict.id, ...(dict.tags || [])].join(' ').toLowerCase()
+    return hay.includes(q)
       })
       return list.slice(0, limit ?? 40)
     }
 
     const DICT = {
       zh: {
-        title: 'Qwerty 跟打',
-        progress: '进度 {done}/{total}',
-        hits: '命中 {n}',
-        retries: '重打 {n}',
-        placeholder: '跟打输入区（键盘直接打，不需要点框）',
-        hint: '打中字母变绿、自动进下一个词；打错变红、清空重打整词。回车不会发送消息。',
-        tipFirstLetter: '首字母提示 {pattern}',
-        tipTwoLetters: '再给两个字母 {pattern}',
-        tipReveal: '只剩最后一个字母 {pattern}',
-        restart: '重开',
-        close: '收起',
-        barHint: '焦点放在下面的输入框，照着单词打；打错整词重打，回车不会发送。',
-        dictTitle: '选择词库',
-        dictBadgeTitle: '词库：{name}',
-        doneShort: '完成 {total} 个 · {sec}s',
-        autoTitle: '自动打',
-        doneTitle: '这一轮打完了',
-        doneBody: '完成 {total}/{total}，用时 {sec}s，命中 {hits}，重打 {retries}',
-        again: '再来一轮',
-        resultWrongTitle: '本轮打错 {n} 个',
-        resultRetryWrong: '重练这些词',
-        resultNextChapter: '下一章',
-        resultNextChapterLast: '回到第 1 章',
-        empty: '没有单词；用空格分隔即可，例如：/qwerty-autotype cancel govern',
-        sideLabel: '跟打',
-        sideTitle: '开 / 关 Qwerty 跟打卡片',
-        searchDict: '搜索词库（名称 / 标签）',
-        allCategories: '全部',
-        recent: '最近使用',
-        searchResult: '搜索结果',
-        loading: '正在加载词库…',
-        loadFailed: '词库加载失败，先用内置词库继续',
-        chapterTitle: '选择章节',
-        panelHeadChapter: '第 {n} 章',
-        panelHeadReview: '复练 {n} 词',
-        speak: '读一遍',
-        todayStats: '今日 {words} 词 · 正确率 {accuracy}% · {wpm} WPM',
-        liveSpeed: '实时 {wpm} WPM',
-        accuracyShort: '正确率 {n}%',
-        conflictTitle: '插件冲突？',
-        conflictBody: '如果多次输入失败，可能是与本地浏览器插件冲突，请关闭相关插件或切换浏览器试试。',
-        prevTip: '上一个（Ctrl/⌘+←）',
-        skipTip: '跳过（Ctrl/⌘+→）',
-        loopTip: '循环当前词（Ctrl/⌘+J）',
-        pauseTip: '暂停（Ctrl/⌘+P）',
-        resumeTip: '继续',
-        pausedTip: '已暂停（失焦或切标签页会自动暂停）',
-        resume: '继续',
-        wrongBook: '错词本',
-        wordListOpen: '本章词表',
-        wordListTitle: '本章词表 {n} 个',
-        wordListEmpty: '这一章还没有词',
-        wordListHint: '点一行直接跳过去',
-        wordStateCurrent: '当前',
-        wordStateDone: '已打过',
-        wordStateWrong: '打错过',
-        wordStateMastered: '已掌握',
-        wordStateIdle: '未打',
-        wrongSearch: '搜单词或释义',
-        mistakesLabel: '本轮打错 {n} 个：',
-        settingsTitle: '跟打',
-        settingSound: '键音',
-        settingSoundHint: '打对/打错时给一声轻提示',
-        settingAutoNext: '自动继续',
-        settingAutoNextHint: '打完 20 个自动接下一章，不用手动点',
-        settingFinger: '指法提示',
-        settingFingerHint: '卡片下方画一张键盘，高亮下一个要按的键和该用的手指',
-        settingWordScale: '字号',
-        wordScale_auto: '自动',
-        wordScale_small: '小',
-        wordScale_medium: '中',
-        wordScale_large: '大',
-        settingVoiceRate: '发音倍速',
-        settingClickVolume: '按键音音量',
-        fingerLeftPinky: '左小指',
-        fingerLeftRing: '左无名指',
-        fingerLeftMiddle: '左中指',
-        fingerLeftIndex: '左食指',
-        fingerRightIndex: '右食指',
-        fingerRightMiddle: '右中指',
-        fingerRightRing: '右无名指',
-        fingerRightPinky: '右小指',
-        fingerUse: '用 {finger}',
-        fingerAria: '指法：{finger} 按 {letter}',
-        fingerIdle: '当前字符不在字母区',
-        hotkeysTitle: '快捷键',
-        announceWrong: '打错了，请整词重打 {word}',
-        announceDone: '本轮完成，共 {n} 个词',
-        hotkeysList: 'Esc 关闭 · Ctrl/⌘+← 上一个 · Ctrl/⌘+→ 跳过 · Ctrl/⌘+J 循环 · Ctrl/⌘+P 暂停 · 在输入框里按 Tab 开始',
-        lettersTitle: '易错字母',
-        kbdLegend: '颜色越深打错越多',
-        kbdFingerLegend: '浅底色是手指分区',
-        kbdViewHeat: '键盘',
-        kbdViewBars: '排行',
-        kbdBarsEmpty: '这一轮没有打错的字母',
-        kbdAria: '键盘热力图，共打错 {n} 次',
-        customNew: '＋ 导入自定义词表',
-        customName: '词表名字（可留空）',
-        customPlaceholder: '一行一个词：word 中文\n也支持 word,中文,/音标/\n# 开头是注释',
-        customSave: '保存并开始',
-        customFile: '从文件导入（.txt / .csv / .json）',
-        customFileLoaded: '已读取文件，解析出 {n} 个词，确认后保存',
-        customExport: '导出这个词表',
-        customEmpty: '没解析出任何单词，检查一下格式',
-        customSaved: '已保存 {n} 个词',
-        cancel: '取消',
-        markMastered: '标记已掌握',
-        cacheLabel: '词库缓存',
-        cacheHint: '已缓存 {n} 个词库，约 {size}；清掉后下次用到会重新下载',
-        cacheLoading: '读取中…',
-        cacheClear: '清理缓存',
-        cacheCleared: '词库缓存已清理',
-        dataTitle: '数据',
-        backupExport: '导出备份',
-        backupImport: '导入备份',
-        backupClear: '清空记录',
-        clearConfirm: '再点一次确认清空',
-        clearedDone: '已清空本地练习记录',
-        backupExported: '备份已开始下载',
-        backupImported: '已恢复 {n} 条记录',
-        backupBadFile: '这个文件不是跟打备份',
-        backupFailed: '导出失败，浏览器可能禁止了下载',
-        settingCaseSensitive: '区分大小写',
-        settingCaseSensitiveHint: '关：Cancel 打 cancel 也算对（代码词库建议开）',
-        settingIgnorePunct: '忽略标点',
-        settingIgnorePunctHint: '开：append() 只需要打 append',
-        settingVoice: '自动发音',
-        settingAccent: '发音口音',
-        settingAccentHint: '英音走有道教 type=1，美音 type=2；中日文自动判断',
-        accent_us: '美音',
-        accent_uk: '英音',
-        settingVoiceHint: '换词时自动读一遍（有道音频，离线退回系统语音）',
-        settingReadMeaning: '译义朗读',
-        settingReadMeaningHint: '打完一个词后把释义也读一遍（先单词后释义，日语释义走 ja-JP）',
-        settingDictation: '默写形态',
-        settingDictationHint: '默认遮住哪些字母，练习时仍可临时切换',
-        reviewMistakes: '重练这些词',
-        nextChapter: '下一章',
-        allDicts: '全部',
-        sortCount: '按错误次数',
-        sortRecent: '按最近出错',
-        wrongTitle: '错词本 · {n} 个',
-        wrongEmpty: '还没有错词。打错过的词会自动出现在这里。',
-        reviewTop: '重练前 20',
-        clearWrong: '刷新',
-        stats: '统计',
-        statsTitle: '近 14 天',
-        statWords: '{n} 词',
-        statChapters: '{n} 章',
-        elapsedShort: '用时 {sec}s',
-        dictation: '默写形态',
-        dictation_none: '正常显示',
-        dictation_hideAll: '全部隐藏',
-        dictation_hideVowel: '隐藏元音',
-        dictation_hideConsonant: '隐藏辅音',
-        dictation_randomHide: '随机隐藏',
-        wordCount: '{n} 词',
+    title: 'Qwerty 跟打',
+    progress: '进度 {done}/{total}',
+    hits: '命中 {n}',
+    retries: '重打 {n}',
+    placeholder: '跟打输入区（键盘直接打，不需要点框）',
+    hint: '打中字母变绿、自动进下一个词；打错变红、清空重打整词。回车不会发送消息。',
+    tipFirstLetter: '首字母提示 {pattern}',
+    tipTwoLetters: '再给两个字母 {pattern}',
+    tipReveal: '只剩最后一个字母 {pattern}',
+    restart: '重开',
+    close: '收起',
+    barHint: '焦点放在下面的输入框，照着单词打；打错整词重打，回车不会发送。',
+    dictTitle: '选择词库',
+    dictBadgeTitle: '词库：{name}',
+    doneShort: '完成 {total} 个 · {sec}s',
+    autoTitle: '自动打',
+    doneTitle: '这一轮打完了',
+    doneBody: '完成 {total}/{total}，用时 {sec}s，命中 {hits}，重打 {retries}',
+    again: '再来一轮',
+    resultWrongTitle: '本轮打错 {n} 个',
+    resultRetryWrong: '重练这些词',
+    resultNextChapter: '下一章',
+    resultNextChapterLast: '回到第 1 章',
+    empty: '没有单词；用空格分隔即可，例如：/qwerty-autotype cancel govern',
+    sideLabel: '跟打',
+    sideTitle: '开 / 关 Qwerty 跟打卡片',
+    searchDict: '搜索词库（名称 / 标签）',
+    allCategories: '全部',
+    recent: '最近使用',
+    searchResult: '搜索结果',
+    loading: '正在加载词库…',
+    loadFailed: '词库加载失败，先用内置词库继续',
+    chapterTitle: '选择章节',
+    panelHeadChapter: '第 {n} 章',
+    panelHeadReview: '复练 {n} 词',
+    speak: '读一遍',
+    todayStats: '今日 {words} 词 · 正确率 {accuracy}% · {wpm} WPM',
+    liveSpeed: '实时 {wpm} WPM',
+    accuracyShort: '正确率 {n}%',
+    conflictTitle: '插件冲突？',
+    conflictBody: '如果多次输入失败，可能是与本地浏览器插件冲突，请关闭相关插件或切换浏览器试试。',
+    prevTip: '上一个（Ctrl/⌘+←）',
+    skipTip: '跳过（Ctrl/⌘+→）',
+    loopTip: '循环当前词（Ctrl/⌘+J）',
+    pauseTip: '暂停（Ctrl/⌘+P）',
+    resumeTip: '继续',
+    pausedTip: '已暂停（失焦或切标签页会自动暂停）',
+    resume: '继续',
+    wrongBook: '错词本',
+    wordListOpen: '本章词表',
+    wordListTitle: '本章词表 {n} 个',
+    wordListEmpty: '这一章还没有词',
+    wordListHint: '点一行直接跳过去',
+    wordStateCurrent: '当前',
+    wordStateDone: '已打过',
+    wordStateWrong: '打错过',
+    wordStateMastered: '已掌握',
+    wordStateIdle: '未打',
+    wrongSearch: '搜单词或释义',
+    mistakesLabel: '本轮打错 {n} 个：',
+    settingsTitle: '跟打',
+    settingSound: '键音',
+    settingSoundHint: '打对/打错时给一声轻提示',
+    settingAutoNext: '自动继续',
+    settingAutoNextHint: '打完 20 个自动接下一章，不用手动点',
+    settingFinger: '指法提示',
+    settingFingerHint: '卡片下方画一张键盘，高亮下一个要按的键和该用的手指',
+    settingWordScale: '字号',
+    wordScale_auto: '自动',
+    wordScale_small: '小',
+    wordScale_medium: '中',
+    wordScale_large: '大',
+    settingVoiceRate: '发音倍速',
+    settingClickVolume: '按键音音量',
+    fingerLeftPinky: '左小指',
+    fingerLeftRing: '左无名指',
+    fingerLeftMiddle: '左中指',
+    fingerLeftIndex: '左食指',
+    fingerRightIndex: '右食指',
+    fingerRightMiddle: '右中指',
+    fingerRightRing: '右无名指',
+    fingerRightPinky: '右小指',
+    fingerUse: '用 {finger}',
+    fingerAria: '指法：{finger} 按 {letter}',
+    fingerIdle: '当前字符不在字母区',
+    hotkeysTitle: '快捷键',
+    announceWrong: '打错了，请整词重打 {word}',
+    announceDone: '本轮完成，共 {n} 个词',
+    hotkeysList: 'Esc 关闭 · Ctrl/⌘+← 上一个 · Ctrl/⌘+→ 跳过 · Ctrl/⌘+J 循环 · Ctrl/⌘+P 暂停 · 在输入框里按 Tab 开始',
+    lettersTitle: '易错字母',
+    kbdLegend: '颜色越深打错越多',
+    kbdFingerLegend: '浅底色是手指分区',
+    kbdViewHeat: '键盘',
+    kbdViewBars: '排行',
+    kbdBarsEmpty: '这一轮没有打错的字母',
+    kbdAria: '键盘热力图，共打错 {n} 次',
+    customNew: '＋ 导入自定义词表',
+    customName: '词表名字（可留空）',
+    customPlaceholder: '一行一个词：word 中文\n也支持 word,中文,/音标/\n# 开头是注释',
+    customSave: '保存并开始',
+    customFile: '从文件导入（.txt / .csv / .json）',
+    customFileLoaded: '已读取文件，解析出 {n} 个词，确认后保存',
+    customExport: '导出这个词表',
+    customEmpty: '没解析出任何单词，检查一下格式',
+    customSaved: '已保存 {n} 个词',
+    cancel: '取消',
+    markMastered: '标记已掌握',
+    cacheLabel: '词库缓存',
+    cacheHint: '已缓存 {n} 个词库，约 {size}；清掉后下次用到会重新下载',
+    cacheLoading: '读取中…',
+    cacheClear: '清理缓存',
+    cacheCleared: '词库缓存已清理',
+    dataTitle: '数据',
+    backupExport: '导出备份',
+    backupImport: '导入备份',
+    backupClear: '清空记录',
+    clearConfirm: '再点一次确认清空',
+    clearedDone: '已清空本地练习记录',
+    backupExported: '备份已开始下载',
+    backupImported: '已恢复 {n} 条记录',
+    backupBadFile: '这个文件不是跟打备份',
+    backupFailed: '导出失败，浏览器可能禁止了下载',
+    settingCaseSensitive: '区分大小写',
+    settingCaseSensitiveHint: '关：Cancel 打 cancel 也算对（代码词库建议开）',
+    settingIgnorePunct: '忽略标点',
+    settingIgnorePunctHint: '开：append() 只需要打 append',
+    settingVoice: '自动发音',
+    settingAccent: '发音口音',
+    settingAccentHint: '英音走有道教 type=1，美音 type=2；中日文自动判断',
+    accent_us: '美音',
+    accent_uk: '英音',
+    settingVoiceHint: '换词时自动读一遍（有道音频，离线退回系统语音）',
+    settingReadMeaning: '译义朗读',
+    settingReadMeaningHint: '打完一个词后把释义也读一遍（先单词后释义，日语释义走 ja-JP）',
+    settingDictation: '默写形态',
+    settingDictationHint: '默认遮住哪些字母，练习时仍可临时切换',
+    reviewMistakes: '重练这些词',
+    nextChapter: '下一章',
+    allDicts: '全部',
+    sortCount: '按错误次数',
+    sortRecent: '按最近出错',
+    wrongTitle: '错词本 · {n} 个',
+    wrongEmpty: '还没有错词。打错过的词会自动出现在这里。',
+    reviewTop: '重练前 20',
+    clearWrong: '刷新',
+    stats: '统计',
+    statsTitle: '近 14 天',
+    statWords: '{n} 词',
+    statChapters: '{n} 章',
+    trendAcc: '正确率',
+    trendEmpty: '记录不足 2 章',
+    elapsedShort: '用时 {sec}s',
+    dictation: '默写形态',
+    dictation_none: '正常显示',
+    dictation_hideAll: '全部隐藏',
+    dictation_hideVowel: '隐藏元音',
+    dictation_hideConsonant: '隐藏辅音',
+    dictation_randomHide: '随机隐藏',
+    wordCount: '{n} 词',
       },
       en: {
-        title: 'Qwerty practice',
-        progress: '{done}/{total}',
-        hits: '{n} hit',
-        retries: '{n} retry',
-        placeholder: 'Dictation input (just type; no need to click a box)',
-        hint: 'Correct letters turn green and the next word starts; a wrong letter turns red, clears the field, and you retype the whole word. Enter here never sends a message.',
-        tipFirstLetter: 'First letter {pattern}',
-        tipTwoLetters: 'First two letters {pattern}',
-        tipReveal: 'All but the last letter {pattern}',
-        restart: 'Restart',
-        close: 'Hide',
-        barHint: 'Focus the composer below and type along; a wrong letter restarts the word, and Enter never sends.',
-        dictTitle: 'Choose a dictionary',
-        dictBadgeTitle: 'Dictionary: {name}',
-        doneShort: '{total} done · {sec}s',
-        autoTitle: 'Auto type',
-        loading: 'Loading dictionary…',
-        doneTitle: 'Round complete',
-        doneBody: '{total}/{total} done in {sec}s — {hits} hits, {retries} retries',
-        again: 'Go again',
-        resultWrongTitle: 'Mistyped {n} this round',
-        resultRetryWrong: 'Retry these',
-        resultNextChapter: 'Next chapter',
-        resultNextChapterLast: 'Back to chapter 1',
-        searchDict: 'Search dictionaries',
-        allCategories: 'All',
-        recent: 'Recent',
-        searchResult: 'Results',
-        loadFailed: 'Dictionary failed to load — using the built-in one',
-        chapterTitle: 'Chapter',
-        panelHeadChapter: 'Chapter {n}',
-        panelHeadReview: 'Review {n} words',
-        speak: 'Read aloud',
-        todayStats: 'Today {words} words · {accuracy}% · {wpm} WPM',
-        liveSpeed: 'Live {wpm} WPM',
-        accuracyShort: '{n}% accuracy',
-        conflictTitle: 'Plugin conflict?',
-        conflictBody: 'If typing keeps failing, a local browser extension may be interfering. Turn it off or try another browser.',
-        prevTip: 'Previous (⌘/Ctrl+←)',
-        skipTip: 'Skip (⌘/Ctrl+→)',
-        loopTip: 'Loop this word (⌘/Ctrl+J)',
-        pauseTip: 'Pause (⌘/Ctrl+P)',
-        resumeTip: 'Resume',
-        pausedTip: 'Paused (auto-paused on blur or tab switch)',
-        resume: 'Resume',
-        wrongBook: 'Wrong words',
-        wordListOpen: 'Chapter words',
-        wordListTitle: 'Chapter words ({n})',
-        wordListEmpty: 'No words in this chapter',
-        wordListHint: 'Click a row to jump there',
-        wordStateCurrent: 'Now',
-        wordStateDone: 'Done',
-        wordStateWrong: 'Missed',
-        wordStateMastered: 'Mastered',
-        wordStateIdle: 'Idle',
-        wrongSearch: 'Search word or meaning',
-        mistakesLabel: 'Mistyped {n} this round:',
-        settingsTitle: 'Typing drill',
-        settingSound: 'Key sound',
-        settingSoundHint: 'A soft click on hit or miss',
-        settingAutoNext: 'Auto-continue',
-        settingAutoNextHint: 'Roll into the next chapter instead of stopping at 20',
-        settingFinger: 'Finger guide',
-        settingFingerHint: 'Draw a keyboard under the card and light up the next key with the finger to use',
-        settingWordScale: 'Text size',
-        wordScale_auto: 'Auto',
-        wordScale_small: 'Small',
-        wordScale_medium: 'Medium',
-        wordScale_large: 'Large',
-        settingVoiceRate: 'Speech rate',
-        settingClickVolume: 'Key sound volume',
-        fingerLeftPinky: 'Left pinky',
-        fingerLeftRing: 'Left ring',
-        fingerLeftMiddle: 'Left middle',
-        fingerLeftIndex: 'Left index',
-        fingerRightIndex: 'Right index',
-        fingerRightMiddle: 'Right middle',
-        fingerRightRing: 'Right ring',
-        fingerRightPinky: 'Right pinky',
-        fingerUse: 'Use {finger}',
-        fingerAria: 'Finger guide: press {letter} with {finger}',
-        fingerIdle: 'No key on the letter rows',
-        hotkeysTitle: 'Shortcuts',
-        announceWrong: 'Mistyped — retype the whole word {word}',
-        announceDone: 'Round finished, {n} words',
-        hotkeysList: 'Esc close · Ctrl/⌘+← prev · Ctrl/⌘+→ skip · Ctrl/⌘+J loop · Ctrl/⌘+P pause · Tab in the composer starts',
-        lettersTitle: 'Tricky letters',
-        kbdLegend: 'Darker means more misses',
-        kbdFingerLegend: 'Pale tint shows finger zones',
-        kbdViewHeat: 'Keyboard',
-        kbdViewBars: 'Ranking',
-        kbdBarsEmpty: 'No mistyped letters this round',
-        kbdAria: 'Keyboard heatmap, {n} misses in total',
-        customNew: '+ Import word list',
-        customName: 'List name (optional)',
-        customPlaceholder: 'One word per line: word meaning\nalso word,meaning,/ipa/\n# starts a comment',
-        customSave: 'Save and start',
-        customFile: 'Import from file (.txt / .csv / .json)',
-        customFileLoaded: 'File loaded — {n} words parsed, save to confirm',
-        customExport: 'Export this list',
-        customEmpty: 'No words parsed — check the format',
-        customSaved: 'Saved {n} words',
-        cancel: 'Cancel',
-        markMastered: 'Mark as mastered',
-        cacheLabel: 'Dictionary cache',
-        cacheHint: '{n} dictionaries cached, about {size}; they re-download on next use',
-        cacheLoading: 'Reading…',
-        cacheClear: 'Clear cache',
-        cacheCleared: 'Dictionary cache cleared',
-        dataTitle: 'Data',
-        backupExport: 'Export backup',
-        backupImport: 'Import backup',
-        backupClear: 'Clear records',
-        clearConfirm: 'Click again to confirm',
-        clearedDone: 'Local practice records cleared',
-        backupExported: 'Backup download started',
-        backupImported: 'Restored {n} records',
-        backupBadFile: 'Not a typing-drill backup',
-        backupFailed: 'Export failed — the browser blocked the download',
-        settingCaseSensitive: 'Case sensitive',
-        settingCaseSensitiveHint: 'Off: typing "cancel" passes for "Cancel"',
-        settingIgnorePunct: 'Ignore punctuation',
-        settingIgnorePunctHint: 'On: "append()" only needs "append"',
-        settingVoice: 'Auto pronounce',
-        settingAccent: 'Pronunciation',
-        settingAccentHint: 'US uses type=2, UK uses type=1; Japanese/Chinese detected automatically',
-        accent_us: 'US',
-        accent_uk: 'UK',
-        settingVoiceHint: 'Read each new word aloud (Youdao audio, TTS fallback)',
-        settingReadMeaning: 'Read the meaning',
-        settingReadMeaningHint: 'After a word is typed, read its meaning too (word first, then meaning; Japanese glosses use ja-JP)',
-        settingDictation: 'Dictation',
-        settingDictationHint: 'Which letters stay hidden by default',
-        reviewMistakes: 'Review them',
-        nextChapter: 'Next chapter',
-        allDicts: 'All',
-        sortCount: 'By mistakes',
-        sortRecent: 'By recent',
-        wrongTitle: 'Wrong words · {n}',
-        wrongEmpty: 'No wrong words yet — mistyped words land here automatically.',
-        reviewTop: 'Review top 20',
-        clearWrong: 'Refresh',
-        stats: 'Stats',
-        statsTitle: 'Last 14 days',
-        statWords: '{n} words',
-        statChapters: '{n} chapters',
-        elapsedShort: '{sec}s',
-        dictation: 'Dictation',
-        dictation_none: 'Show all',
-        dictation_hideAll: 'Hide all',
-        dictation_hideVowel: 'Hide vowels',
-        dictation_hideConsonant: 'Hide consonants',
-        dictation_randomHide: 'Hide random',
-        wordCount: '{n} words',
-        empty: 'No words; separate them with spaces, e.g. /qwerty-autotype cancel govern',
-        sideLabel: 'Practice',
-        sideTitle: 'Show / hide the Qwerty practice card',
+    title: 'Qwerty practice',
+    progress: '{done}/{total}',
+    hits: '{n} hit',
+    retries: '{n} retry',
+    placeholder: 'Dictation input (just type; no need to click a box)',
+    hint: 'Correct letters turn green and the next word starts; a wrong letter turns red, clears the field, and you retype the whole word. Enter here never sends a message.',
+    tipFirstLetter: 'First letter {pattern}',
+    tipTwoLetters: 'First two letters {pattern}',
+    tipReveal: 'All but the last letter {pattern}',
+    restart: 'Restart',
+    close: 'Hide',
+    barHint: 'Focus the composer below and type along; a wrong letter restarts the word, and Enter never sends.',
+    dictTitle: 'Choose a dictionary',
+    dictBadgeTitle: 'Dictionary: {name}',
+    doneShort: '{total} done · {sec}s',
+    autoTitle: 'Auto type',
+    loading: 'Loading dictionary…',
+    doneTitle: 'Round complete',
+    doneBody: '{total}/{total} done in {sec}s — {hits} hits, {retries} retries',
+    again: 'Go again',
+    resultWrongTitle: 'Mistyped {n} this round',
+    resultRetryWrong: 'Retry these',
+    resultNextChapter: 'Next chapter',
+    resultNextChapterLast: 'Back to chapter 1',
+    searchDict: 'Search dictionaries',
+    allCategories: 'All',
+    recent: 'Recent',
+    searchResult: 'Results',
+    loadFailed: 'Dictionary failed to load — using the built-in one',
+    chapterTitle: 'Chapter',
+    panelHeadChapter: 'Chapter {n}',
+    panelHeadReview: 'Review {n} words',
+    speak: 'Read aloud',
+    todayStats: 'Today {words} words · {accuracy}% · {wpm} WPM',
+    liveSpeed: 'Live {wpm} WPM',
+    accuracyShort: '{n}% accuracy',
+    conflictTitle: 'Plugin conflict?',
+    conflictBody: 'If typing keeps failing, a local browser extension may be interfering. Turn it off or try another browser.',
+    prevTip: 'Previous (⌘/Ctrl+←)',
+    skipTip: 'Skip (⌘/Ctrl+→)',
+    loopTip: 'Loop this word (⌘/Ctrl+J)',
+    pauseTip: 'Pause (⌘/Ctrl+P)',
+    resumeTip: 'Resume',
+    pausedTip: 'Paused (auto-paused on blur or tab switch)',
+    resume: 'Resume',
+    wrongBook: 'Wrong words',
+    wordListOpen: 'Chapter words',
+    wordListTitle: 'Chapter words ({n})',
+    wordListEmpty: 'No words in this chapter',
+    wordListHint: 'Click a row to jump there',
+    wordStateCurrent: 'Now',
+    wordStateDone: 'Done',
+    wordStateWrong: 'Missed',
+    wordStateMastered: 'Mastered',
+    wordStateIdle: 'Idle',
+    wrongSearch: 'Search word or meaning',
+    mistakesLabel: 'Mistyped {n} this round:',
+    settingsTitle: 'Typing drill',
+    settingSound: 'Key sound',
+    settingSoundHint: 'A soft click on hit or miss',
+    settingAutoNext: 'Auto-continue',
+    settingAutoNextHint: 'Roll into the next chapter instead of stopping at 20',
+    settingFinger: 'Finger guide',
+    settingFingerHint: 'Draw a keyboard under the card and light up the next key with the finger to use',
+    settingWordScale: 'Text size',
+    wordScale_auto: 'Auto',
+    wordScale_small: 'Small',
+    wordScale_medium: 'Medium',
+    wordScale_large: 'Large',
+    settingVoiceRate: 'Speech rate',
+    settingClickVolume: 'Key sound volume',
+    fingerLeftPinky: 'Left pinky',
+    fingerLeftRing: 'Left ring',
+    fingerLeftMiddle: 'Left middle',
+    fingerLeftIndex: 'Left index',
+    fingerRightIndex: 'Right index',
+    fingerRightMiddle: 'Right middle',
+    fingerRightRing: 'Right ring',
+    fingerRightPinky: 'Right pinky',
+    fingerUse: 'Use {finger}',
+    fingerAria: 'Finger guide: press {letter} with {finger}',
+    fingerIdle: 'No key on the letter rows',
+    hotkeysTitle: 'Shortcuts',
+    announceWrong: 'Mistyped — retype the whole word {word}',
+    announceDone: 'Round finished, {n} words',
+    hotkeysList: 'Esc close · Ctrl/⌘+← prev · Ctrl/⌘+→ skip · Ctrl/⌘+J loop · Ctrl/⌘+P pause · Tab in the composer starts',
+    lettersTitle: 'Tricky letters',
+    kbdLegend: 'Darker means more misses',
+    kbdFingerLegend: 'Pale tint shows finger zones',
+    kbdViewHeat: 'Keyboard',
+    kbdViewBars: 'Ranking',
+    kbdBarsEmpty: 'No mistyped letters this round',
+    kbdAria: 'Keyboard heatmap, {n} misses in total',
+    customNew: '+ Import word list',
+    customName: 'List name (optional)',
+    customPlaceholder: 'One word per line: word meaning\nalso word,meaning,/ipa/\n# starts a comment',
+    customSave: 'Save and start',
+    customFile: 'Import from file (.txt / .csv / .json)',
+    customFileLoaded: 'File loaded — {n} words parsed, save to confirm',
+    customExport: 'Export this list',
+    customEmpty: 'No words parsed — check the format',
+    customSaved: 'Saved {n} words',
+    cancel: 'Cancel',
+    markMastered: 'Mark as mastered',
+    cacheLabel: 'Dictionary cache',
+    cacheHint: '{n} dictionaries cached, about {size}; they re-download on next use',
+    cacheLoading: 'Reading…',
+    cacheClear: 'Clear cache',
+    cacheCleared: 'Dictionary cache cleared',
+    dataTitle: 'Data',
+    backupExport: 'Export backup',
+    backupImport: 'Import backup',
+    backupClear: 'Clear records',
+    clearConfirm: 'Click again to confirm',
+    clearedDone: 'Local practice records cleared',
+    backupExported: 'Backup download started',
+    backupImported: 'Restored {n} records',
+    backupBadFile: 'Not a typing-drill backup',
+    backupFailed: 'Export failed — the browser blocked the download',
+    settingCaseSensitive: 'Case sensitive',
+    settingCaseSensitiveHint: 'Off: typing "cancel" passes for "Cancel"',
+    settingIgnorePunct: 'Ignore punctuation',
+    settingIgnorePunctHint: 'On: "append()" only needs "append"',
+    settingVoice: 'Auto pronounce',
+    settingAccent: 'Pronunciation',
+    settingAccentHint: 'US uses type=2, UK uses type=1; Japanese/Chinese detected automatically',
+    accent_us: 'US',
+    accent_uk: 'UK',
+    settingVoiceHint: 'Read each new word aloud (Youdao audio, TTS fallback)',
+    settingReadMeaning: 'Read the meaning',
+    settingReadMeaningHint: 'After a word is typed, read its meaning too (word first, then meaning; Japanese glosses use ja-JP)',
+    settingDictation: 'Dictation',
+    settingDictationHint: 'Which letters stay hidden by default',
+    reviewMistakes: 'Review them',
+    nextChapter: 'Next chapter',
+    allDicts: 'All',
+    sortCount: 'By mistakes',
+    sortRecent: 'By recent',
+    wrongTitle: 'Wrong words · {n}',
+    wrongEmpty: 'No wrong words yet — mistyped words land here automatically.',
+    reviewTop: 'Review top 20',
+    clearWrong: 'Refresh',
+    stats: 'Stats',
+    statsTitle: 'Last 14 days',
+    statWords: '{n} words',
+    statChapters: '{n} chapters',
+    trendAcc: 'Accuracy',
+    trendEmpty: 'Need 2 chapters',
+    elapsedShort: '{sec}s',
+    dictation: 'Dictation',
+    dictation_none: 'Show all',
+    dictation_hideAll: 'Hide all',
+    dictation_hideVowel: 'Hide vowels',
+    dictation_hideConsonant: 'Hide consonants',
+    dictation_randomHide: 'Hide random',
+    wordCount: '{n} words',
+    empty: 'No words; separate them with spaces, e.g. /qwerty-autotype cancel govern',
+    sideLabel: 'Practice',
+    sideTitle: 'Show / hide the Qwerty practice card',
       },
     }
 
@@ -2684,6 +2736,15 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
 .qat-barfill{width:100%;max-width:22px;background:var(--dsw-alias-brand-primary);border-radius:3px 3px 0 0;min-height:2px}
 .qat-barfill[data-empty="true"]{background:var(--dsw-alias-border-l1)}
 .qat-barlabel{font-size:9px;color:var(--dsw-alias-label-tertiary)}
+.qat-trend{display:flex;flex-direction:column;gap:6px;font-size:11px}
+.qat-trend>div{display:flex;gap:6px}
+.qat-ty{display:flex;flex-direction:column;justify-content:space-between}
+.qat-tsvg{flex:1;min-width:0;height:80px}
+.qat-twpm,.qat-tacc{fill:none;stroke:currentColor;stroke-width:1.5}
+.qat-twpm{color:var(--dsw-alias-brand-primary)}
+.qat-tacc{color:var(--dsw-alias-label-secondary);stroke-dasharray:4 3}
+.qat-tdot{fill:var(--dsw-alias-brand-primary)}
+.qat-tax{stroke:var(--dsw-alias-border-l1)}
 .qat-btn:focus-visible,.qat-icon:focus-visible,.qat-chip:focus-visible,.qat-switch:focus-visible,.qat-item:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px;border-radius:6px}
 .qat-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 .qat-help{margin:2px 0 8px;padding:8px 10px;border-radius:8px;background:var(--dsw-alias-bg-layer-2);font-size:12px;color:var(--dsw-alias-label-secondary);line-height:1.7}
@@ -2844,7 +2905,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     function format(text, vars) {
       let out = text
       if (vars) {
-        for (const key of Object.keys(vars)) out = out.split(`{${key}}`).join(String(vars[key]))
+    for (const key of Object.keys(vars)) out = out.split(`{${key}}`).join(String(vars[key]))
       }
       return out
     }
@@ -2854,31 +2915,31 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     function useT(ctx) {
       const current = useSyncExternalStore(subscribeLocale, getLocaleVersion, getLocaleVersion)
       return useMemo(() => {
-        let translate = null
-        try {
-          translate = ctx.locale.bind(NS)
-        } catch {
-          translate = null
-        }
-        return (key, vars) => format(translate?.(key) ?? DICT.zh[key] ?? key, vars)
+    let translate = null
+    try {
+      translate = ctx.locale.bind(NS)
+    } catch {
+      translate = null
+    }
+    return (key, vars) => format(translate?.(key) ?? DICT.zh[key] ?? key, vars)
       }, [ctx, current])
     }
 
     /** 浏览器下载一段文本（txt / json / csv），失败返回 false */
     function downloadText(fileName, text) {
       try {
-        const blob = new Blob([String(text ?? '')], { type: 'text/plain;charset=utf-8' })
-        const url = URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = fileName
-        document.body.appendChild(link)
-        link.click()
-        link.remove()
-        setTimeout(() => URL.revokeObjectURL(url), 1000)
-        return true
+    const blob = new Blob([String(text ?? '')], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    return true
       } catch {
-        return false
+    return false
       }
     }
 
@@ -2888,16 +2949,16 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
      */
     function pressable(onPress) {
       return {
-        role: 'button',
-        tabIndex: 0,
-        onMouseDown: (event) => event.preventDefault(),
-        onClick: onPress,
-        onKeyDown: (event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault()
-            onPress?.(event)
-          }
-        },
+    role: 'button',
+    tabIndex: 0,
+    onMouseDown: (event) => event.preventDefault(),
+    onClick: onPress,
+    onKeyDown: (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault()
+        onPress?.(event)
+      }
+    },
       }
     }
 
@@ -2928,16 +2989,16 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const target = doc ?? (typeof document === 'undefined' ? null : document)
       if (!target) return false
       try {
-        if (target.querySelector?.(`style[${STYLE_FLAG}]`)) return false
-        const node = target.createElement('style')
-        node.setAttribute(STYLE_FLAG, '')
-        node.textContent = CSS
-        const host = target.head ?? target.documentElement
-        if (!host) return false
-        host.appendChild(node)
-        return true
+    if (target.querySelector?.(`style[${STYLE_FLAG}]`)) return false
+    const node = target.createElement('style')
+    node.setAttribute(STYLE_FLAG, '')
+    node.textContent = CSS
+    const host = target.head ?? target.documentElement
+    if (!host) return false
+    host.appendChild(node)
+    return true
       } catch {
-        return false
+    return false
       }
     }
 
@@ -2993,7 +3054,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       if (!word) return { state: 'bad', badIndex: -1 }
       if (typed.length > word.length) return { state: 'over', badIndex: -1 }
       for (let i = 0; i < typed.length; i += 1) {
-        if (typed[i] !== word[i]) return { state: 'bad', badIndex: i }
+    if (typed[i] !== word[i]) return { state: 'bad', badIndex: i }
       }
       return { state: typed === word ? 'done' : 'ok', badIndex: -1 }
     }
@@ -3065,8 +3126,8 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       if (len === 0) return { level: 0, reveal: 0, prefix: '', text: '', key: '' }
       let level = 0
       for (let i = 0; i < levels.length; i += 1) {
-        const at = Math.max(1, Math.floor(Number(levels[i]) || 0))
-        if (count >= at) level = i + 1
+    const at = Math.max(1, Math.floor(Number(levels[i]) || 0))
+    if (count >= at) level = i + 1
       }
       // 1–2 次（或任何没到第一档的次数）一律不提示
       if (level === 0) return { level: 0, reveal: 0, prefix: '', text: '', key: '' }
@@ -3220,15 +3281,15 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       if (!Number.isFinite(at) || list.length < 2) return 0
       const span = Number(windowMs) > 0 ? Number(windowMs) : LIVE_WINDOW_MS
       const inside = list
-        .filter((item) => Number.isFinite(Number(item?.t)) && Number.isFinite(Number(item?.chars)))
-        .filter((item) => Number(item.t) <= at && Number(item.t) >= at - span)
-        .sort((a, b) => Number(a.t) - Number(b.t))
+    .filter((item) => Number.isFinite(Number(item?.t)) && Number.isFinite(Number(item?.chars)))
+    .filter((item) => Number(item.t) <= at && Number(item.t) >= at - span)
+    .sort((a, b) => Number(a.t) - Number(b.t))
       if (inside.length < 2) return 0
       const first = inside[0]
       const last = inside[inside.length - 1]
       return calcLiveWpm({
-        chars: Number(last.chars) - Number(first.chars),
-        ms: Number(last.t) - Number(first.t),
+    chars: Number(last.chars) - Number(first.chars),
+    ms: Number(last.t) - Number(first.t),
       })
     }
 
@@ -3254,39 +3315,39 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     function saveSession(session) {
       if (!session || !session.dictId || !Array.isArray(session.words) || session.words.length === 0) return false
       try {
-        window.localStorage.setItem(SESSION_KEY, JSON.stringify({
-          dictId: session.dictId,
-          chapter: Number.isInteger(session.chapter) ? session.chapter : null,
-          words: session.words,
-          index: Math.max(0, Number(session.index) || 0),
-          hits: Math.max(0, Number(session.hits) || 0),
-          retries: Math.max(0, Number(session.retries) || 0),
-          startedAt: Number(session.startedAt) || Date.now(),
-          activeMs: Math.max(0, Number(session.activeMs) || 0),
-          savedAt: Date.now(),
-        }))
-        return true
+    window.localStorage.setItem(SESSION_KEY, JSON.stringify({
+      dictId: session.dictId,
+      chapter: Number.isInteger(session.chapter) ? session.chapter : null,
+      words: session.words,
+      index: Math.max(0, Number(session.index) || 0),
+      hits: Math.max(0, Number(session.hits) || 0),
+      retries: Math.max(0, Number(session.retries) || 0),
+      startedAt: Number(session.startedAt) || Date.now(),
+      activeMs: Math.max(0, Number(session.activeMs) || 0),
+      savedAt: Date.now(),
+    }))
+    return true
       } catch {
-        return false
+    return false
       }
     }
 
     function readSession() {
       try {
-        const raw = JSON.parse(window.localStorage.getItem(SESSION_KEY) || 'null')
-        if (!raw || !raw.dictId || !Array.isArray(raw.words) || raw.words.length === 0) return null
-        if (raw.index >= raw.words.length) return null
-        return raw
+    const raw = JSON.parse(window.localStorage.getItem(SESSION_KEY) || 'null')
+    if (!raw || !raw.dictId || !Array.isArray(raw.words) || raw.words.length === 0) return null
+    if (raw.index >= raw.words.length) return null
+    return raw
       } catch {
-        return null
+    return null
       }
     }
 
     function clearSession() {
       try {
-        window.localStorage.removeItem(SESSION_KEY)
+    window.localStorage.removeItem(SESSION_KEY)
       } catch {
-        /* ignore */
+    /* ignore */
       }
     }
 
@@ -3317,9 +3378,9 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       if (mode === 'hideVowel') return chars.map((ch) => VOWELS.has(ch.toLowerCase()))
       if (mode === 'hideConsonant') return chars.map((ch) => /[a-z]/i.test(ch) && !VOWELS.has(ch.toLowerCase()))
       return chars.map((ch, index) => {
-        if (!/[a-z]/i.test(ch)) return false
-        const noise = Math.abs(Math.sin((Number(seed) + 1) * (index + 7)) * 10000) % 1
-        return noise < 0.5
+    if (!/[a-z]/i.test(ch)) return false
+    const noise = Math.abs(Math.sin((Number(seed) + 1) * (index + 7)) * 10000) % 1
+    return noise < 0.5
       })
     }
 
@@ -3340,25 +3401,25 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const out = []
       let line = ''
       for (const token of tokens) {
-        if (line && line.length + token.length > limit) {
-          out.push(line)
-          line = ''
-        }
-        if (token.length <= limit) {
-          line += token
-          continue
-        }
-        // 超长词（无空格长串）：先冲掉已攒的，再按字符硬断
-        if (line) {
-          out.push(line)
-          line = ''
-        }
-        let rest = token
-        while (rest.length > limit) {
-          out.push(rest.slice(0, limit))
-          rest = rest.slice(limit)
-        }
-        line = rest
+    if (line && line.length + token.length > limit) {
+      out.push(line)
+      line = ''
+    }
+    if (token.length <= limit) {
+      line += token
+      continue
+    }
+    // 超长词（无空格长串）：先冲掉已攒的，再按字符硬断
+    if (line) {
+      out.push(line)
+      line = ''
+    }
+    let rest = token
+    while (rest.length > limit) {
+      out.push(rest.slice(0, limit))
+      rest = rest.slice(limit)
+    }
+    line = rest
       }
       if (line) out.push(line)
       return out
@@ -3375,10 +3436,10 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const room = Math.max(120, Number(width) || 0)
       let last = null
       for (const size of sizes) {
-        const perLine = Math.max(4, Math.floor(room / (size * CHAR_RATIO)))
-        const lines = wrapWord(source, perLine)
-        last = { size, perLine, lines }
-        if (lines.length <= maxLines) return last
+    const perLine = Math.max(4, Math.floor(room / (size * CHAR_RATIO)))
+    const lines = wrapWord(source, perLine)
+    last = { size, perLine, lines }
+    if (lines.length <= maxLines) return last
       }
       // 最小字号还是放不下（极端长句/窄条）：就按最小字号切开，宁可多一行也不截断
       return last
@@ -3416,9 +3477,9 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       if (!parts.length) return []
       let offset = 0
       return parts.map((part) => {
-        const start = offset
-        offset += part.length
-        return { start, chars: part.split('') }
+    const start = offset
+    offset += part.length
+    return { start, chars: part.split('') }
       })
     }
 
@@ -3430,31 +3491,31 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     function WordLetters({ text, typed, masked, perLine, className, size, flash, long }) {
       const lines = wordLines(text, perLine)
       const renderLetter = (ch, index) => {
-        const typedChar = typed[index]
-        const letterState = typedChar === undefined ? 'idle' : typedChar === ch ? 'ok' : 'bad'
-        const hidden = typedChar === undefined && Boolean(masked?.[index])
-        return h('span', {
-          key: `${index}-${ch}`,
-          className: 'qat-letter',
-          'data-state': letterState,
-          'data-mask': hidden ? 'true' : 'false',
-        }, hidden ? '·' : (ch === ' ' ? '␣' : ch))
+    const typedChar = typed[index]
+    const letterState = typedChar === undefined ? 'idle' : typedChar === ch ? 'ok' : 'bad'
+    const hidden = typedChar === undefined && Boolean(masked?.[index])
+    return h('span', {
+      key: `${index}-${ch}`,
+      className: 'qat-letter',
+      'data-state': letterState,
+      'data-mask': hidden ? 'true' : 'false',
+    }, hidden ? '·' : (ch === ' ' ? '␣' : ch))
       }
       const multi = lines.length > 1
       return h('div', {
-        className: className ? `qat-word ${className}` : 'qat-word',
-        'data-flash': flash ? 'true' : 'false',
-        'data-wrap': multi ? 'true' : 'false',
-        'data-long': long ? 'true' : 'false',
-        style: size ? { fontSize: `${size}px` } : undefined,
+    className: className ? `qat-word ${className}` : 'qat-word',
+    'data-flash': flash ? 'true' : 'false',
+    'data-wrap': multi ? 'true' : 'false',
+    'data-long': long ? 'true' : 'false',
+    style: size ? { fontSize: `${size}px` } : undefined,
       }, multi
-        ? lines.map((line, lineIndex) => h('div', {
-          key: `line-${lineIndex}`,
-          className: 'qat-word-line',
-        }, line.chars.map((ch, i) => renderLetter(ch, line.start + i))))
-        : lines[0]
-          ? lines[0].chars.map((ch, i) => renderLetter(ch, lines[0].start + i))
-          : null)
+    ? lines.map((line, lineIndex) => h('div', {
+      key: `line-${lineIndex}`,
+      className: 'qat-word-line',
+    }, line.chars.map((ch, i) => renderLetter(ch, line.start + i))))
+    : lines[0]
+      ? lines[0].chars.map((ch, i) => renderLetter(ch, lines[0].start + i))
+      : null)
     }
 
     /** 读一遍这个词（浏览器内置 TTS，没有就静默返回 false） */
@@ -3491,26 +3552,26 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
 
     function playClick(kind) {
       try {
-        if (!getSettings().sound) return false
-        const Ctor = window.AudioContext || window.webkitAudioContext
-        if (!Ctor) return false
-        AUDIO_CTX = AUDIO_CTX || new Ctor()
-        if (AUDIO_CTX.state === 'suspended') AUDIO_CTX.resume?.()
-        const tone = CLICK_TONES[kind] || CLICK_TONES.hit
-        const osc = AUDIO_CTX.createOscillator()
-        const gain = AUDIO_CTX.createGain()
-        osc.type = tone.type
-        osc.frequency.value = tone.freq
-        const now = AUDIO_CTX.currentTime
-        gain.gain.setValueAtTime(tone.peak * (clampClickVolume(getSettings().clickVolume) / 100), now)
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + tone.decay)
-        osc.connect(gain)
-        gain.connect(AUDIO_CTX.destination)
-        osc.start(now)
-        osc.stop(now + tone.stop)
-        return true
+    if (!getSettings().sound) return false
+    const Ctor = window.AudioContext || window.webkitAudioContext
+    if (!Ctor) return false
+    AUDIO_CTX = AUDIO_CTX || new Ctor()
+    if (AUDIO_CTX.state === 'suspended') AUDIO_CTX.resume?.()
+    const tone = CLICK_TONES[kind] || CLICK_TONES.hit
+    const osc = AUDIO_CTX.createOscillator()
+    const gain = AUDIO_CTX.createGain()
+    osc.type = tone.type
+    osc.frequency.value = tone.freq
+    const now = AUDIO_CTX.currentTime
+    gain.gain.setValueAtTime(tone.peak * (clampClickVolume(getSettings().clickVolume) / 100), now)
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + tone.decay)
+    osc.connect(gain)
+    gain.connect(AUDIO_CTX.destination)
+    osc.start(now)
+    osc.stop(now + tone.stop)
+    return true
       } catch {
-        return false
+    return false
       }
     }
 
@@ -3562,26 +3623,26 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const type = options?.type ?? resolveAccent(text)
       const src = pronunciationSrc(text, type)
       try {
-        if (AUDIO_NODE) {
-          AUDIO_NODE.pause()
-          AUDIO_NODE = null
-        }
-        if (src && typeof window.Audio === 'function') {
-          const audio = new window.Audio(src)
-          audio.volume = Math.min(1, Math.max(0, Number(options?.volume ?? 1)))
-          audio.playbackRate = clampVoiceRate(options?.rate ?? getSettings().voiceRate)
-          const played = audio.play()
-          AUDIO_NODE = audio
-          if (played && typeof played.catch === 'function') {
-            played.catch(() => {
-              if (AUDIO_NODE === audio) AUDIO_NODE = null
-              speakWithTts(text, type)
-            })
-          }
-          return true
-        }
+    if (AUDIO_NODE) {
+      AUDIO_NODE.pause()
+      AUDIO_NODE = null
+    }
+    if (src && typeof window.Audio === 'function') {
+      const audio = new window.Audio(src)
+      audio.volume = Math.min(1, Math.max(0, Number(options?.volume ?? 1)))
+      audio.playbackRate = clampVoiceRate(options?.rate ?? getSettings().voiceRate)
+      const played = audio.play()
+      AUDIO_NODE = audio
+      if (played && typeof played.catch === 'function') {
+        played.catch(() => {
+          if (AUDIO_NODE === audio) AUDIO_NODE = null
+          speakWithTts(text, type)
+        })
+      }
+      return true
+    }
       } catch {
-        /* 落到 TTS */
+    /* 落到 TTS */
       }
       return speakWithTts(text, type)
     }
@@ -3589,17 +3650,17 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     /** 兜底：浏览器自带 TTS */
     function speakWithTts(text, type) {
       try {
-        const synth = window.speechSynthesis
-        if (!synth || typeof window.SpeechSynthesisUtterance !== 'function') return false
-        synth.cancel()
-        const utterance = new window.SpeechSynthesisUtterance(text)
-        utterance.lang = type === 'ja' ? 'ja-JP' : type === 'zh' ? 'zh-CN' : 'en-US'
-        // TTS 兜底吃同一个倍速（0.95 是原默认语速）
-        utterance.rate = Math.min(2, Math.max(0.5, 0.95 * clampVoiceRate(getSettings().voiceRate)))
-        synth.speak(utterance)
-        return true
+    const synth = window.speechSynthesis
+    if (!synth || typeof window.SpeechSynthesisUtterance !== 'function') return false
+    synth.cancel()
+    const utterance = new window.SpeechSynthesisUtterance(text)
+    utterance.lang = type === 'ja' ? 'ja-JP' : type === 'zh' ? 'zh-CN' : 'en-US'
+    // TTS 兜底吃同一个倍速（0.95 是原默认语速）
+    utterance.rate = Math.min(2, Math.max(0.5, 0.95 * clampVoiceRate(getSettings().voiceRate)))
+    synth.speak(utterance)
+    return true
       } catch {
-        return false
+    return false
       }
     }
 
@@ -3644,20 +3705,20 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
 
     function clearTimerHost(id) {
       try {
-        if (typeof window !== 'undefined' && typeof window.clearTimeout === 'function') {
-          window.clearTimeout(id)
-          return true
-        }
+    if (typeof window !== 'undefined' && typeof window.clearTimeout === 'function') {
+      window.clearTimeout(id)
+      return true
+    }
       } catch {
-        /* 没有 window：试全局 */
+    /* 没有 window：试全局 */
       }
       try {
-        if (typeof clearTimeout === 'function') {
-          clearTimeout(id)
-          return true
-        }
+    if (typeof clearTimeout === 'function') {
+      clearTimeout(id)
+      return true
+    }
       } catch {
-        /* 没有定时器：算了 */
+    /* 没有定时器：算了 */
       }
       return false
     }
@@ -3694,25 +3755,25 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       if (delay <= 0) return speakWithTts(text, type)
       const seq = MEANING_SEQ
       const run = () => {
-        MEANING_TIMER = null
-        if (seq !== MEANING_SEQ) return false
-        return speakWithTts(text, type)
+    MEANING_TIMER = null
+    if (seq !== MEANING_SEQ) return false
+    return speakWithTts(text, type)
       }
       try {
-        if (typeof window !== 'undefined' && typeof window.setTimeout === 'function') {
-          MEANING_TIMER = window.setTimeout(run, delay)
-          return true
-        }
+    if (typeof window !== 'undefined' && typeof window.setTimeout === 'function') {
+      MEANING_TIMER = window.setTimeout(run, delay)
+      return true
+    }
       } catch {
-        /* 没有 window 定时器：往下走 */
+    /* 没有 window 定时器：往下走 */
       }
       try {
-        if (typeof setTimeout === 'function') {
-          MEANING_TIMER = setTimeout(run, delay)
-          return true
-        }
+    if (typeof setTimeout === 'function') {
+      MEANING_TIMER = setTimeout(run, delay)
+      return true
+    }
       } catch {
-        /* 没有定时器：直接读 */
+    /* 没有定时器：直接读 */
       }
       return speakWithTts(text, type)
     }
@@ -3746,17 +3807,17 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     function readSettings() {
       const merged = { ...SETTING_DEFAULTS }
       try {
-        for (const key of Object.keys(SETTING_DEFAULTS)) {
-          const raw = window.localStorage.getItem(SETTING_PREFIX + key)
-          if (raw === null) continue
-          try {
-            merged[key] = JSON.parse(raw)
-          } catch {
-            merged[key] = raw
-          }
-        }
+    for (const key of Object.keys(SETTING_DEFAULTS)) {
+      const raw = window.localStorage.getItem(SETTING_PREFIX + key)
+      if (raw === null) continue
+      try {
+        merged[key] = JSON.parse(raw)
       } catch {
-        /* 无痕模式：用默认值 */
+        merged[key] = raw
+      }
+    }
+      } catch {
+    /* 无痕模式：用默认值 */
       }
       if (!DICTATION_MODES.includes(merged.dictation)) merged.dictation = 'none'
       // 老存档没有这三个 key 或存了脏值：逐个收敛回合法档
@@ -3780,9 +3841,9 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       if (!(id in SETTING_DEFAULTS)) return getSettings()
       SETTINGS = { ...getSettings(), [id]: value }
       try {
-        window.localStorage.setItem(SETTING_PREFIX + id, JSON.stringify(value))
+    window.localStorage.setItem(SETTING_PREFIX + id, JSON.stringify(value))
       } catch {
-        /* ignore */
+    /* ignore */
       }
       for (const listener of settingListeners) listener()
       return SETTINGS
@@ -3804,59 +3865,59 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const rows = wordsOfRound(mistakes, words)
       const retry = () => onRetryWrong?.(rows.map((row) => row.word))
       return h('div', { className: 'qat-done' },
-        h('div', { className: 'qat-done-title' }, t('doneTitle')),
-        h('div', { className: 'qat-hint' }, t('doneBody', { total, sec: elapsed, hits, retries })),
-        h('div', { className: 'qat-done-metrics' },
-          h('span', null, `WPM ${calcWpm(total, elapsed)}`),
-          h('span', null, t('accuracyShort', { n: calcAccuracy(total, retries) })),
-          h('span', null, t('elapsedShort', { sec: elapsed })),
+    h('div', { className: 'qat-done-title' }, t('doneTitle')),
+    h('div', { className: 'qat-hint' }, t('doneBody', { total, sec: elapsed, hits, retries })),
+    h('div', { className: 'qat-done-metrics' },
+      h('span', null, `WPM ${calcWpm(total, elapsed)}`),
+      h('span', null, t('accuracyShort', { n: calcAccuracy(total, retries) })),
+      h('span', null, t('elapsedShort', { sec: elapsed })),
+    ),
+    rows.length
+      ? h('div', { className: 'qat-mistakes' },
+        h('span', { className: 'qat-mistakes-title' }, t('resultWrongTitle', { n: rows.length })),
+        h('div', { className: 'qat-mistakes-list' },
+          rows.map((row) => {
+            const meta = lookup(row.word)
+            const zh = meta?.zh ?? ''
+            const phone = phoneticOf(meta, getSettings().accent)
+            return h('span', {
+              key: row.word,
+              className: 'qat-mistake',
+              'data-wrong': String(row.wrongCount),
+              title: [row.word, phone.text, zh].filter(Boolean).join(' '),
+            },
+              h('span', null, `${row.word} ×${row.wrongCount}`),
+              // 音标之前拿到手却没画：错词胶囊上也该看得见怎么读
+              phone.text ? h('span', { className: 'qat-mistake-ipa' }, phone.text) : null,
+              zh ? h('span', { className: 'qat-mistake-zh' }, zh) : null,
+            )
+          }),
         ),
-        rows.length
-          ? h('div', { className: 'qat-mistakes' },
-            h('span', { className: 'qat-mistakes-title' }, t('resultWrongTitle', { n: rows.length })),
-            h('div', { className: 'qat-mistakes-list' },
-              rows.map((row) => {
-                const meta = lookup(row.word)
-                const zh = meta?.zh ?? ''
-                const phone = phoneticOf(meta, getSettings().accent)
-                return h('span', {
-                  key: row.word,
-                  className: 'qat-mistake',
-                  'data-wrong': String(row.wrongCount),
-                  title: [row.word, phone.text, zh].filter(Boolean).join(' '),
-                },
-                  h('span', null, `${row.word} ×${row.wrongCount}`),
-                  // 音标之前拿到手却没画：错词胶囊上也该看得见怎么读
-                  phone.text ? h('span', { className: 'qat-mistake-ipa' }, phone.text) : null,
-                  zh ? h('span', { className: 'qat-mistake-zh' }, zh) : null,
-                )
-              }),
-            ),
-          )
-          : null,
-        h('div', { className: 'qat-row qat-done-acts' },
-          onRestart
-            ? h('span', {
-              ...pressable(onRestart),
-              className: 'qat-btn',
-              'data-act': 'again',
-            }, t('again'))
-            : null,
-          rows.length && onRetryWrong
-            ? h('span', {
-              ...pressable(retry),
-              className: 'qat-btn qat-btn-retry',
-              'data-act': 'retry-wrong',
-            }, t('resultRetryWrong'))
-            : null,
-          onNextChapter
-            ? h('span', {
-              ...pressable(onNextChapter),
-              className: 'qat-btn qat-btn-next',
-              'data-act': 'next-chapter',
-            }, t(nextIsLast ? 'resultNextChapterLast' : 'resultNextChapter'))
-            : null,
-        ),
+      )
+      : null,
+    h('div', { className: 'qat-row qat-done-acts' },
+      onRestart
+        ? h('span', {
+          ...pressable(onRestart),
+          className: 'qat-btn',
+          'data-act': 'again',
+        }, t('again'))
+        : null,
+      rows.length && onRetryWrong
+        ? h('span', {
+          ...pressable(retry),
+          className: 'qat-btn qat-btn-retry',
+          'data-act': 'retry-wrong',
+        }, t('resultRetryWrong'))
+        : null,
+      onNextChapter
+        ? h('span', {
+          ...pressable(onNextChapter),
+          className: 'qat-btn qat-btn-next',
+          'data-act': 'next-chapter',
+        }, t(nextIsLast ? 'resultNextChapterLast' : 'resultNextChapter'))
+        : null,
+    ),
       )
     }
 
@@ -3872,9 +3933,9 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const key = tip.key || tipKey(tip.level)
       // 用 span 而不是 div：跟打条里它嵌在 span（.qat-wordblock）里，div 会造成非法嵌套
       return h('span', {
-        className: className || 'qat-tip',
-        'data-tip-level': String(tip.level),
-        role: 'note',
+    className: className || 'qat-tip',
+    'data-tip-level': String(tip.level),
+    role: 'note',
       }, h('span', null, t(key, { pattern: tip.text })))
     }
 
@@ -3891,7 +3952,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     }) {
       const t = useT(ctx)
       const [state, setState] = useState({
-        index: 0, typed: '', flash: false, hits: 0, retries: 0, wordWrong: 0, finishedAt: null,
+    index: 0, typed: '', flash: false, hits: 0, retries: 0, wordWrong: 0, finishedAt: null,
       })
       const inputRef = useRef(null)
       const live = useRef({ index: 0, typed: '', locked: false, timer: null })
@@ -3925,49 +3986,49 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const [liveWpm, setLiveWpm] = useState(0)
 
       useEffect(() => {
-        stateRef.current = state
-        live.current.index = state.index
-        live.current.typed = state.typed
+    stateRef.current = state
+    live.current.index = state.index
+    live.current.typed = state.typed
       }, [state])
 
       useEffect(() => () => {
-        if (live.current.timer !== null) clearTimeout(live.current.timer)
+    if (live.current.timer !== null) clearTimeout(live.current.timer)
       }, [])
 
       // 只在挂载时聚焦一次；之后完全靠点击，绝不反复从 composer 手里抢焦点
       useEffect(() => {
-        const id = setTimeout(() => {
-          const element = inputRef.current
-          if (element && document.activeElement?.closest?.('.qat-card') === null) element.focus()
-        }, 60)
-        return () => clearTimeout(id)
+    const id = setTimeout(() => {
+      const element = inputRef.current
+      if (element && document.activeElement?.closest?.('.qat-card') === null) element.focus()
+    }, 60)
+    return () => clearTimeout(id)
       }, [])
 
       // 从存档恢复：词库 + 章节 + 词表完全一致才接着打（切面板回来不丢进度）
       useEffect(() => {
-        if (restoredRef.current) return
-        restoredRef.current = true
-        if (variant !== 'panel' || !dictId) return
-        const saved = readSession()
-        if (!sameSession(saved, dictId, chapter, words)) return
-        live.current.index = saved.index
-        live.current.typed = ''
-        startedAt.current = saved.startedAt
-        clock.current = { ms: Number(saved.activeMs) || 0, last: Date.now() }
-        setState({
-          index: saved.index,
-          typed: '',
-          flash: false,
-          hits: saved.hits,
-          retries: saved.retries,
-          wordWrong: 0,
-          finishedAt: null,
-        })
+    if (restoredRef.current) return
+    restoredRef.current = true
+    if (variant !== 'panel' || !dictId) return
+    const saved = readSession()
+    if (!sameSession(saved, dictId, chapter, words)) return
+    live.current.index = saved.index
+    live.current.typed = ''
+    startedAt.current = saved.startedAt
+    clock.current = { ms: Number(saved.activeMs) || 0, last: Date.now() }
+    setState({
+      index: saved.index,
+      typed: '',
+      flash: false,
+      hits: saved.hits,
+      retries: saved.retries,
+      wordWrong: 0,
+      finishedAt: null,
+    })
       }, [chapter, dictId, variant, words])
 
       /** 当前词索引往外报：词表抽屉要用它高亮「当前」那一行 */
       useEffect(() => {
-        onIndex?.(state.index)
+    onIndex?.(state.index)
       }, [onIndex, state.index])
 
       /**
@@ -3975,80 +4036,80 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
        * 只挪索引、清半截输入与本词错误计数，不动 hits/retries。
        */
       useEffect(() => {
-        if (!jump || !Number.isInteger(jump.index)) return
-        if (jump.index < 0 || jump.index >= words.length) return
-        live.current.index = jump.index
-        live.current.typed = ''
-        wrongRef.current = 0
-        setState((prev) => ({
-          ...prev, index: jump.index, typed: '', flash: false, finishedAt: null,
-        }))
+    if (!jump || !Number.isInteger(jump.index)) return
+    if (jump.index < 0 || jump.index >= words.length) return
+    live.current.index = jump.index
+    live.current.typed = ''
+    wrongRef.current = 0
+    setState((prev) => ({
+      ...prev, index: jump.index, typed: '', flash: false, finishedAt: null,
+    }))
       }, [jump, words])
 
       /** 暂停/继续：暂停期间不计时，也吞掉击键 */
       const applyPaused = useCallback((next) => {
-        if (pausedRef.current === next) return
-        pausedRef.current = next
-        if (next) {
-          clock.current = { ms: activeMs(clock.current, Date.now()), last: null }
-          // 暂停就把实时速度的样本清空：不暂停时「停住的时间」会被算进窗口，
-          // 数字只会往下掉；清空后重新积累两条样本才显示（暂停不涨也不跌）。
-          speedSamples.current = []
-          setLiveWpm(0)
-          if (typeof onLiveWpm === 'function') onLiveWpm(0)
-        } else {
-          clock.current = { ...clock.current, last: Date.now() }
-        }
-        setPaused(next)
-        setState((prev) => ({ ...prev, typed: '', flash: false }))
-        live.current.typed = ''
+    if (pausedRef.current === next) return
+    pausedRef.current = next
+    if (next) {
+      clock.current = { ms: activeMs(clock.current, Date.now()), last: null }
+      // 暂停就把实时速度的样本清空：不暂停时「停住的时间」会被算进窗口，
+      // 数字只会往下掉；清空后重新积累两条样本才显示（暂停不涨也不跌）。
+      speedSamples.current = []
+      setLiveWpm(0)
+      if (typeof onLiveWpm === 'function') onLiveWpm(0)
+    } else {
+      clock.current = { ...clock.current, last: Date.now() }
+    }
+    setPaused(next)
+    setState((prev) => ({ ...prev, typed: '', flash: false }))
+    live.current.typed = ''
       }, [onLiveWpm])
 
       // 失焦 / 切标签页自动暂停，回来继续（手动暂停的状态不会被焦点事件解除）
       useEffect(() => {
-        if (variant !== 'panel' && variant !== 'command') return undefined
-        const pause = () => {
-          if (!pausedRef.current) applyPaused(true)
-        }
-        const onVisibility = () => {
-          if (document.hidden) pause()
-        }
-        window.addEventListener('blur', pause)
-        document.addEventListener('visibilitychange', onVisibility)
-        return () => {
-          window.removeEventListener('blur', pause)
-          document.removeEventListener('visibilitychange', onVisibility)
-        }
+    if (variant !== 'panel' && variant !== 'command') return undefined
+    const pause = () => {
+      if (!pausedRef.current) applyPaused(true)
+    }
+    const onVisibility = () => {
+      if (document.hidden) pause()
+    }
+    window.addEventListener('blur', pause)
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      window.removeEventListener('blur', pause)
+      document.removeEventListener('visibilitychange', onVisibility)
+    }
       }, [applyPaused, variant])
 
       /** 上一个 / 跳过 / 循环 三个动作（快捷键和点击共用） */
       const goPrev = useCallback(() => {
-        // wordsRef 只存在于跟打条；卡片这里直接读 props，否则「上一个」会 ReferenceError
-        const prev = stepIndex(stateRef.current.index, words.length, -1)
-        live.current.typed = ''
-        wrongRef.current = 0
-        setState((prevState) => ({ ...prevState, index: prev, typed: '', flash: false, wordWrong: 0, finishedAt: null }))
+    // wordsRef 只存在于跟打条；卡片这里直接读 props，否则「上一个」会 ReferenceError
+    const prev = stepIndex(stateRef.current.index, words.length, -1)
+    live.current.typed = ''
+    wrongRef.current = 0
+    setState((prevState) => ({ ...prevState, index: prev, typed: '', flash: false, wordWrong: 0, finishedAt: null }))
       }, [words])
 
       const goSkip = useCallback(() => {
-        const next = Math.min(words.length, stateRef.current.index + 1)
-        live.current.typed = ''
-        wrongRef.current = 0
-        setState((prevState) => ({
-          ...prevState,
-          index: next,
-          typed: '',
-          flash: false,
-          wordWrong: 0,
-          finishedAt: next >= words.length ? Date.now() : null,
-        }))
+    const next = Math.min(words.length, stateRef.current.index + 1)
+    live.current.typed = ''
+    wrongRef.current = 0
+    setState((prevState) => ({
+      ...prevState,
+      index: next,
+      typed: '',
+      flash: false,
+      wordWrong: 0,
+      finishedAt: next >= words.length ? Date.now() : null,
+    }))
       }, [words])
 
       const goLoop = useCallback(() => setLoop((value) => !value), [])
 
       const focusInput = useCallback((event) => {
-        const element = inputRef.current
-        if (element && event?.target !== element) element.focus()
+    const element = inputRef.current
+    if (element && event?.target !== element) element.focus()
       }, [])
 
 
@@ -4070,16 +4131,16 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const gloss = meta?.zh ?? ''
       // 释义条目：面板按条分行渲染，多的收成 +N；跟打条用拼接整串
       const senses = variant === 'panel'
-        ? (Array.isArray(meta?.senses) ? meta.senses : splitSenses(gloss))
-        : []
+    ? (Array.isArray(meta?.senses) ? meta.senses : splitSenses(gloss))
+    : []
       const sensesShown = senses.slice(0, SENSE_LIMIT)
       const sensesRest = senses.length - sensesShown.length
       // 面板头部已经有一遍标题：卡片这一格换成章节 / 复练，标题在面板上只出现一次
       const headLabel = variant === 'panel'
-        ? (headTag || (Number.isInteger(chapter) && chapter >= 0
-          ? t('panelHeadChapter', { n: chapter + 1 })
-          : t('panelHeadReview', { n: total })))
-        : t('title')
+    ? (headTag || (Number.isInteger(chapter) && chapter >= 0
+      ? t('panelHeadChapter', { n: chapter + 1 })
+      : t('panelHeadReview', { n: total })))
+    : t('title')
       const longWord = target.length > LONG_WORD_CHARS
       // 打错提示：3 / 4 / 5 次逐档揭示，打对（advance）归零
       const tip = tipState({ wrongCount: state.wordWrong, word: target, typed: state.typed })
@@ -4087,205 +4148,205 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       // 实时速度心跳：1 秒推一条采样，只对最近窗口求值；暂停时一条都不推。
       // done 之后停表：结算值由下面的 done 分支直接显示，不留一个会跳的实时数字。
       useEffect(() => {
-        if (done) return undefined
-        const tick = () => {
-          if (pausedRef.current) return
-          const now = Date.now()
-          speedSamples.current = pushSpeedSample(speedSamples.current, { t: now, chars: liveChars.current })
-          const wpm = windowedWpm(speedSamples.current, now)
-          setLiveWpm(wpm)
-          if (typeof onLiveWpm === 'function') onLiveWpm(wpm)
-        }
-        tick()
-        const id = setInterval(tick, LIVE_HEARTBEAT_MS)
-        return () => clearInterval(id)
+    if (done) return undefined
+    const tick = () => {
+      if (pausedRef.current) return
+      const now = Date.now()
+      speedSamples.current = pushSpeedSample(speedSamples.current, { t: now, chars: liveChars.current })
+      const wpm = windowedWpm(speedSamples.current, now)
+      setLiveWpm(wpm)
+      if (typeof onLiveWpm === 'function') onLiveWpm(wpm)
+    }
+    tick()
+    const id = setInterval(tick, LIVE_HEARTBEAT_MS)
+    return () => clearInterval(id)
       }, [done, onLiveWpm])
 
       // done 之后把结算 WPM 交回面板（今日数据那一带显示的是「这一轮的平均」，
       // 口径和卡片里的 WPM 一致：整轮词数 / 有效用时）
       useEffect(() => {
-        if (!done || typeof onLiveWpm !== 'function') return
-        const settled = calcWpm(total, Math.max(1, Math.round(activeMs(clock.current, state.finishedAt ?? Date.now()) / 1000)))
-        onLiveWpm(settled)
+    if (!done || typeof onLiveWpm !== 'function') return
+    const settled = calcWpm(total, Math.max(1, Math.round(activeMs(clock.current, state.finishedAt ?? Date.now()) / 1000)))
+    onLiveWpm(settled)
       }, [done, onLiveWpm, state.finishedAt, total])
 
       const setTyped = useCallback((value) => {
-        live.current.typed = value
-        setState((prev) => ({ ...prev, typed: value }))
+    live.current.typed = value
+    setState((prev) => ({ ...prev, typed: value }))
       }, [])
 
       /** 上一次读过释义的词：同一个词（含循环重打）不重复读 */
       const meaningRef = useRef('')
       /** 词刚打完 / 点发音时读释义；开关关着就什么都不做 */
       const readMeaning = useCallback((rawWord) => {
-        const word = String(rawWord ?? '').trim()
-        const zh = lookup(word)?.zh ?? ''
-        const live = getSettings()
-        const shouldRead = shouldReadMeaning({
-          enabled: live.readMeaning,
-          done: true,
-          zh,
-          lastWord: meaningRef.current,
-          word,
-        })
-        if (!shouldRead) return false
-        meaningRef.current = word
-        return speakMeaning(zh)
+    const word = String(rawWord ?? '').trim()
+    const zh = lookup(word)?.zh ?? ''
+    const live = getSettings()
+    const shouldRead = shouldReadMeaning({
+      enabled: live.readMeaning,
+      done: true,
+      zh,
+      lastWord: meaningRef.current,
+      word,
+    })
+    if (!shouldRead) return false
+    meaningRef.current = word
+    return speakMeaning(zh)
       }, [])
 
       const advance = useCallback(() => {
-        const snapshot = stateRef.current
-        // 刚打完这个词（正确）：单词在前，释义延迟接上
-        readMeaning(words[snapshot.index] ?? '')
-        // 循环单词：原地重打，不推进进度、不写记录
-        if (loop) {
-          live.current = { ...live.current, typed: '' }
-          setState((prev) => ({ ...prev, typed: '', flash: false, wordWrong: 0, hits: prev.hits + 1 }))
-          return
-        }
-        const next = snapshot.index + 1
-        const finished = next >= words.length
-        const at = Date.now()
-        const word = effectiveTarget(words[snapshot.index] ?? '', options)
+    const snapshot = stateRef.current
+    // 刚打完这个词（正确）：单词在前，释义延迟接上
+    readMeaning(words[snapshot.index] ?? '')
+    // 循环单词：原地重打，不推进进度、不写记录
+    if (loop) {
+      live.current = { ...live.current, typed: '' }
+      setState((prev) => ({ ...prev, typed: '', flash: false, wordWrong: 0, hits: prev.hits + 1 }))
+      return
+    }
+    const next = snapshot.index + 1
+    const finished = next >= words.length
+    const at = Date.now()
+    const word = effectiveTarget(words[snapshot.index] ?? '', options)
 
-        // 落一条单词记录（打错次数 = 本词这一轮累计）
-        if (word) {
-          recordWord({ word, dictId, chapter, at, wrongCount: wrongRef.current, timing: [] })
-        }
-        wrongRef.current = 0
+    // 落一条单词记录（打错次数 = 本词这一轮累计）
+    if (word) {
+      recordWord({ word, dictId, chapter, at, wrongCount: wrongRef.current, timing: [] })
+    }
+    wrongRef.current = 0
 
-        if (!finished && variant === 'panel' && dictId) {
-          saveSession({
-            dictId,
-            chapter,
-            words,
-            index: next,
-            hits: snapshot.hits + 1,
-            retries: snapshot.retries,
-            startedAt: startedAt.current,
-            activeMs: activeMs(clock.current, Date.now()),
-          })
-        }
-        if (finished) {
-          lettersRef.current = {}
-          if (variant === 'panel') clearSession()
-          const seconds = Math.max(1, Math.round(activeMs(clock.current, at) / 1000))
-          recordChapter({
-            dictId,
-            chapter,
-            at,
-            seconds,
-            wordCount: words.length,
-            wrongCount: snapshot.retries,
-            wrongLetters: lettersRef.current,
-          })
-          if (dictId && Number.isInteger(chapter)) {
-            saveProgress(dictId, chapter, { done: true, words: words.length, index: words.length })
-          }
-          setAnnounce(t('announceDone', { n: words.length }))
-          onFinish?.({ words: words.length, seconds, retries: snapshot.retries, hits: snapshot.hits + 1 })
-        } else if (dictId && Number.isInteger(chapter)) {
-          saveProgress(dictId, chapter, { index: next, words: words.length })
-        }
+    if (!finished && variant === 'panel' && dictId) {
+      saveSession({
+        dictId,
+        chapter,
+        words,
+        index: next,
+        hits: snapshot.hits + 1,
+        retries: snapshot.retries,
+        startedAt: startedAt.current,
+        activeMs: activeMs(clock.current, Date.now()),
+      })
+    }
+    if (finished) {
+      lettersRef.current = {}
+      if (variant === 'panel') clearSession()
+      const seconds = Math.max(1, Math.round(activeMs(clock.current, at) / 1000))
+      recordChapter({
+        dictId,
+        chapter,
+        at,
+        seconds,
+        wordCount: words.length,
+        wrongCount: snapshot.retries,
+        wrongLetters: lettersRef.current,
+      })
+      if (dictId && Number.isInteger(chapter)) {
+        saveProgress(dictId, chapter, { done: true, words: words.length, index: words.length })
+      }
+      setAnnounce(t('announceDone', { n: words.length }))
+      onFinish?.({ words: words.length, seconds, retries: snapshot.retries, hits: snapshot.hits + 1 })
+    } else if (dictId && Number.isInteger(chapter)) {
+      saveProgress(dictId, chapter, { index: next, words: words.length })
+    }
 
-        live.current.typed = ''
-        setState((prev) => ({
-          ...prev,
-          typed: '',
-          flash: false,
-          wordWrong: 0,
-          hits: prev.hits + 1,
-          index: next,
-          finishedAt: finished ? at : null,
-        }))
+    live.current.typed = ''
+    setState((prev) => ({
+      ...prev,
+      typed: '',
+      flash: false,
+      wordWrong: 0,
+      hits: prev.hits + 1,
+      index: next,
+      finishedAt: finished ? at : null,
+    }))
       }, [chapter, dictId, loop, onFinish, options, readMeaning, variant, words])
 
       const accept = useCallback((value) => {
-        if (live.current.locked) return
-        const guess = words[live.current.index] ?? ''
-        const verdict = judgeTyping(guess, value, options)
-        if (verdict.state === 'over') return
-        if (verdict.state !== 'bad') {
-          // 实时速度只统计「打对了的字符」：value 是受控输入框的全文，
-          // 和上一次的长度差就是本次新增的正确字符（打错会被清空重打，不计数）
-          const grew = value.length - String(live.current.typed ?? '').length
-          if (grew > 0) liveChars.current += grew
-          setTyped(value)
-          if (verdict.state === 'done') {
-            playClick('hit')
-            live.current.locked = true
-            live.current.timer = setTimeout(() => {
-              live.current.timer = null
-              live.current.locked = false
-              advance()
-            }, 200)
-          }
-          return
-        }
-        // 打错：标红 → 抖动 → 清空并要求整词重打
-        wrongRef.current += 1
-        // 提示档位升了一档（第 3/4/5 次）就给一声更轻的提示音
-        const prevTip = tipState({ wrongCount: stateRef.current.wordWrong, word: target, typed: stateRef.current.typed })
-        const nextWrong = nextWrongCount(stateRef.current.wordWrong, 'miss')
-        if (shouldWarnConflict({ chapter, index: stateRef.current.index, wrongCount: nextWrong, shown: tipShown })) {
-          tipShown = true
-          setConflict(true)   // 上游 Word/TipAlert：首章首词连错 3 次
-        }
-        if (tipState({ wrongCount: nextWrong, word: target, typed: '' }).level > prevTip.level) playClick('hint')
-        else playClick('miss')
-        setAnnounce(t('announceWrong', { word: target }))
-        const expect = target[stateRef.current.typed.length]
-        if (expect && expect !== ' ') {
-          lettersRef.current[expect] = (lettersRef.current[expect] || 0) + 1
-        }
-        // 记「打错次数」而不是去重词表：结算页要显示每个词错了几次
-        setMistakes((list) => {
-          const hit = list.find((item) => item.word === target)
-          if (hit) return list.map((item) => (item.word === target ? { ...item, wrongCount: item.wrongCount + 1 } : item))
-          return [...list, { word: target, wrongCount: 1 }]
-        })
+    if (live.current.locked) return
+    const guess = words[live.current.index] ?? ''
+    const verdict = judgeTyping(guess, value, options)
+    if (verdict.state === 'over') return
+    if (verdict.state !== 'bad') {
+      // 实时速度只统计「打对了的字符」：value 是受控输入框的全文，
+      // 和上一次的长度差就是本次新增的正确字符（打错会被清空重打，不计数）
+      const grew = value.length - String(live.current.typed ?? '').length
+      if (grew > 0) liveChars.current += grew
+      setTyped(value)
+      if (verdict.state === 'done') {
+        playClick('hit')
         live.current.locked = true
-        setTyped(value)
-        setState((prev) => ({ ...prev, flash: true }))
         live.current.timer = setTimeout(() => {
           live.current.timer = null
           live.current.locked = false
-          live.current.typed = ''
-          setState((prev) => ({
-            ...prev, typed: '', flash: false, retries: prev.retries + 1, wordWrong: nextWrong,
-          }))
-        }, 320)
+          advance()
+        }, 200)
+      }
+      return
+    }
+    // 打错：标红 → 抖动 → 清空并要求整词重打
+    wrongRef.current += 1
+    // 提示档位升了一档（第 3/4/5 次）就给一声更轻的提示音
+    const prevTip = tipState({ wrongCount: stateRef.current.wordWrong, word: target, typed: stateRef.current.typed })
+    const nextWrong = nextWrongCount(stateRef.current.wordWrong, 'miss')
+    if (shouldWarnConflict({ chapter, index: stateRef.current.index, wrongCount: nextWrong, shown: tipShown })) {
+      tipShown = true
+      setConflict(true)   // 上游 Word/TipAlert：首章首词连错 3 次
+    }
+    if (tipState({ wrongCount: nextWrong, word: target, typed: '' }).level > prevTip.level) playClick('hint')
+    else playClick('miss')
+    setAnnounce(t('announceWrong', { word: target }))
+    const expect = target[stateRef.current.typed.length]
+    if (expect && expect !== ' ') {
+      lettersRef.current[expect] = (lettersRef.current[expect] || 0) + 1
+    }
+    // 记「打错次数」而不是去重词表：结算页要显示每个词错了几次
+    setMistakes((list) => {
+      const hit = list.find((item) => item.word === target)
+      if (hit) return list.map((item) => (item.word === target ? { ...item, wrongCount: item.wrongCount + 1 } : item))
+      return [...list, { word: target, wrongCount: 1 }]
+    })
+    live.current.locked = true
+    setTyped(value)
+    setState((prev) => ({ ...prev, flash: true }))
+    live.current.timer = setTimeout(() => {
+      live.current.timer = null
+      live.current.locked = false
+      live.current.typed = ''
+      setState((prev) => ({
+        ...prev, typed: '', flash: false, retries: prev.retries + 1, wordWrong: nextWrong,
+      }))
+    }, 320)
       }, [advance, chapter, options, setTyped, words])
 
       // 面板里输入框已经隐形，挂载时主动把焦点交给它，用户不用先点哪儿
       useEffect(() => {
-        if (variant !== 'panel') return
-        const input = inputRef.current
-        if (input && typeof input.focus === 'function') input.focus()
+    if (variant !== 'panel') return
+    const input = inputRef.current
+    if (input && typeof input.focus === 'function') input.focus()
       }, [variant, words])
 
       const restart = useCallback(() => {
-        startedAt.current = Date.now()
-        live.current = { index: 0, typed: '', locked: false, timer: null }
-        wrongRef.current = 0
-        lettersRef.current = {}
-        // 重开一轮：上一轮排着的释义撤掉，同一个词可以重新读
-        meaningRef.current = ''
-        cancelMeaning()
-        // 新的一轮：实时速度的累计字符和采样一起归零
-        liveChars.current = 0
-        speedSamples.current = []
-        setLiveWpm(0)
-        if (typeof onLiveWpm === 'function') onLiveWpm(0)
-        setMistakes([])
-        if (variant === 'panel') clearSession()
-        setState({ index: 0, typed: '', flash: false, hits: 0, retries: 0, wordWrong: 0, finishedAt: null })
-        const input = inputRef.current
-        if (input) input.focus()
+    startedAt.current = Date.now()
+    live.current = { index: 0, typed: '', locked: false, timer: null }
+    wrongRef.current = 0
+    lettersRef.current = {}
+    // 重开一轮：上一轮排着的释义撤掉，同一个词可以重新读
+    meaningRef.current = ''
+    cancelMeaning()
+    // 新的一轮：实时速度的累计字符和采样一起归零
+    liveChars.current = 0
+    speedSamples.current = []
+    setLiveWpm(0)
+    if (typeof onLiveWpm === 'function') onLiveWpm(0)
+    setMistakes([])
+    if (variant === 'panel') clearSession()
+    setState({ index: 0, typed: '', flash: false, hits: 0, retries: 0, wordWrong: 0, finishedAt: null })
+    const input = inputRef.current
+    if (input) input.focus()
       }, [onLiveWpm])
 
       if (total === 0) {
-        return h('div', { className: 'qat-card' }, h(Styles), h('div', { className: 'qat-hint' }, t('empty')))
+    return h('div', { className: 'qat-card' }, h(Styles), h('div', { className: 'qat-hint' }, t('empty')))
       }
 
       // 计时只算一次 activeMs，刷新跟着 1 秒速度心跳
@@ -4294,191 +4355,191 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const prog = progressOf(state.index, total)
 
       return h('div', { className: 'qat-card', 'data-variant': variant ?? 'command', onMouseDown: focusInput },
-        h(Styles),
-        h('div', { className: 'qat-sr', 'aria-live': 'polite', 'aria-atomic': 'true', role: 'status' }, announce),
-        helpOpen ? h('div', { className: 'qat-help', 'data-help': 'true' }, t('hotkeysList')) : null,
-        h('div', { className: 'qat-head' },
-          h('span', { className: variant === 'panel' ? 'qat-headtag' : 'qat-title' }, headLabel),
-          h('span', { className: 'qat-sep' }),
-          h('span', null, t('progress', { done: Math.min(state.index, total), total })),
-          h('span', { className: 'qat-sep' }),
-          h('span', null, t('hits', { n: state.hits })),
-          h('span', null, t('retries', { n: state.retries })),
-          h('span', { className: 'qat-metric' }, `WPM ${calcWpm(state.hits, elapsed)}`),
-          h('span', { className: 'qat-metric' }, t('accuracyShort', { n: calcAccuracy(state.hits, state.retries) })),
-          clockVisible(variant, activeNow) ? h('span', { className: 'qat-metric qat-clock' }, clockText(activeNow).text) : null,
-          h('span', { className: 'qat-grow' }),
-          h('span', {
-            ...pressable(() => setHelpOpen((value) => !value)),
-            className: 'qat-icon',
-            'data-act': 'help',
-            'aria-expanded': helpOpen ? 'true' : 'false',
-            title: t('hotkeysTitle'),
-            'aria-label': t('hotkeysTitle'),
-          }, h(Icon, { name: 'help' })),
-          h('span', {
-            ...pressable(goPrev),
-            className: 'qat-btn',
-            'data-act': 'prev',
-            title: t('prevTip'),
-          }, h(Icon, { name: 'prev' })),
-          h('span', {
-            ...pressable(goSkip),
-            className: 'qat-btn',
-            'data-act': 'skip',
-            title: t('skipTip'),
-          }, h(Icon, { name: 'next' })),
-          h('span', {
-            ...pressable(goLoop),
-            className: 'qat-btn',
-            'data-act': 'loop',
-            'data-on': loop ? 'true' : 'false',
-            title: t('loopTip'),
-          }, h(Icon, { name: 'loop', size: 15 })),
-          h('span', {
-            ...pressable(() => applyPaused(!pausedRef.current)),
-            className: 'qat-btn',
-            'data-act': 'pause',
-            title: paused ? t('resumeTip') : t('pauseTip'),
-          }, h(Icon, { name: paused ? 'play' : 'pause', size: 15 })),
-          onClose
-            ? h('span', {
-              ...pressable(onClose),
-              className: 'qat-btn',
-            }, t('close'))
-            : null,
-        ),
-        paused && !done
-          ? h('div', { className: 'qat-paused' },
-            h('span', null, t('pausedTip')),
-            h('span', {
-              ...pressable(() => applyPaused(false)),
-              className: 'qat-btn',
-            }, t('resume')),
+    h(Styles),
+    h('div', { className: 'qat-sr', 'aria-live': 'polite', 'aria-atomic': 'true', role: 'status' }, announce),
+    helpOpen ? h('div', { className: 'qat-help', 'data-help': 'true' }, t('hotkeysList')) : null,
+    h('div', { className: 'qat-head' },
+      h('span', { className: variant === 'panel' ? 'qat-headtag' : 'qat-title' }, headLabel),
+      h('span', { className: 'qat-sep' }),
+      h('span', null, t('progress', { done: Math.min(state.index, total), total })),
+      h('span', { className: 'qat-sep' }),
+      h('span', null, t('hits', { n: state.hits })),
+      h('span', null, t('retries', { n: state.retries })),
+      h('span', { className: 'qat-metric' }, `WPM ${calcWpm(state.hits, elapsed)}`),
+      h('span', { className: 'qat-metric' }, t('accuracyShort', { n: calcAccuracy(state.hits, state.retries) })),
+      clockVisible(variant, activeNow) ? h('span', { className: 'qat-metric qat-clock' }, clockText(activeNow).text) : null,
+      h('span', { className: 'qat-grow' }),
+      h('span', {
+        ...pressable(() => setHelpOpen((value) => !value)),
+        className: 'qat-icon',
+        'data-act': 'help',
+        'aria-expanded': helpOpen ? 'true' : 'false',
+        title: t('hotkeysTitle'),
+        'aria-label': t('hotkeysTitle'),
+      }, h(Icon, { name: 'help' })),
+      h('span', {
+        ...pressable(goPrev),
+        className: 'qat-btn',
+        'data-act': 'prev',
+        title: t('prevTip'),
+      }, h(Icon, { name: 'prev' })),
+      h('span', {
+        ...pressable(goSkip),
+        className: 'qat-btn',
+        'data-act': 'skip',
+        title: t('skipTip'),
+      }, h(Icon, { name: 'next' })),
+      h('span', {
+        ...pressable(goLoop),
+        className: 'qat-btn',
+        'data-act': 'loop',
+        'data-on': loop ? 'true' : 'false',
+        title: t('loopTip'),
+      }, h(Icon, { name: 'loop', size: 15 })),
+      h('span', {
+        ...pressable(() => applyPaused(!pausedRef.current)),
+        className: 'qat-btn',
+        'data-act': 'pause',
+        title: paused ? t('resumeTip') : t('pauseTip'),
+      }, h(Icon, { name: paused ? 'play' : 'pause', size: 15 })),
+      onClose
+        ? h('span', {
+          ...pressable(onClose),
+          className: 'qat-btn',
+        }, t('close'))
+        : null,
+    ),
+    paused && !done
+      ? h('div', { className: 'qat-paused' },
+        h('span', null, t('pausedTip')),
+        h('span', {
+          ...pressable(() => applyPaused(false)),
+          className: 'qat-btn',
+        }, t('resume')),
+      )
+      : null,
+    done
+      ? h(ResultScreen, {
+        t,
+        total,
+        elapsed,
+        hits: state.hits,
+        retries: state.retries,
+        mistakes,
+        words,
+        // 章号从面板传进来才知道是不是末章；命令卡（chapter = null）永远当非末章
+        nextIsLast: Number.isInteger(chapter) && chapterTotal > 0 && chapter + 1 >= chapterTotal,
+        onRestart: restart,
+        onRetryWrong,
+        onNextChapter,
+      })
+      : h('div', null,
+        variant === 'panel' ? h('div', { className: 'qat-progress', 'data-phase': String(prog.phase) },
+          h('div', { className: 'qat-progress-fill', style: { width: `${prog.pct}%` } })) : null,
+        notation ? h('div', { className: 'qat-gloss-notation' }, notation) : null,
+        h(WordLetters, {
+          text: target,
+          typed: state.typed,
+          masked,
+          // 面板卡片约 760 宽（max-width 820 减内边距），长句最多三行，再叠用户字号档
+          ...wordStyleFor(target, 700, { maxLines: 3, scale: settingsNow.wordScale }),
+          long: longWord,
+          flash: state.flash,
+        }),
+        // 假名词库只有 notation 时也要保留这一块：发音按钮挂在里面。
+        // 发音只看 current（读音不依赖音标），所以只有按钮时这块照样挂上
+        showMeta && (ipaText || gloss || notation || (current && voiceOn))
+          ? h('div', { className: 'qat-gloss' },
+            // 音标行只在真有音标时出现（前缀与音标体分开画，前缀更淡）
+            ipaText
+              ? h('div', { className: 'qat-gloss-ipa' },
+                ipaLabel ? h('span', { className: 'qat-ipa-label' }, `${ipaLabel}: `) : null,
+                ipaText)
+              : null,
+            // 面板卡片：一条释义一行（词性单独淡色小字），超过三条收成 +N；
+            // 跟打条把释义拼成一行；没释义时不画空容器
+            variant === 'panel'
+              ? (sensesShown.length
+                ? h('div', { className: 'qat-gloss-zh' },
+                  sensesShown.map((sense, index) => h('div', {
+                    key: index,
+                    className: 'qat-sense',
+                  },
+                    sense.pos ? h('span', { className: 'qat-pos' }, sense.pos) : null,
+                    h('span', { className: 'qat-sense-body' }, sense.body),
+                  )),
+                  sensesRest > 0 ? h('div', { className: 'qat-sense-more' }, `+${sensesRest}`) : null,
+                )
+                : null)
+              : (gloss ? h('div', { className: 'qat-gloss-zh' }, gloss) : null),
+            current && voiceOn
+              ? h('span', {
+                ...pressable(() => {
+                  // 点发音：先读单词，释义延迟接上（新一轮先撤上一轮）
+                  cancelMeaning()
+                  speak(current)
+                  readMeaning(current)
+                }),
+                className: 'qat-speak',
+                title: t('speak'),
+                'aria-label': t('speak'),
+              }, h(Icon, { name: 'speak', size: 15 }))
+              : null,
           )
           : null,
-        done
-          ? h(ResultScreen, {
-            t,
-            total,
-            elapsed,
-            hits: state.hits,
-            retries: state.retries,
-            mistakes,
-            words,
-            // 章号从面板传进来才知道是不是末章；命令卡（chapter = null）永远当非末章
-            nextIsLast: Number.isInteger(chapter) && chapterTotal > 0 && chapter + 1 >= chapterTotal,
-            onRestart: restart,
-            onRetryWrong,
-            onNextChapter,
-          })
-          : h('div', null,
-            variant === 'panel' ? h('div', { className: 'qat-progress', 'data-phase': String(prog.phase) },
-              h('div', { className: 'qat-progress-fill', style: { width: `${prog.pct}%` } })) : null,
-            notation ? h('div', { className: 'qat-gloss-notation' }, notation) : null,
-            h(WordLetters, {
-              text: target,
-              typed: state.typed,
-              masked,
-              // 面板卡片约 760 宽（max-width 820 减内边距），长句最多三行，再叠用户字号档
-              ...wordStyleFor(target, 700, { maxLines: 3, scale: settingsNow.wordScale }),
-              long: longWord,
-              flash: state.flash,
-            }),
-            // 假名词库只有 notation 时也要保留这一块：发音按钮挂在里面。
-            // 发音只看 current（读音不依赖音标），所以只有按钮时这块照样挂上
-            showMeta && (ipaText || gloss || notation || (current && voiceOn))
-              ? h('div', { className: 'qat-gloss' },
-                // 音标行只在真有音标时出现（前缀与音标体分开画，前缀更淡）
-                ipaText
-                  ? h('div', { className: 'qat-gloss-ipa' },
-                    ipaLabel ? h('span', { className: 'qat-ipa-label' }, `${ipaLabel}: `) : null,
-                    ipaText)
-                  : null,
-                // 面板卡片：一条释义一行（词性单独淡色小字），超过三条收成 +N；
-                // 跟打条把释义拼成一行；没释义时不画空容器
-                variant === 'panel'
-                  ? (sensesShown.length
-                    ? h('div', { className: 'qat-gloss-zh' },
-                      sensesShown.map((sense, index) => h('div', {
-                        key: index,
-                        className: 'qat-sense',
-                      },
-                        sense.pos ? h('span', { className: 'qat-pos' }, sense.pos) : null,
-                        h('span', { className: 'qat-sense-body' }, sense.body),
-                      )),
-                      sensesRest > 0 ? h('div', { className: 'qat-sense-more' }, `+${sensesRest}`) : null,
-                    )
-                    : null)
-                  : (gloss ? h('div', { className: 'qat-gloss-zh' }, gloss) : null),
-                current && voiceOn
-                  ? h('span', {
-                    ...pressable(() => {
-                      // 点发音：先读单词，释义延迟接上（新一轮先撤上一轮）
-                      cancelMeaning()
-                      speak(current)
-                      readMeaning(current)
-                    }),
-                    className: 'qat-speak',
-                    title: t('speak'),
-                    'aria-label': t('speak'),
-                  }, h(Icon, { name: 'speak', size: 15 }))
-                  : null,
-              )
-              : null,
-            h(TipLine, { tip, t }),
-            conflict ? h('div', { className: 'qat-conflict' },
-              h('b', { className: 'qat-conflict-title' }, t('conflictTitle')),
-              h('span', null, t('conflictBody')),
-              h('span', { ...pressable(() => setConflict(false)), className: 'qat-conflict-x', 'aria-label': t('close') }, '×')) : null,
-            // 上游没有可见输入框（InputHandler 用隐藏元素吃键盘）：这里同样只留一个
-            // 视觉隐藏的输入目标，用来接住键入与输入法，界面上不画框。
-            h('input', {
-              ref: inputRef,
-              className: 'qat-input qat-input-ghost',
-              type: 'text',
-              value: state.typed,
-              'aria-label': t('placeholder'),
-              tabIndex: -1,
-              autoFocus: true,
-              autoComplete: 'off',
-              autoCapitalize: 'none',
-              spellCheck: false,
-              onChange: (event) => accept(event.target.value),
-              onKeyDown: (event) => {
-                // 回车/制表符就地吞掉；空格留给带空格的词，只阻止冒泡
-                if (event.key === 'Enter' || event.key === 'Tab') event.preventDefault()
-                if (event.key === 'Escape' && onClose) onClose()
-                event.stopPropagation()
-                const action = resolveHotkey({
-                  key: event.key,
-                  meta: event.metaKey,
-                  ctrl: event.ctrlKey,
-                  alt: event.altKey,
-                  shift: event.shiftKey,
-                })
-                if (!action) return
-                event.preventDefault()
-                if (action === 'prev') goPrev()
-                else if (action === 'skip') goSkip()
-                else if (action === 'loop') goLoop()
-                else if (action === 'pause') applyPaused(!pausedRef.current)
-                else if (action === 'close' && onClose) onClose()
-              },
-              onKeyUp: (event) => event.stopPropagation(),
-            }),
-            h('div', { className: 'qat-row' },
-              h('span', {
-                ...pressable(restart),
-                className: 'qat-btn',
-              }, t('restart')),
-            ),
-            h('div', { className: 'qat-hint' }, t('hint')),
-            // 指法图示：面板卡片才有位置放，跟打条/指令卡保持紧凑
-            variant === 'panel' && fingerOn
-              ? h(FingerHint, { word: target, typed: state.typed, ctx })
-              : null,
-          ),
+        h(TipLine, { tip, t }),
+        conflict ? h('div', { className: 'qat-conflict' },
+          h('b', { className: 'qat-conflict-title' }, t('conflictTitle')),
+          h('span', null, t('conflictBody')),
+          h('span', { ...pressable(() => setConflict(false)), className: 'qat-conflict-x', 'aria-label': t('close') }, '×')) : null,
+        // 上游没有可见输入框（InputHandler 用隐藏元素吃键盘）：这里同样只留一个
+        // 视觉隐藏的输入目标，用来接住键入与输入法，界面上不画框。
+        h('input', {
+          ref: inputRef,
+          className: 'qat-input qat-input-ghost',
+          type: 'text',
+          value: state.typed,
+          'aria-label': t('placeholder'),
+          tabIndex: -1,
+          autoFocus: true,
+          autoComplete: 'off',
+          autoCapitalize: 'none',
+          spellCheck: false,
+          onChange: (event) => accept(event.target.value),
+          onKeyDown: (event) => {
+            // 回车/制表符就地吞掉；空格留给带空格的词，只阻止冒泡
+            if (event.key === 'Enter' || event.key === 'Tab') event.preventDefault()
+            if (event.key === 'Escape' && onClose) onClose()
+            event.stopPropagation()
+            const action = resolveHotkey({
+              key: event.key,
+              meta: event.metaKey,
+              ctrl: event.ctrlKey,
+              alt: event.altKey,
+              shift: event.shiftKey,
+            })
+            if (!action) return
+            event.preventDefault()
+            if (action === 'prev') goPrev()
+            else if (action === 'skip') goSkip()
+            else if (action === 'loop') goLoop()
+            else if (action === 'pause') applyPaused(!pausedRef.current)
+            else if (action === 'close' && onClose) onClose()
+          },
+          onKeyUp: (event) => event.stopPropagation(),
+        }),
+        h('div', { className: 'qat-row' },
+          h('span', {
+            ...pressable(restart),
+            className: 'qat-btn',
+          }, t('restart')),
+        ),
+        h('div', { className: 'qat-hint' }, t('hint')),
+        // 指法图示：面板卡片才有位置放，跟打条/指令卡保持紧凑
+        variant === 'panel' && fingerOn
+          ? h(FingerHint, { word: target, typed: state.typed, ctx })
+          : null,
+      ),
       )
     }
 
@@ -4492,19 +4553,19 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const t = useT(ctx)
       const isOpen = useSyncExternalStore(subscribeOpen, getOpen, getOpen)
       return h('button', {
-        type: 'button',
-        className: 'qat-side',
-        'data-active': isOpen ? 'true' : 'false',
-        title: t('sideTitle'),
-        'aria-pressed': isOpen,
-        onClick: () => setOpen(),
-        onKeyDown: (event) => event.stopPropagation(),
+    type: 'button',
+    className: 'qat-side',
+    'data-active': isOpen ? 'true' : 'false',
+    title: t('sideTitle'),
+    'aria-pressed': isOpen,
+    onClick: () => setOpen(),
+    onKeyDown: (event) => event.stopPropagation(),
       },
-        h('span', {
-          className: 'qat-side-icon',
-          'aria-hidden': 'true',
-        }, null),
-        wide === false ? null : h('span', null, t('sideLabel')),
+    h('span', {
+      className: 'qat-side-icon',
+      'aria-hidden': 'true',
+    }, null),
+    wide === false ? null : h('span', null, t('sideLabel')),
       )
     }
 
@@ -4564,25 +4625,25 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     /** 旧版本曾在 composer 上留过 inputmode=latin / data-qat-ime，载入时清干净 */
     function releaseStuckComposer() {
       try {
-        for (const node of document.querySelectorAll(COMPOSER_EDITOR)) {
-          const marker = node.getAttribute('data-qat-ime')
-          if (marker) {
-            try {
-              const saved = JSON.parse(marker)
-              for (const [name, value] of Object.entries(saved || {})) {
-                if (value === null || value === undefined) node.removeAttribute(name)
-                else node.setAttribute(name, value)
-              }
-            } catch {
-              /* 存档坏了就直接删属性 */
-            }
-            node.removeAttribute('data-qat-ime')
+    for (const node of document.querySelectorAll(COMPOSER_EDITOR)) {
+      const marker = node.getAttribute('data-qat-ime')
+      if (marker) {
+        try {
+          const saved = JSON.parse(marker)
+          for (const [name, value] of Object.entries(saved || {})) {
+            if (value === null || value === undefined) node.removeAttribute(name)
+            else node.setAttribute(name, value)
           }
-          if (node.getAttribute('inputmode') === 'latin') node.removeAttribute('inputmode')
-          if (node.style && node.style.imeMode === 'inactive') node.style.imeMode = ''
+        } catch {
+          /* 存档坏了就直接删属性 */
         }
+        node.removeAttribute('data-qat-ime')
+      }
+      if (node.getAttribute('inputmode') === 'latin') node.removeAttribute('inputmode')
+      if (node.style && node.style.imeMode === 'inactive') node.style.imeMode = ''
+    }
       } catch {
-        /* ignore */
+    /* ignore */
       }
     }
 
@@ -4601,25 +4662,25 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
 
     function readBarProgress() {
       try {
-        const raw = window.localStorage.getItem(BAR_KEY)
-        if (!raw) return null
-        const data = JSON.parse(raw)
-        if (!data || typeof data !== 'object') return null
-        return { dictId: String(data.dictId || ''), index: Number(data.index) || 0 }
+    const raw = window.localStorage.getItem(BAR_KEY)
+    if (!raw) return null
+    const data = JSON.parse(raw)
+    if (!data || typeof data !== 'object') return null
+    return { dictId: String(data.dictId || ''), index: Number(data.index) || 0 }
       } catch {
-        return null
+    return null
       }
     }
 
     function writeBarProgress(dictId, index) {
       try {
-        window.localStorage.setItem(BAR_KEY, JSON.stringify({
-          dictId: String(dictId || ''),
-          index: Math.max(0, Number(index) || 0),
-          at: Date.now(),
-        }))
+    window.localStorage.setItem(BAR_KEY, JSON.stringify({
+      dictId: String(dictId || ''),
+      index: Math.max(0, Number(index) || 0),
+      at: Date.now(),
+    }))
       } catch {
-        /* ignore */
+    /* ignore */
       }
     }
 
@@ -4635,25 +4696,25 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
 
     function readChapterPos() {
       try {
-        const raw = window.localStorage.getItem(CHAPTER_KEY)
-        if (!raw) return null
-        const data = JSON.parse(raw)
-        if (!data || typeof data !== 'object') return null
-        return { dictId: String(data.dictId || ''), chapter: Math.max(0, Math.floor(Number(data.chapter)) || 0) }
+    const raw = window.localStorage.getItem(CHAPTER_KEY)
+    if (!raw) return null
+    const data = JSON.parse(raw)
+    if (!data || typeof data !== 'object') return null
+    return { dictId: String(data.dictId || ''), chapter: Math.max(0, Math.floor(Number(data.chapter)) || 0) }
       } catch {
-        return null
+    return null
       }
     }
 
     function writeChapterPos(dictId, chapter) {
       try {
-        window.localStorage.setItem(CHAPTER_KEY, JSON.stringify({
-          dictId: String(dictId || ''),
-          chapter: Math.max(0, Math.floor(Number(chapter)) || 0),
-          at: Date.now(),
-        }))
+    window.localStorage.setItem(CHAPTER_KEY, JSON.stringify({
+      dictId: String(dictId || ''),
+      chapter: Math.max(0, Math.floor(Number(chapter)) || 0),
+      at: Date.now(),
+    }))
       } catch {
-        /* ignore */
+    /* ignore */
       }
     }
 
@@ -4681,34 +4742,34 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     function wordsOfRound(mistakes, words) {
       const counts = new Map()
       for (const item of mistakes || []) {
-        const word = String(typeof item === 'string' ? item : (item?.word ?? ''))
-        if (!word) continue
-        const key = word.toLowerCase()
-        const prev = counts.get(key)
-        const times = typeof item === 'object' && item !== null ? Number(item.wrongCount) : 1
-        const add = Number.isFinite(times) && times > 0 ? times : 1
-        counts.set(key, {
-          word: prev?.word ?? word,
-          wrongCount: (prev?.wrongCount ?? 0) + add,
-        })
+    const word = String(typeof item === 'string' ? item : (item?.word ?? ''))
+    if (!word) continue
+    const key = word.toLowerCase()
+    const prev = counts.get(key)
+    const times = typeof item === 'object' && item !== null ? Number(item.wrongCount) : 1
+    const add = Number.isFinite(times) && times > 0 ? times : 1
+    counts.set(key, {
+      word: prev?.word ?? word,
+      wrongCount: (prev?.wrongCount ?? 0) + add,
+    })
       }
       if (!counts.size) return []
       const rows = []
       const seen = new Set()
       const order = (words || [])
-        .map((entry) => (typeof entry === 'string' ? entry : (entry?.w ?? entry?.word ?? '')))
-        .filter(Boolean)
+    .map((entry) => (typeof entry === 'string' ? entry : (entry?.w ?? entry?.word ?? '')))
+    .filter(Boolean)
       for (const word of order) {
-        const key = String(word).toLowerCase()
-        const hit = counts.get(key)
-        if (!hit || seen.has(key)) continue
-        seen.add(key)
-        rows.push(hit)
+    const key = String(word).toLowerCase()
+    const hit = counts.get(key)
+    if (!hit || seen.has(key)) continue
+    seen.add(key)
+    rows.push(hit)
       }
       for (const [key, hit] of counts) {
-        if (seen.has(key)) continue
-        seen.add(key)
-        rows.push(hit)
+    if (seen.has(key)) continue
+    seen.add(key)
+    rows.push(hit)
       }
       return rows
     }
@@ -4729,8 +4790,8 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const isDone = (index) => Boolean(progress && progress[index] && progress[index].done)
       if (!isDone(start)) return start
       for (let step = 1; step <= size; step += 1) {
-        const index = (start + step) % size
-        if (!isDone(index)) return index
+    const index = (start + step) % size
+    if (!isDone(index)) return index
       }
       return start                                     // 整本都打完了 → 留在原章
     }
@@ -4763,9 +4824,9 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       // 跟打条是「一本词库顺着往下打」，不是抽 20 个就结束
       const [words, setWords] = useState(() => toWordList(wordsSync(dictId)))
       const [state, setState] = useState(() => ({
-        // 首帧就接上次那个词（异步加载词库不会闪现第一个词）
-        index: resumeIndex(readBarProgress(), readDictId(), toWordList(wordsSync(readDictId())).length),
-        typed: '', flash: false, hits: 0, retries: 0, wordWrong: 0, finishedAt: null,
+    // 首帧就接上次那个词（异步加载词库不会闪现第一个词）
+    index: resumeIndex(readBarProgress(), readDictId(), toWordList(wordsSync(readDictId())).length),
+    typed: '', flash: false, hits: 0, retries: 0, wordWrong: 0, finishedAt: null,
       }))
       const [barWidth, setBarWidth] = useState(null)
       /** 我们自己写进 composer 的那句中文（关闭时要原样撤掉） */
@@ -4786,59 +4847,59 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
 
       // 词库词条按需加载：整本拿到，顺序往下打；失败退回内置兜底
       useEffect(() => {
-        let cancelled = false
-        loadDictWords(dictId)
-          .then((all) => {
-            if (!cancelled && all?.length) {
-              const list = toWordList(all)
-              // round > 0 是「重开一轮」，必须从第一个词开始；初次挂载才接着上次那个词
-              const index = round > 0 ? 0 : resumeIndex(readBarProgress(), dictId, list.length)
-              setWords(list)
-              setState({ index, typed: '', flash: false, hits: 0, retries: 0, wordWrong: 0, finishedAt: null })
-            }
-          })
-          .catch((err) => {
-            if (cancelled) return
-            const list = toWordList(err?.fallbackWords ?? wordsSync(dictId))
-            setWords(list)
-            setState((prev) => ({ ...prev, index: resumeIndex(readBarProgress(), dictId, list.length) }))
-          })
-        return () => {
-          cancelled = true
+    let cancelled = false
+    loadDictWords(dictId)
+      .then((all) => {
+        if (!cancelled && all?.length) {
+          const list = toWordList(all)
+          // round > 0 是「重开一轮」，必须从第一个词开始；初次挂载才接着上次那个词
+          const index = round > 0 ? 0 : resumeIndex(readBarProgress(), dictId, list.length)
+          setWords(list)
+          setState({ index, typed: '', flash: false, hits: 0, retries: 0, wordWrong: 0, finishedAt: null })
         }
+      })
+      .catch((err) => {
+        if (cancelled) return
+        const list = toWordList(err?.fallbackWords ?? wordsSync(dictId))
+        setWords(list)
+        setState((prev) => ({ ...prev, index: resumeIndex(readBarProgress(), dictId, list.length) }))
+      })
+    return () => {
+      cancelled = true
+    }
       }, [dictId, round])
 
       useEffect(() => { stateRef.current = state }, [state])
       // 每换一个词就存一次，Esc 关掉再打开能接着打
       useEffect(() => {
-        if (!state.typed && state.index >= 0) writeBarProgress(dictId, state.index)
+    if (!state.typed && state.index >= 0) writeBarProgress(dictId, state.index)
       }, [dictId, state.index, state.typed])
       useEffect(() => { draftRef.current = draft }, [draft])
       useEffect(() => { wordsRef.current = words }, [words])
       useEffect(() => () => {
-        if (lockRef.current.timer !== null) clearTimeout(lockRef.current.timer)
+    if (lockRef.current.timer !== null) clearTimeout(lockRef.current.timer)
       }, [])
 
       // 宽度对齐 composer 正文：之前 setBarWidth 从没被调用过，整条所以不居中
       useEffect(() => {
-        if (!isOpen) return undefined
-        const measure = () => {
-          const node = document.querySelector('[data-composer-input]')
-          const width = node?.getBoundingClientRect?.().width ?? 0
-          setBarWidth((prev) => {
-            const next = width > 40 ? Math.round(width) : null
-            return prev === next ? prev : next
-          })
-        }
-        measure()
-        const target = document.querySelector('[data-composer-input]')
-        const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : null
-        if (observer && target) observer.observe(target)
-        window.addEventListener('resize', measure)
-        return () => {
-          observer?.disconnect?.()
-          window.removeEventListener('resize', measure)
-        }
+    if (!isOpen) return undefined
+    const measure = () => {
+      const node = document.querySelector('[data-composer-input]')
+      const width = node?.getBoundingClientRect?.().width ?? 0
+      setBarWidth((prev) => {
+        const next = width > 40 ? Math.round(width) : null
+        return prev === next ? prev : next
+      })
+    }
+    measure()
+    const target = document.querySelector('[data-composer-input]')
+    const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : null
+    if (observer && target) observer.observe(target)
+    window.addEventListener('resize', measure)
+    return () => {
+      observer?.disconnect?.()
+      window.removeEventListener('resize', measure)
+    }
       }, [isOpen])
 
       const total = words.length
@@ -4848,22 +4909,22 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       // 换词自动发音：跟打条也读，原来只有按钮能点，摘掉按钮就没声了
       const spokenRef = useRef({ word: '', index: -1 })
       useEffect(() => {
-        // 条没开就一个字都不许读：这个组件跟着 dock 挂载，新开会话会重挂一次，
-        // 少了这两道门禁就会「一进新会话就听到一个单词」。
-        if (!isOpen) return
-        if (getOpen() !== true) return
-        if (!settings.voice) return
-        if (!current) return
-        if (spokenRef.current.word === current && spokenRef.current.index === state.index) return
-        spokenRef.current = { word: current, index: state.index }
-        // 新词开口就把上一轮没读完的释义撤掉，两句绝不抢
-        cancelMeaning()
-        speak(current)
+    // 条没开就一个字都不许读：这个组件跟着 dock 挂载，新开会话会重挂一次，
+    // 少了这两道门禁就会「一进新会话就听到一个单词」。
+    if (!isOpen) return
+    if (getOpen() !== true) return
+    if (!settings.voice) return
+    if (!current) return
+    if (spokenRef.current.word === current && spokenRef.current.index === state.index) return
+    spokenRef.current = { word: current, index: state.index }
+    // 新词开口就把上一轮没读完的释义撤掉，两句绝不抢
+    cancelMeaning()
+    speak(current)
       }, [current, isOpen, settings.voice, state.index])
       const done = false
       const judgeOptions = useMemo(
-        () => ({ caseSensitive: settings.caseSensitive, ignorePunct: settings.ignorePunct }),
-        [settings.caseSensitive, settings.ignorePunct],
+    () => ({ caseSensitive: settings.caseSensitive, ignorePunct: settings.ignorePunct }),
+    [settings.caseSensitive, settings.ignorePunct],
       )
       const target = effectiveTarget(current, judgeOptions)
       const masked = maskLetters(target, settings.dictation, state.index)
@@ -4881,40 +4942,40 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const meaningRef = useRef('')
       /** 词刚打完时读释义；开关关着就什么都不做 */
       const readMeaning = useCallback((rawWord) => {
-        const word = String(rawWord ?? '').trim()
-        const zh = lookup(word)?.zh ?? ''
-        const live = getSettings()
-        const shouldRead = shouldReadMeaning({
-          enabled: live.readMeaning,
-          done: true,
-          zh,
-          lastWord: meaningRef.current,
-          word,
-        })
-        if (!shouldRead) return false
-        meaningRef.current = word
-        return speakMeaning(zh)
+    const word = String(rawWord ?? '').trim()
+    const zh = lookup(word)?.zh ?? ''
+    const live = getSettings()
+    const shouldRead = shouldReadMeaning({
+      enabled: live.readMeaning,
+      done: true,
+      zh,
+      lastWord: meaningRef.current,
+      word,
+    })
+    if (!shouldRead) return false
+    meaningRef.current = word
+    return speakMeaning(zh)
       }, [])
 
       const advance = useCallback(() => {
-        // 刚打完这个词（正确）：单词在前，释义延迟接上
-        readMeaning(wordsRef.current[stateRef.current.index] ?? '')
-        // 循环当前词：原地重打
-        if (loopRef.current) {
-          setState((prev) => ({ ...prev, typed: '', flash: false, wordWrong: 0, hits: prev.hits + 1 }))
-          return
-        }
-        // 打完最后一个就绕回开头接着打，跟原版一样一直往下
-        const next = stepIndex(stateRef.current.index, wordsRef.current.length, 1)
-        setState((prev) => ({
-          ...prev,
-          typed: '',
-          flash: false,
-          wordWrong: 0,
-          hits: prev.hits + 1,
-          index: next,
-          finishedAt: null,
-        }))
+    // 刚打完这个词（正确）：单词在前，释义延迟接上
+    readMeaning(wordsRef.current[stateRef.current.index] ?? '')
+    // 循环当前词：原地重打
+    if (loopRef.current) {
+      setState((prev) => ({ ...prev, typed: '', flash: false, wordWrong: 0, hits: prev.hits + 1 }))
+      return
+    }
+    // 打完最后一个就绕回开头接着打，跟原版一样一直往下
+    const next = stepIndex(stateRef.current.index, wordsRef.current.length, 1)
+    setState((prev) => ({
+      ...prev,
+      typed: '',
+      flash: false,
+      wordWrong: 0,
+      hits: prev.hits + 1,
+      index: next,
+      finishedAt: null,
+    }))
       }, [readMeaning])
 
       const loopRef = useRef(false)
@@ -4924,355 +4985,355 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       /** 暂停只意味着「不吃键」；实时速度的采样就地清空，
        * 否则暂停那段空白会被算进窗口、把数字压下去 */
       const applyPaused = useCallback((next) => {
-        clockRef.current = next
-          ? { ms: activeMs(clockRef.current, Date.now()), last: null }
-          : { ...clockRef.current, last: Date.now() }
-        pausedRef.current = next
-        speedSamples.current = []
-        setLiveWpm(0)
+    clockRef.current = next
+      ? { ms: activeMs(clockRef.current, Date.now()), last: null }
+      : { ...clockRef.current, last: Date.now() }
+    pausedRef.current = next
+    speedSamples.current = []
+    setLiveWpm(0)
       }, [])
 
       // 实时速度：条开着才计时，1 秒一条采样；暂停不推
       useEffect(() => {
-        if (!isOpen) return undefined
-        const tick = () => {
-          if (pausedRef.current) return
-          const now = Date.now()
-          speedSamples.current = pushSpeedSample(speedSamples.current, { t: now, chars: liveChars.current })
-          setLiveWpm(windowedWpm(speedSamples.current, now))
-        }
-        tick()
-        const id = setInterval(tick, LIVE_HEARTBEAT_MS)
-        return () => clearInterval(id)
+    if (!isOpen) return undefined
+    const tick = () => {
+      if (pausedRef.current) return
+      const now = Date.now()
+      speedSamples.current = pushSpeedSample(speedSamples.current, { t: now, chars: liveChars.current })
+      setLiveWpm(windowedWpm(speedSamples.current, now))
+    }
+    tick()
+    const id = setInterval(tick, LIVE_HEARTBEAT_MS)
+    return () => clearInterval(id)
       }, [isOpen])
 
       const goPrev = useCallback(() => {
-        const prev = Math.max(0, stateRef.current.index - 1)
-        setState((state) => ({ ...state, index: prev, typed: '', flash: false, wordWrong: 0, finishedAt: null }))
+    const prev = Math.max(0, stateRef.current.index - 1)
+    setState((state) => ({ ...state, index: prev, typed: '', flash: false, wordWrong: 0, finishedAt: null }))
       }, [])
 
       const goSkip = useCallback(() => {
-        setState((state) => ({
-          ...state,
-          index: stepIndex(state.index, wordsRef.current.length, 1),
-          typed: '',
-          flash: false,
-          wordWrong: 0,
-          finishedAt: null,
-        }))
+    setState((state) => ({
+      ...state,
+      index: stepIndex(state.index, wordsRef.current.length, 1),
+      typed: '',
+      flash: false,
+      wordWrong: 0,
+      finishedAt: null,
+    }))
       }, [])
 
       const goLoop = useCallback(() => {
-        loopRef.current = !loopRef.current
-        setLoopOn(loopRef.current)
+    loopRef.current = !loopRef.current
+    setLoopOn(loopRef.current)
       }, [])
 
       /** 吃下一个字符（键盘和自动打都走这里，判定只有一份） */
       const feed = useCallback((ch) => {
-        if (pausedRef.current) return
-        if (lockRef.current.locked) return
-        const goal = effectiveTarget(wordsRef.current[stateRef.current.index] ?? '', judgeOptions)
-        if (!goal) return
-        const stepped = pushChar(goal, stateRef.current.typed, ch)
-        if (stepped.result === 'over') return
-        if (stepped.result === 'ok') {
-          // 实时速度只统计打对的字符（打错会清空重打，不计数）
-          liveChars.current += 1
-          setState((prev) => ({ ...prev, typed: stepped.typed }))
-          return
-        }
-        if (stepped.result === 'done') {
-          liveChars.current += 1
-          playClick('hit')
-          setState((prev) => ({ ...prev, typed: stepped.typed }))
-          lockRef.current.locked = true
-          lockRef.current.timer = setTimeout(() => {
-            lockRef.current.timer = null
-            lockRef.current.locked = false
-            advance()
-          }, 200)
-          return
-        }
-        // 打错：标红抖动 → 清空 → 整词重打
-        // 提示档位升了一档（第 3 / 4 / 5 次）就给一声更轻的提示音，否则仍是打错音
-        const prevTip = tipState({ wrongCount: stateRef.current.wordWrong, word: goal, typed: stateRef.current.typed })
-        const nextWrong = nextWrongCount(stateRef.current.wordWrong, 'miss')
-        if (tipState({ wrongCount: nextWrong, word: goal, typed: '' }).level > prevTip.level) playClick('hint')
-        else playClick('miss')
-        lockRef.current.locked = true
-        setState((prev) => ({ ...prev, typed: stepped.typed, flash: true }))
-        lockRef.current.timer = setTimeout(() => {
-          lockRef.current.timer = null
-          lockRef.current.locked = false
-          setState((prev) => ({
-            ...prev, typed: '', flash: false, retries: prev.retries + 1, wordWrong: nextWrong,
-          }))
-        }, 320)
+    if (pausedRef.current) return
+    if (lockRef.current.locked) return
+    const goal = effectiveTarget(wordsRef.current[stateRef.current.index] ?? '', judgeOptions)
+    if (!goal) return
+    const stepped = pushChar(goal, stateRef.current.typed, ch)
+    if (stepped.result === 'over') return
+    if (stepped.result === 'ok') {
+      // 实时速度只统计打对的字符（打错会清空重打，不计数）
+      liveChars.current += 1
+      setState((prev) => ({ ...prev, typed: stepped.typed }))
+      return
+    }
+    if (stepped.result === 'done') {
+      liveChars.current += 1
+      playClick('hit')
+      setState((prev) => ({ ...prev, typed: stepped.typed }))
+      lockRef.current.locked = true
+      lockRef.current.timer = setTimeout(() => {
+        lockRef.current.timer = null
+        lockRef.current.locked = false
+        advance()
+      }, 200)
+      return
+    }
+    // 打错：标红抖动 → 清空 → 整词重打
+    // 提示档位升了一档（第 3 / 4 / 5 次）就给一声更轻的提示音，否则仍是打错音
+    const prevTip = tipState({ wrongCount: stateRef.current.wordWrong, word: goal, typed: stateRef.current.typed })
+    const nextWrong = nextWrongCount(stateRef.current.wordWrong, 'miss')
+    if (tipState({ wrongCount: nextWrong, word: goal, typed: '' }).level > prevTip.level) playClick('hint')
+    else playClick('miss')
+    lockRef.current.locked = true
+    setState((prev) => ({ ...prev, typed: stepped.typed, flash: true }))
+    lockRef.current.timer = setTimeout(() => {
+      lockRef.current.timer = null
+      lockRef.current.locked = false
+      setState((prev) => ({
+        ...prev, typed: '', flash: false, retries: prev.retries + 1, wordWrong: nextWrong,
+      }))
+    }, 320)
       }, [advance, judgeOptions.caseSensitive, judgeOptions.ignorePunct])
 
       // 打开时把焦点交给 composer 编辑器：用户直接就能打
       useEffect(() => {
-        if (!isOpen) return
-        const editor = document.querySelector(COMPOSER_EDITOR)
-        if (editor && typeof editor.focus === 'function') editor.focus()
+    if (!isOpen) return
+    const editor = document.querySelector(COMPOSER_EDITOR)
+    if (editor && typeof editor.focus === 'function') editor.focus()
       }, [isOpen])
 
       // 和输入框对齐：量 composer 正文的宽度，条按同一宽度居中
       useEffect(() => {
-        if (!isOpen) return undefined
-        const measure = () => {
-          const editor = findComposerEditor()
-          if (!editor) return
-          const width = Math.round(editor.getBoundingClientRect().width)
-          if (width > 0) setBarWidth(width)
-        }
-        measure()
-        window.addEventListener('resize', measure)
-        let observer
-        const editor = findComposerEditor()
-        if (editor && typeof ResizeObserver !== 'undefined') {
-          observer = new ResizeObserver(measure)
-          observer.observe(editor)
-        }
-        return () => {
-          window.removeEventListener('resize', measure)
-          if (observer) observer.disconnect()
-        }
+    if (!isOpen) return undefined
+    const measure = () => {
+      const editor = findComposerEditor()
+      if (!editor) return
+      const width = Math.round(editor.getBoundingClientRect().width)
+      if (width > 0) setBarWidth(width)
+    }
+    measure()
+    window.addEventListener('resize', measure)
+    let observer
+    const editor = findComposerEditor()
+    if (editor && typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(measure)
+      observer.observe(editor)
+    }
+    return () => {
+      window.removeEventListener('resize', measure)
+      if (observer) observer.disconnect()
+    }
       }, [isOpen])
 
       // 输入法上屏拦截：拼音/候选字落不进 composer，只留我们自己写的那句提示。
       // 注意这里只「拦事件」，绝不改 inputmode/lang/style —— 改属性会把输入法直接搞哑。
       useEffect(() => {
-        if (!isOpen) return undefined
-        const inComposer = (target) => target instanceof HTMLElement
-          && (target.isContentEditable || target.closest(COMPOSER_EDITOR) !== null)
+    if (!isOpen) return undefined
+    const inComposer = (target) => target instanceof HTMLElement
+      && (target.isContentEditable || target.closest(COMPOSER_EDITOR) !== null)
 
-        const onBeforeInput = (event) => {
-          // 双门禁：条必须真的在跑（live），且落点确实在 composer 里
-          if (!liveBarRef.current) return
-          if (getOpen() !== true) return
-          if (!inComposer(event.target)) return
-          event.preventDefault()
+    const onBeforeInput = (event) => {
+      // 双门禁：条必须真的在跑（live），且落点确实在 composer 里
+      if (!liveBarRef.current) return
+      if (getOpen() !== true) return
+      if (!inComposer(event.target)) return
+      event.preventDefault()
+    }
+    const onCompositionEnd = () => {
+      if (!liveBarRef.current || getOpen() !== true) return
+      const wanted = wroteDraftRef.current
+      if (!wanted) return                // 没写过提示语就别碰草稿
+      setTimeout(() => {
+        try {
+          if (draftRef.current !== wanted) inputActions?.setDraft?.(wanted)
+        } catch {
+          /* ignore */
         }
-        const onCompositionEnd = () => {
-          if (!liveBarRef.current || getOpen() !== true) return
-          const wanted = wroteDraftRef.current
-          if (!wanted) return                // 没写过提示语就别碰草稿
-          setTimeout(() => {
-            try {
-              if (draftRef.current !== wanted) inputActions?.setDraft?.(wanted)
-            } catch {
-              /* ignore */
-            }
-          }, 0)
-        }
-        const onSendClick = (event) => {
-          if (!liveBarRef.current || getOpen() !== true) return
-          if (!isSendTrigger(event.target)) return
-          event.preventDefault()
-          event.stopPropagation()
-        }
-        window.addEventListener('beforeinput', onBeforeInput, true)
-        window.addEventListener('compositionend', onCompositionEnd, true)
-        window.addEventListener('click', onSendClick, true)
-        window.addEventListener('pointerdown', onSendClick, true)
-        return () => {
-          window.removeEventListener('beforeinput', onBeforeInput, true)
-          window.removeEventListener('compositionend', onCompositionEnd, true)
-          window.removeEventListener('click', onSendClick, true)
-          window.removeEventListener('pointerdown', onSendClick, true)
-        }
+      }, 0)
+    }
+    const onSendClick = (event) => {
+      if (!liveBarRef.current || getOpen() !== true) return
+      if (!isSendTrigger(event.target)) return
+      event.preventDefault()
+      event.stopPropagation()
+    }
+    window.addEventListener('beforeinput', onBeforeInput, true)
+    window.addEventListener('compositionend', onCompositionEnd, true)
+    window.addEventListener('click', onSendClick, true)
+    window.addEventListener('pointerdown', onSendClick, true)
+    return () => {
+      window.removeEventListener('beforeinput', onBeforeInput, true)
+      window.removeEventListener('compositionend', onCompositionEnd, true)
+      window.removeEventListener('click', onSendClick, true)
+      window.removeEventListener('pointerdown', onSendClick, true)
+    }
       }, [inputActions, isOpen])
 
       // 收起时顺手把可能残留的输入法属性擦掉（旧版本留下的坑）
       useEffect(() => {
-        if (isOpen) return
-        releaseStuckComposer()
+    if (isOpen) return
+    releaseStuckComposer()
       }, [isOpen])
 
       // 收起时只撤我们自己写进去的那一句中文，且只撤一次。
       // 注意：wrote 为空时必须直接返回。之前无条件清空，用户关掉跟打后每敲一个字
       // 都会被这里抹掉，表现是「输入框打不了字」；草稿共享，换输入框也一样。
       useEffect(() => {
-        if (isOpen) return
-        const wrote = wroteDraftRef.current
-        const clear = shouldClearDraft({ open: isOpen, draft, wrote })
-        wroteDraftRef.current = ''
-        if (!clear) return                     // 没写过 / 用户改过 → 一个字都不动
-        try {
-          inputActions?.setDraft?.('')
-        } catch {
-          /* ignore */
-        }
+    if (isOpen) return
+    const wrote = wroteDraftRef.current
+    const clear = shouldClearDraft({ open: isOpen, draft, wrote })
+    wroteDraftRef.current = ''
+    if (!clear) return                     // 没写过 / 用户改过 → 一个字都不动
+    try {
+      inputActions?.setDraft?.('')
+    } catch {
+      /* ignore */
+    }
       }, [draft, inputActions, isOpen])
 
       // 逃生热键：⌘/Ctrl + Alt + Q，强制关条、擦属性
       useEffect(() => {
-        const onPanic = (event) => {
-          if (!(event.metaKey || event.ctrlKey) || !event.altKey) return
-          if (String(event.key).toLowerCase() !== 'q') return
-          event.preventDefault()
-          event.stopPropagation()
-          setOpen(false)
-          releaseStuckComposer()
-          try {
-            if (wroteDraftRef.current) inputActions?.setDraft?.('')
-          } catch {
-            /* ignore */
-          }
-          wroteDraftRef.current = ''
-        }
-        window.addEventListener('keydown', onPanic, true)
-        return () => window.removeEventListener('keydown', onPanic, true)
+    const onPanic = (event) => {
+      if (!(event.metaKey || event.ctrlKey) || !event.altKey) return
+      if (String(event.key).toLowerCase() !== 'q') return
+      event.preventDefault()
+      event.stopPropagation()
+      setOpen(false)
+      releaseStuckComposer()
+      try {
+        if (wroteDraftRef.current) inputActions?.setDraft?.('')
+      } catch {
+        /* ignore */
+      }
+      wroteDraftRef.current = ''
+    }
+    window.addEventListener('keydown', onPanic, true)
+    return () => window.removeEventListener('keydown', onPanic, true)
       }, [inputActions])
 
       // Tab 快速启动：输入框为空、且跟打条没开时，按 Tab 打开
       useEffect(() => {
-        const onKeyDown = (event) => {
-          const target = event.target
-          const inComposer = target instanceof HTMLElement
-            && (target.isContentEditable
-              || target.closest(COMPOSER_EDITOR) !== null
-              || target.closest('[contenteditable="true"]') !== null)
-          const allow = shouldStartOnTab({
-            key: event.key,
-            open: getOpen(),
-            inComposer,
-            draft: draftRef.current,
-            ownDraft: wroteDraftRef.current,
-            modifier: event.metaKey || event.ctrlKey || event.altKey || event.shiftKey,
-          })
-          if (!allow) return
-          event.preventDefault()
-          event.stopPropagation()
-          setOpen(true)
-        }
-        window.addEventListener('keydown', onKeyDown, true)
-        return () => window.removeEventListener('keydown', onKeyDown, true)
+    const onKeyDown = (event) => {
+      const target = event.target
+      const inComposer = target instanceof HTMLElement
+        && (target.isContentEditable
+          || target.closest(COMPOSER_EDITOR) !== null
+          || target.closest('[contenteditable="true"]') !== null)
+      const allow = shouldStartOnTab({
+        key: event.key,
+        open: getOpen(),
+        inComposer,
+        draft: draftRef.current,
+        ownDraft: wroteDraftRef.current,
+        modifier: event.metaKey || event.ctrlKey || event.altKey || event.shiftKey,
+      })
+      if (!allow) return
+      event.preventDefault()
+      event.stopPropagation()
+      setOpen(true)
+    }
+    window.addEventListener('keydown', onKeyDown, true)
+    return () => window.removeEventListener('keydown', onKeyDown, true)
       }, [])
 
       // 捕获阶段的键盘路由：只有 focus 在 composer 里才接管
       useEffect(() => {
-        if (!isOpen) return undefined
-        const onKeyDown = (event) => {
-          const target = event.target
-          if (!(target instanceof Node)) return
-          const region = composerRegion()
-          // Esc 必须先于任何门禁生效：条卡住时这是唯一的逃生口
-          if (event.key === 'Escape') {
-            const near = (target instanceof HTMLElement
-              && (target.isContentEditable
-                || target.closest(COMPOSER_EDITOR) !== null
-                || target.closest('[contenteditable="true"]') !== null))
-              || (region && region.contains(target))
-            if (near) {
-              event.preventDefault()
-              event.stopPropagation()
-              setOpen(false)
-              releaseStuckComposer()
-              return
-            }
-          }
-          if (!liveBarRef.current) return
-          const inComposer = target instanceof HTMLElement
-            && (target.isContentEditable
-              || target.closest(COMPOSER_EDITOR) !== null
-              || target.closest('[contenteditable="true"]') !== null)
-          // 回车/制表符落在输入框就吞掉，防 Cmd+Enter 把中文发出去
-          if ((event.key === 'Enter' || event.key === 'Tab') && (inComposer || (region && region.contains(target)))) {
-            event.preventDefault()
-            event.stopPropagation()
-            return
-          }
-          if (event.key === 'Escape' && (inComposer || (region && region.contains(target)))) {
-            event.preventDefault()
-            setOpen(false)
-            return
-          }
-          if (!inComposer) return
-          const action = resolveHotkey({
-            key: event.key,
-            meta: event.metaKey,
-            ctrl: event.ctrlKey,
-            alt: event.altKey,
-            shift: event.shiftKey,
-          })
-          if (action) {
-            event.preventDefault()
-            event.stopPropagation()
-            if (action === 'prev') goPrev()
-            else if (action === 'skip') goSkip()
-            else if (action === 'loop') goLoop()
-            else if (action === 'pause') applyPaused(!pausedRef.current)
-            else if (action === 'close') {
-              if (typeof onClose === 'function') onClose()
-              else setOpen(false)
-            }
-            return
-          }
-          if (event.metaKey || event.ctrlKey || event.altKey) return
-          if (event.key === 'Backspace') {
-            event.preventDefault()
-            event.stopPropagation()
-            if (lockRef.current.locked) return
-            setState((prev) => ({ ...prev, typed: prev.typed.slice(0, -1), flash: false }))
-            return
-          }
-          if (event.key.length !== 1) return
+    if (!isOpen) return undefined
+    const onKeyDown = (event) => {
+      const target = event.target
+      if (!(target instanceof Node)) return
+      const region = composerRegion()
+      // Esc 必须先于任何门禁生效：条卡住时这是唯一的逃生口
+      if (event.key === 'Escape') {
+        const near = (target instanceof HTMLElement
+          && (target.isContentEditable
+            || target.closest(COMPOSER_EDITOR) !== null
+            || target.closest('[contenteditable="true"]') !== null))
+          || (region && region.contains(target))
+        if (near) {
           event.preventDefault()
           event.stopPropagation()
-          feed(event.key)
+          setOpen(false)
+          releaseStuckComposer()
+          return
         }
-        // 练习期间，输入框那一排的按钮点击一并吃掉（发送键、附件键等）
-        const onPointerDown = (event) => {
-          if (!liveBarRef.current) return
-          const target = event.target
-          if (!(target instanceof Element)) return
-          const region = composerRegion()
-          if (!region || !region.contains(target)) return
-          if (target.closest('[data-qat]') !== null) return
-          if (target.closest('button, [role="button"]') === null) return
-          event.preventDefault()
-          event.stopPropagation()
+      }
+      if (!liveBarRef.current) return
+      const inComposer = target instanceof HTMLElement
+        && (target.isContentEditable
+          || target.closest(COMPOSER_EDITOR) !== null
+          || target.closest('[contenteditable="true"]') !== null)
+      // 回车/制表符落在输入框就吞掉，防 Cmd+Enter 把中文发出去
+      if ((event.key === 'Enter' || event.key === 'Tab') && (inComposer || (region && region.contains(target)))) {
+        event.preventDefault()
+        event.stopPropagation()
+        return
+      }
+      if (event.key === 'Escape' && (inComposer || (region && region.contains(target)))) {
+        event.preventDefault()
+        setOpen(false)
+        return
+      }
+      if (!inComposer) return
+      const action = resolveHotkey({
+        key: event.key,
+        meta: event.metaKey,
+        ctrl: event.ctrlKey,
+        alt: event.altKey,
+        shift: event.shiftKey,
+      })
+      if (action) {
+        event.preventDefault()
+        event.stopPropagation()
+        if (action === 'prev') goPrev()
+        else if (action === 'skip') goSkip()
+        else if (action === 'loop') goLoop()
+        else if (action === 'pause') applyPaused(!pausedRef.current)
+        else if (action === 'close') {
+          if (typeof onClose === 'function') onClose()
+          else setOpen(false)
         }
-        window.addEventListener('keydown', onKeyDown, true)
-        window.addEventListener('pointerdown', onPointerDown, true)
-        return () => {
-          window.removeEventListener('keydown', onKeyDown, true)
-          window.removeEventListener('pointerdown', onPointerDown, true)
-        }
+        return
+      }
+      if (event.metaKey || event.ctrlKey || event.altKey) return
+      if (event.key === 'Backspace') {
+        event.preventDefault()
+        event.stopPropagation()
+        if (lockRef.current.locked) return
+        setState((prev) => ({ ...prev, typed: prev.typed.slice(0, -1), flash: false }))
+        return
+      }
+      if (event.key.length !== 1) return
+      event.preventDefault()
+      event.stopPropagation()
+      feed(event.key)
+    }
+    // 练习期间，输入框那一排的按钮点击一并吃掉（发送键、附件键等）
+    const onPointerDown = (event) => {
+      if (!liveBarRef.current) return
+      const target = event.target
+      if (!(target instanceof Element)) return
+      const region = composerRegion()
+      if (!region || !region.contains(target)) return
+      if (target.closest('[data-qat]') !== null) return
+      if (target.closest('button, [role="button"]') === null) return
+      event.preventDefault()
+      event.stopPropagation()
+    }
+    window.addEventListener('keydown', onKeyDown, true)
+    window.addEventListener('pointerdown', onPointerDown, true)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown, true)
+      window.removeEventListener('pointerdown', onPointerDown, true)
+    }
       }, [feed, isOpen])
 
       // composer 里只放这一个词的中文：既当提示，又当"清场"——
       // 打进去的字永远不会留在输入框里（按键已被拦），所以回车没有东西可发。
       useEffect(() => {
-        if (!isOpen) return
-        if (!inputActions || typeof inputActions.setDraft !== 'function') return
-        const desired = !done && meaning ? meaning : ''
-        if (draft === desired) return
-        // 没有词可提示时（词库空）别去动用户已经写下的草稿
-        if (!desired && draft && draft !== wroteDraftRef.current) return
-        wroteDraftRef.current = desired
-        try {
-          inputActions.setDraft(desired)
-        } catch {
-          /* 冻结态不允许改写草稿，忽略 */
-        }
+    if (!isOpen) return
+    if (!inputActions || typeof inputActions.setDraft !== 'function') return
+    const desired = !done && meaning ? meaning : ''
+    if (draft === desired) return
+    // 没有词可提示时（词库空）别去动用户已经写下的草稿
+    if (!desired && draft && draft !== wroteDraftRef.current) return
+    wroteDraftRef.current = desired
+    try {
+      inputActions.setDraft(desired)
+    } catch {
+      /* 冻结态不允许改写草稿，忽略 */
+    }
       }, [done, draft, inputActions, isOpen, meaning])
 
       const restart = useCallback(() => {
-        startedAt.current = Date.now()
-        lockRef.current = { locked: false, timer: null }
-        clockRef.current = { ms: 0, last: Date.now() }
-        // 开新一轮：实时速度的累计字符和采样一起归零
-        liveChars.current = 0
-        speedSamples.current = []
-        setLiveWpm(0)
-        // 重开一轮：上一轮排着的释义撤掉，同一个词可以重新读
-        meaningRef.current = ''
-        cancelMeaning()
-        setRound((value) => value + 1)
-        setState({ index: 0, typed: '', flash: false, hits: 0, retries: 0, wordWrong: 0, finishedAt: null })
+    startedAt.current = Date.now()
+    lockRef.current = { locked: false, timer: null }
+    clockRef.current = { ms: 0, last: Date.now() }
+    // 开新一轮：实时速度的累计字符和采样一起归零
+    liveChars.current = 0
+    speedSamples.current = []
+    setLiveWpm(0)
+    // 重开一轮：上一轮排着的释义撤掉，同一个词可以重新读
+    meaningRef.current = ''
+    cancelMeaning()
+    setRound((value) => value + 1)
+    setState({ index: 0, typed: '', flash: false, hits: 0, retries: 0, wordWrong: 0, finishedAt: null })
       }, [])
 
       liveBarRef.current = isOpen && total > 0 && Boolean(current)
@@ -5281,23 +5342,23 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
 
       // 词库还在加载 / 空词库：给一个可见的占位条，别看起来像「按了没反应」
       if (total === 0) {
-        return h('div', {
-          className: 'qat-bar',
-          'data-qat': '',
-          style: barWidth === null ? undefined : { width: `${barWidth}px`, marginInline: 'auto' },
-        },
-          h(Styles),
-          h('span', { className: 'qat-bar-center' },
-            h('span', { className: 'qat-bar-empty' }, t('loading')),
-          ),
-          h('span', {
-            ...pressable(() => setOpen(false)),
-            className: 'qat-icon qat-bar-close',
-            'data-act': 'close',
-            title: t('close'),
-            'aria-label': t('close'),
-          }, '×'),
-        )
+    return h('div', {
+      className: 'qat-bar',
+      'data-qat': '',
+      style: barWidth === null ? undefined : { width: `${barWidth}px`, marginInline: 'auto' },
+    },
+      h(Styles),
+      h('span', { className: 'qat-bar-center' },
+        h('span', { className: 'qat-bar-empty' }, t('loading')),
+      ),
+      h('span', {
+        ...pressable(() => setOpen(false)),
+        className: 'qat-icon qat-bar-close',
+        'data-act': 'close',
+        title: t('close'),
+        'aria-label': t('close'),
+      }, '×'),
+    )
       }
 
       // 位置按整本词库算：1 / 2607
@@ -5307,44 +5368,44 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const tip = tipState({ wrongCount: state.wordWrong, word: target, typed: state.typed })
 
       return h('div', {
-        className: 'qat-bar',
-        'aria-live': 'off',
-        'data-qat': '',
-        style: barWidth === null ? undefined : { width: `${barWidth}px`, marginInline: 'auto' },
+    className: 'qat-bar',
+    'aria-live': 'off',
+    'data-qat': '',
+    style: barWidth === null ? undefined : { width: `${barWidth}px`, marginInline: 'auto' },
       },
-        h(Styles),
-        // 进度与关闭都绝对定位在两侧，中间那块才是真正居中的
-        h('span', { className: 'qat-bar-count', title: t('dictTitle') }, `${position}/${total}`),
-        // 实时速度：贴在关闭按钮左边的次要点位，小字置灰，不和左侧进度抢位置
-        h('span', { className: 'qat-bar-speed' }, t('liveSpeed', { wpm: liveWpm }),
-          clockVisible('command', barMs) ? ` · ${clockText(barMs).text}` : ''),
-        h('span', { className: 'qat-bar-center' },
-          h('span', { className: 'qat-wordblock' },
-          h(WordLetters, {
-            text: target,
-            typed: state.typed,
-            masked,
-            // 条宽要扣掉左边进度、右边速度与关闭按钮，剩下的才是单词能用的宽度
-            ...wordStyleFor(target, Math.max(200, (barWidth ?? 640) - 120), { maxLines: 3, scale: settings.wordScale }),
-            long: longWord,
-            flash: state.flash,
-          }),
-            ipa
-              ? h('span', { className: 'qat-ipa' },
-                ipaLabel ? h('span', { className: 'qat-ipa-label' }, `${ipaLabel}: `) : null,
-                ipa)
-              // 假名不是音标：走自己的 class，别塞进 .qat-ipa（也不套方括号）
-              : barNotation ? h('span', { className: 'qat-bar-notation' }, barNotation) : null,
-            h(TipLine, { tip, t, className: 'qat-bar-tip' }),
-          ),
-        ),
-        h('span', {
-          ...pressable(() => setOpen(false)),
-          className: 'qat-icon qat-bar-close',
-          'data-act': 'close',
-          title: t('close'),
-          'aria-label': t('close'),
-        }, h(Icon, { name: 'close', size: 13 })),
+    h(Styles),
+    // 进度与关闭都绝对定位在两侧，中间那块才是真正居中的
+    h('span', { className: 'qat-bar-count', title: t('dictTitle') }, `${position}/${total}`),
+    // 实时速度：贴在关闭按钮左边的次要点位，小字置灰，不和左侧进度抢位置
+    h('span', { className: 'qat-bar-speed' }, t('liveSpeed', { wpm: liveWpm }),
+      clockVisible('command', barMs) ? ` · ${clockText(barMs).text}` : ''),
+    h('span', { className: 'qat-bar-center' },
+      h('span', { className: 'qat-wordblock' },
+      h(WordLetters, {
+        text: target,
+        typed: state.typed,
+        masked,
+        // 条宽要扣掉左边进度、右边速度与关闭按钮，剩下的才是单词能用的宽度
+        ...wordStyleFor(target, Math.max(200, (barWidth ?? 640) - 120), { maxLines: 3, scale: settings.wordScale }),
+        long: longWord,
+        flash: state.flash,
+      }),
+        ipa
+          ? h('span', { className: 'qat-ipa' },
+            ipaLabel ? h('span', { className: 'qat-ipa-label' }, `${ipaLabel}: `) : null,
+            ipa)
+          // 假名不是音标：走自己的 class，别塞进 .qat-ipa（也不套方括号）
+          : barNotation ? h('span', { className: 'qat-bar-notation' }, barNotation) : null,
+        h(TipLine, { tip, t, className: 'qat-bar-tip' }),
+      ),
+    ),
+    h('span', {
+      ...pressable(() => setOpen(false)),
+      className: 'qat-icon qat-bar-close',
+      'data-act': 'close',
+      title: t('close'),
+      'aria-label': t('close'),
+    }, h(Icon, { name: 'close', size: 13 })),
       )
     }
 
@@ -5355,14 +5416,14 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     function PanelGlyph({ size, active }) {
       const side = size ?? 20
       return h('svg', {
-        className: 'qat-glyph',
-        'data-active': active ? 'true' : 'false',
-        width: side,
-        height: side,
-        viewBox: '0 0 24 24',
-        'aria-hidden': 'true',
-        focusable: 'false',
-        fill: 'currentColor',
+    className: 'qat-glyph',
+    'data-active': active ? 'true' : 'false',
+    width: side,
+    height: side,
+    viewBox: '0 0 24 24',
+    'aria-hidden': 'true',
+    focusable: 'false',
+    fill: 'currentColor',
       }, GLYPH.d.map((d, index) => h('path', { key: index, d })))
     }
 
@@ -5374,12 +5435,12 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const badge = dictBadge(meta)
       const px = Number(size) === 20 ? 20 : 28
       return h('span', {
-        className: 'qat-badge',
-        'data-tone': badge.tone,
-        'data-size': String(px),
-        title: badge.title,
-        'aria-label': label || badge.title,
-        role: 'img',
+    className: 'qat-badge',
+    'data-tone': badge.tone,
+    'data-size': String(px),
+    title: badge.title,
+    'aria-label': label || badge.title,
+    role: 'img',
       }, h('span', { className: 'qat-badge-text' }, badge.text))
     }
 
@@ -5392,141 +5453,141 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const [flash, setFlash] = useState('')
 
       const submitImport = () => {
-        const words = parseCustomWords(draftText)
-        const id = saveCustomDict(draftName || `我的词 ${new Date().toISOString().slice(5, 10)}`, words)
-        if (!id) {
-          setFlash(t('customEmpty'))
-          return
-        }
-        setFlash(t('customSaved', { n: words.length }))
-        setImporting(false)
-        setDraftText('')
-        onImported?.(id)
+    const words = parseCustomWords(draftText)
+    const id = saveCustomDict(draftName || `我的词 ${new Date().toISOString().slice(5, 10)}`, words)
+    if (!id) {
+      setFlash(t('customEmpty'))
+      return
+    }
+    setFlash(t('customSaved', { n: words.length }))
+    setImporting(false)
+    setDraftText('')
+    onImported?.(id)
       }
 
       const dictButton = (item, active) => h('button', {
-        key: item.id,
-        type: 'button',
-        className: 'qat-dictrow',
-        'data-active': active ? 'true' : 'false',
-        onClick: () => onPick(item.id),
+    key: item.id,
+    type: 'button',
+    className: 'qat-dictrow',
+    'data-active': active ? 'true' : 'false',
+    onClick: () => onPick(item.id),
       },
-        h(DictBadge, { meta: item, size: 28, label: t('dictBadgeTitle', { name: item.name }) }),
-        h('span', { className: 'qat-dictname' }, item.name),
-        h('span', { className: 'qat-dictmeta' }, `${item.length} 词 · ${chapterCount(item)} 章`),
-        isCustomId(item.id)
-          ? h('span', {
-            ...pressable(() => downloadText(`${item.name}.txt`, serializeCustomDict(item.id, 'txt'))),
-            className: 'qat-icon',
-            'data-act': 'custom-export',
-            title: t('customExport'),
-            'aria-label': t('customExport'),
-          }, h(Icon, { name: 'download', size: 14 }))
-          : null,
+    h(DictBadge, { meta: item, size: 28, label: t('dictBadgeTitle', { name: item.name }) }),
+    h('span', { className: 'qat-dictname' }, item.name),
+    h('span', { className: 'qat-dictmeta' }, `${item.length} 词 · ${chapterCount(item)} 章`),
+    isCustomId(item.id)
+      ? h('span', {
+        ...pressable(() => downloadText(`${item.name}.txt`, serializeCustomDict(item.id, 'txt'))),
+        className: 'qat-icon',
+        'data-act': 'custom-export',
+        title: t('customExport'),
+        'aria-label': t('customExport'),
+      }, h(Icon, { name: 'download', size: 14 }))
+      : null,
       )
 
       return h('div', { className: 'qat-picker' },
-        h('div', { className: 'qat-picker-head' },
+    h('div', { className: 'qat-picker-head' },
+      h('input', {
+        className: 'qat-search',
+        value: query,
+        placeholder: t('searchDict'),
+        'aria-label': t('searchDict'),
+        onInput: (event) => onQuery(event.target.value),
+      }),
+      h('span', {
+        ...pressable(onClose),
+        className: 'qat-btn',
+      }, t('close')),
+    ),
+    h('div', { className: 'qat-chips' },
+      h('button', {
+        type: 'button',
+        className: 'qat-chip',
+        'data-active': category === '' ? 'true' : 'false',
+        onClick: () => onCategory(''),
+      }, t('allCategories')),
+      categories.map((group) => h('button', {
+        key: group.category,
+        type: 'button',
+        className: 'qat-chip',
+        'data-active': category === group.category ? 'true' : 'false',
+        onClick: () => onCategory(group.category),
+      }, `${group.category} ${group.dicts.length}`)),
+    ),
+    !query.trim() && !category && recent.length
+      ? h('div', { className: 'qat-dictgroup' },
+        h('div', { className: 'qat-dictgroup-title' }, t('recent')),
+        recent.map((item) => dictButton(item, item.id === dictId)),
+      )
+      : null,
+    h('div', { className: 'qat-dictgroup' },
+      h('div', { className: 'qat-dictgroup-title' }, query.trim() ? t('searchResult') : (category || t('allCategories'))),
+      h('div', { className: 'qat-dictscroll' }, list.map((item) => dictButton(item, item.id === dictId))),
+    ),
+    importing
+      ? h('div', { className: 'qat-import' },
+        h('input', {
+          className: 'qat-search',
+          value: draftName,
+          placeholder: t('customName'),
+          'aria-label': t('customName'),
+          onInput: (event) => setDraftName(event.target.value),
+        }),
+        h('textarea', {
+          className: 'qat-textarea',
+          value: draftText,
+          placeholder: t('customPlaceholder'),
+          'aria-label': t('customPlaceholder'),
+          rows: 5,
+          onInput: (event) => setDraftText(event.target.value),
+        }),
+        h('label', { className: 'qat-filepick' },
+          t('customFile'),
           h('input', {
-            className: 'qat-search',
-            value: query,
-            placeholder: t('searchDict'),
-            'aria-label': t('searchDict'),
-            onInput: (event) => onQuery(event.target.value),
+            type: 'file',
+            accept: '.txt,.csv,.json,text/plain,text/csv,application/json',
+            'data-act': 'custom-file',
+            onChange: (event) => {
+              const file = event?.target?.files?.[0]
+              if (!file) return
+              if (typeof file.text === 'function') {
+                file.text().then((raw) => {
+                  setDraftText(raw)
+                  if (!draftName) setDraftName(file.name.replace(/\.[^.]+$/, '').slice(0, 24))
+                  setFlash(t('customFileLoaded', { n: parseCustomFile(file.name, raw).length }))
+                })
+              }
+            },
           }),
+        ),
+        h('div', { className: 'qat-databtns' },
+          h('span', { ...pressable(submitImport), className: 'qat-btn', 'data-act': 'custom-save' }, t('customSave')),
           h('span', {
-            ...pressable(onClose),
+            ...pressable(() => {
+              setImporting(false)
+              setFlash('')
+            }),
             className: 'qat-btn',
-          }, t('close')),
+            'data-act': 'custom-cancel',
+          }, t('cancel')),
         ),
-        h('div', { className: 'qat-chips' },
-          h('button', {
-            type: 'button',
-            className: 'qat-chip',
-            'data-active': category === '' ? 'true' : 'false',
-            onClick: () => onCategory(''),
-          }, t('allCategories')),
-          categories.map((group) => h('button', {
-            key: group.category,
-            type: 'button',
-            className: 'qat-chip',
-            'data-active': category === group.category ? 'true' : 'false',
-            onClick: () => onCategory(group.category),
-          }, `${group.category} ${group.dicts.length}`)),
-        ),
-        !query.trim() && !category && recent.length
-          ? h('div', { className: 'qat-dictgroup' },
-            h('div', { className: 'qat-dictgroup-title' }, t('recent')),
-            recent.map((item) => dictButton(item, item.id === dictId)),
-          )
-          : null,
-        h('div', { className: 'qat-dictgroup' },
-          h('div', { className: 'qat-dictgroup-title' }, query.trim() ? t('searchResult') : (category || t('allCategories'))),
-          h('div', { className: 'qat-dictscroll' }, list.map((item) => dictButton(item, item.id === dictId))),
-        ),
-        importing
-          ? h('div', { className: 'qat-import' },
-            h('input', {
-              className: 'qat-search',
-              value: draftName,
-              placeholder: t('customName'),
-              'aria-label': t('customName'),
-              onInput: (event) => setDraftName(event.target.value),
-            }),
-            h('textarea', {
-              className: 'qat-textarea',
-              value: draftText,
-              placeholder: t('customPlaceholder'),
-              'aria-label': t('customPlaceholder'),
-              rows: 5,
-              onInput: (event) => setDraftText(event.target.value),
-            }),
-            h('label', { className: 'qat-filepick' },
-              t('customFile'),
-              h('input', {
-                type: 'file',
-                accept: '.txt,.csv,.json,text/plain,text/csv,application/json',
-                'data-act': 'custom-file',
-                onChange: (event) => {
-                  const file = event?.target?.files?.[0]
-                  if (!file) return
-                  if (typeof file.text === 'function') {
-                    file.text().then((raw) => {
-                      setDraftText(raw)
-                      if (!draftName) setDraftName(file.name.replace(/\.[^.]+$/, '').slice(0, 24))
-                      setFlash(t('customFileLoaded', { n: parseCustomFile(file.name, raw).length }))
-                    })
-                  }
-                },
-              }),
-            ),
-            h('div', { className: 'qat-databtns' },
-              h('span', { ...pressable(submitImport), className: 'qat-btn', 'data-act': 'custom-save' }, t('customSave')),
-              h('span', {
-                ...pressable(() => {
-                  setImporting(false)
-                  setFlash('')
-                }),
-                className: 'qat-btn',
-                'data-act': 'custom-cancel',
-              }, t('cancel')),
-            ),
-          )
-          : h('div', { className: 'qat-databtns qat-importopen' },
-            h('span', { ...pressable(() => setImporting(true)), className: 'qat-btn', 'data-act': 'custom-new' }, t('customNew')),
-          ),
-        flash ? h('div', { className: 'qat-sethint', 'data-flash': 'true' }, flash) : null,
+      )
+      : h('div', { className: 'qat-databtns qat-importopen' },
+        h('span', { ...pressable(() => setImporting(true)), className: 'qat-btn', 'data-act': 'custom-new' }, t('customNew')),
+      ),
+    flash ? h('div', { className: 'qat-sethint', 'data-flash': 'true' }, flash) : null,
       )
     }
 
     /** 设置页里的一行开关 */
     function SettingRow({ t, label, hint, control }) {
       return h('div', { className: 'qat-setrow' },
-        h('div', { className: 'qat-settext' },
-          h('div', { className: 'qat-setlabel' }, label),
-          hint ? h('div', { className: 'qat-sethint' }, hint) : null,
-        ),
-        h('div', { className: 'qat-setcontrol' }, control),
+    h('div', { className: 'qat-settext' },
+      h('div', { className: 'qat-setlabel' }, label),
+      hint ? h('div', { className: 'qat-sethint' }, hint) : null,
+    ),
+    h('div', { className: 'qat-setcontrol' }, control),
       )
     }
 
@@ -5538,221 +5599,221 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const fileRef = useRef(null)
 
       const say = (message) => {
-        setFlash(message)
-        setTimeout(() => setFlash(''), 2600)
+    setFlash(message)
+    setTimeout(() => setFlash(''), 2600)
       }
 
       const onExport = () => {
-        exportBackup().then((text) => {
-          try {
-            const blob = new Blob([text], { type: 'application/json' })
-            const url = URL.createObjectURL(blob)
-            const link = document.createElement('a')
-            link.href = url
-            link.download = `qwerty-autotype-backup-${new Date().toISOString().slice(0, 10)}.json`
-            document.body.appendChild(link)
-            link.click()
-            link.remove()
-            setTimeout(() => URL.revokeObjectURL(url), 1000)
-            say(t('backupExported'))
-          } catch {
-            say(t('backupFailed'))
-          }
-        })
+    exportBackup().then((text) => {
+      try {
+        const blob = new Blob([text], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `qwerty-autotype-backup-${new Date().toISOString().slice(0, 10)}.json`
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        setTimeout(() => URL.revokeObjectURL(url), 1000)
+        say(t('backupExported'))
+      } catch {
+        say(t('backupFailed'))
+      }
+    })
       }
 
       const onImportFile = (event) => {
-        const file = event?.target?.files?.[0]
-        if (!file || typeof file.text !== 'function') return
-        file.text().then((text) => {
-          let parsed
-          try {
-            parsed = parseBackup(text)
-          } catch (error) {
-            say(`${t('backupBadFile')} (${error.message})`)
-            return
-          }
-          importData(parsed).then((result) => {
-            for (const [key, value] of Object.entries(parsed.settings || {})) setSetting(key, value)
-            if (parsed.mastered?.length) writeMastered(parsed.mastered)
-            if (parsed.customDicts && Object.keys(parsed.customDicts).length) writeCustomDicts(parsed.customDicts)
-            say(t('backupImported', { n: result.restored }))
-          })
-        })
+    const file = event?.target?.files?.[0]
+    if (!file || typeof file.text !== 'function') return
+    file.text().then((text) => {
+      let parsed
+      try {
+        parsed = parseBackup(text)
+      } catch (error) {
+        say(`${t('backupBadFile')} (${error.message})`)
+        return
+      }
+      importData(parsed).then((result) => {
+        for (const [key, value] of Object.entries(parsed.settings || {})) setSetting(key, value)
+        if (parsed.mastered?.length) writeMastered(parsed.mastered)
+        if (parsed.customDicts && Object.keys(parsed.customDicts).length) writeCustomDicts(parsed.customDicts)
+        say(t('backupImported', { n: result.restored }))
+      })
+    })
       }
 
       const onClear = () => say(t('clearConfirm'))
 
       const [cache, setCache] = useState(null)
       const refreshCache = () => {
-        cacheStats().then((stats) => setCache(stats)).catch(() => setCache({ count: 0, bytes: 0 }))
+    cacheStats().then((stats) => setCache(stats)).catch(() => setCache({ count: 0, bytes: 0 }))
       }
       useEffect(() => {
-        refreshCache()
+    refreshCache()
       }, [])
       const toggle = (key) => h('span', {
-        role: 'switch',
-        tabIndex: 0,
-        'aria-checked': settings[key] ? 'true' : 'false',
-        className: 'qat-switch',
-        'data-on': settings[key] ? 'true' : 'false',
-        'data-setting': key,
-        onClick: () => setSetting(key, !settings[key]),
+    role: 'switch',
+    tabIndex: 0,
+    'aria-checked': settings[key] ? 'true' : 'false',
+    className: 'qat-switch',
+    'data-on': settings[key] ? 'true' : 'false',
+    'data-setting': key,
+    onClick: () => setSetting(key, !settings[key]),
       }, settings[key] ? '开' : '关')
       // 档位下拉：wordScale 存字符串，倍速/音量存数字
       const pick = (key, options) => h('select', {
-        className: 'qat-select',
-        value: String(settings[key]),
-        'data-setting': key,
-        onChange: (event) => setSetting(key, key === 'wordScale' ? event.target.value : Number(event.target.value)),
+    className: 'qat-select',
+    value: String(settings[key]),
+    'data-setting': key,
+    onChange: (event) => setSetting(key, key === 'wordScale' ? event.target.value : Number(event.target.value)),
       }, options.map(([value, label]) => h('option', { key: String(value), value: String(value) }, label)))
 
       return h('div', { className: 'qat-settings' },
-        h('div', { className: 'qat-settings-title' }, t('settingsTitle')),
-        h(SettingRow, {
-          t,
-          label: t('settingCaseSensitive'),
-          hint: t('settingCaseSensitiveHint'),
-          control: toggle('caseSensitive'),
+    h('div', { className: 'qat-settings-title' }, t('settingsTitle')),
+    h(SettingRow, {
+      t,
+      label: t('settingCaseSensitive'),
+      hint: t('settingCaseSensitiveHint'),
+      control: toggle('caseSensitive'),
+    }),
+    h(SettingRow, {
+      t,
+      label: t('settingIgnorePunct'),
+      hint: t('settingIgnorePunctHint'),
+      control: toggle('ignorePunct'),
+    }),
+    h(SettingRow, {
+      t,
+      label: t('settingVoice'),
+      hint: t('settingVoiceHint'),
+      control: toggle('voice'),
+    }),
+    h(SettingRow, {
+      t,
+      label: t('settingReadMeaning'),
+      hint: t('settingReadMeaningHint'),
+      control: toggle('readMeaning'),
+    }),
+    h(SettingRow, {
+      t,
+      label: t('settingAccent'),
+      hint: t('settingAccentHint'),
+      control: h('select', {
+        className: 'qat-select',
+        value: settings.accent,
+        'data-setting': 'accent',
+        onChange: (event) => setSetting('accent', event.target.value),
+      }, ACCENTS.map((accent) => h('option', { key: accent, value: accent }, t(`accent_${accent}`)))),
+    }),
+    h(SettingRow, {
+      t,
+      label: t('settingVoiceRate'),
+      control: pick('voiceRate', VOICE_RATES.map((rate) => [rate, `${rate}×`])),
+    }),
+    h(SettingRow, {
+      t,
+      label: t('settingSound'),
+      hint: t('settingSoundHint'),
+      control: toggle('sound'),
+    }),
+    h(SettingRow, {
+      t,
+      label: t('settingClickVolume'),
+      control: pick('clickVolume', CLICK_VOLUMES.map((volume) => [volume, `${volume}%`])),
+    }),
+    h(SettingRow, {
+      t,
+      label: t('settingAutoNext'),
+      hint: t('settingAutoNextHint'),
+      control: toggle('autoNext'),
+    }),
+    h(SettingRow, {
+      t,
+      label: t('settingFinger'),
+      hint: t('settingFingerHint'),
+      control: toggle('showFinger'),
+    }),
+    h(SettingRow, {
+      t,
+      label: t('settingWordScale'),
+      control: pick('wordScale', WORD_SCALES.map((scale) => [scale, t(`wordScale_${scale}`)])),
+    }),
+    h(SettingRow, {
+      t,
+      label: t('settingDictation'),
+      hint: t('settingDictationHint'),
+      control: h('select', {
+        className: 'qat-select',
+        value: settings.dictation,
+        onChange: (event) => setSetting('dictation', event.target.value),
+      }, DICTATION_MODES.map((mode) => h('option', { key: mode, value: mode }, t(`dictation_${mode}`)))),
+    }),
+    h('div', { className: 'qat-settings-title qat-datablock' }, t('hotkeysTitle')),
+    h('div', { className: 'qat-sethint qat-hotkeys' }, t('hotkeysList')),
+    h(SettingRow, {
+      t,
+      label: t('cacheLabel'),
+      hint: cache
+        ? t('cacheHint', { n: cache.count, size: `${(cache.bytes / 1048576).toFixed(1)} MB` })
+        : t('cacheLoading'),
+      control: h('span', {
+        ...pressable(() => {
+          clearDictCache().then(() => {
+            refreshCache()
+            say(t('cacheCleared'))
+          })
         }),
-        h(SettingRow, {
-          t,
-          label: t('settingIgnorePunct'),
-          hint: t('settingIgnorePunctHint'),
-          control: toggle('ignorePunct'),
-        }),
-        h(SettingRow, {
-          t,
-          label: t('settingVoice'),
-          hint: t('settingVoiceHint'),
-          control: toggle('voice'),
-        }),
-        h(SettingRow, {
-          t,
-          label: t('settingReadMeaning'),
-          hint: t('settingReadMeaningHint'),
-          control: toggle('readMeaning'),
-        }),
-        h(SettingRow, {
-          t,
-          label: t('settingAccent'),
-          hint: t('settingAccentHint'),
-          control: h('select', {
-            className: 'qat-select',
-            value: settings.accent,
-            'data-setting': 'accent',
-            onChange: (event) => setSetting('accent', event.target.value),
-          }, ACCENTS.map((accent) => h('option', { key: accent, value: accent }, t(`accent_${accent}`)))),
-        }),
-        h(SettingRow, {
-          t,
-          label: t('settingVoiceRate'),
-          control: pick('voiceRate', VOICE_RATES.map((rate) => [rate, `${rate}×`])),
-        }),
-        h(SettingRow, {
-          t,
-          label: t('settingSound'),
-          hint: t('settingSoundHint'),
-          control: toggle('sound'),
-        }),
-        h(SettingRow, {
-          t,
-          label: t('settingClickVolume'),
-          control: pick('clickVolume', CLICK_VOLUMES.map((volume) => [volume, `${volume}%`])),
-        }),
-        h(SettingRow, {
-          t,
-          label: t('settingAutoNext'),
-          hint: t('settingAutoNextHint'),
-          control: toggle('autoNext'),
-        }),
-        h(SettingRow, {
-          t,
-          label: t('settingFinger'),
-          hint: t('settingFingerHint'),
-          control: toggle('showFinger'),
-        }),
-        h(SettingRow, {
-          t,
-          label: t('settingWordScale'),
-          control: pick('wordScale', WORD_SCALES.map((scale) => [scale, t(`wordScale_${scale}`)])),
-        }),
-        h(SettingRow, {
-          t,
-          label: t('settingDictation'),
-          hint: t('settingDictationHint'),
-          control: h('select', {
-            className: 'qat-select',
-            value: settings.dictation,
-            onChange: (event) => setSetting('dictation', event.target.value),
-          }, DICTATION_MODES.map((mode) => h('option', { key: mode, value: mode }, t(`dictation_${mode}`)))),
-        }),
-        h('div', { className: 'qat-settings-title qat-datablock' }, t('hotkeysTitle')),
-        h('div', { className: 'qat-sethint qat-hotkeys' }, t('hotkeysList')),
-        h(SettingRow, {
-          t,
-          label: t('cacheLabel'),
-          hint: cache
-            ? t('cacheHint', { n: cache.count, size: `${(cache.bytes / 1048576).toFixed(1)} MB` })
-            : t('cacheLoading'),
-          control: h('span', {
-            ...pressable(() => {
-              clearDictCache().then(() => {
-                refreshCache()
-                say(t('cacheCleared'))
-              })
-            }),
-            className: 'qat-btn',
-            'data-act': 'cache-clear',
-          }, t('cacheClear')),
-        }),
-        h('div', { className: 'qat-settings-title qat-datablock' }, t('dataTitle')),
-        h('div', { className: 'qat-databtns' },
-          h('span', {
-            role: 'button',
-            tabIndex: 0,
-            className: 'qat-btn',
-            'data-act': 'export',
-            onClick: onExport,
-            onKeyDown: (event) => {
-              if (event.key === 'Enter' || event.key === ' ') onExport()
-            },
-          }, t('backupExport')),
-          h('span', {
-            role: 'button',
-            tabIndex: 0,
-            className: 'qat-btn',
-            'data-act': 'import',
-            onClick: () => fileRef.current?.click?.(),
-            onKeyDown: (event) => {
-              if (event.key === 'Enter' || event.key === ' ') fileRef.current?.click?.()
-            },
-          }, t('backupImport')),
-          h('input', {
-            ref: fileRef,
-            type: 'file',
-            accept: 'application/json,.json',
-            style: { display: 'none' },
-            onChange: onImportFile,
-          }),
-          h('span', {
-            role: 'button',
-            tabIndex: 0,
-            className: 'qat-btn',
-            'data-act': 'clear',
-            onClick: () => {
-              if (flash === t('clearConfirm')) {
-                clearData().then(() => say(t('clearedDone')))
-                return
-              }
-              onClear()
-            },
-            onKeyDown: (event) => {
-              if (event.key === 'Enter' || event.key === ' ') onClear()
-            },
-          }, t('backupClear')),
-        ),
-        flash ? h('div', { className: 'qat-sethint', 'data-flash': 'true' }, flash) : null,
+        className: 'qat-btn',
+        'data-act': 'cache-clear',
+      }, t('cacheClear')),
+    }),
+    h('div', { className: 'qat-settings-title qat-datablock' }, t('dataTitle')),
+    h('div', { className: 'qat-databtns' },
+      h('span', {
+        role: 'button',
+        tabIndex: 0,
+        className: 'qat-btn',
+        'data-act': 'export',
+        onClick: onExport,
+        onKeyDown: (event) => {
+          if (event.key === 'Enter' || event.key === ' ') onExport()
+        },
+      }, t('backupExport')),
+      h('span', {
+        role: 'button',
+        tabIndex: 0,
+        className: 'qat-btn',
+        'data-act': 'import',
+        onClick: () => fileRef.current?.click?.(),
+        onKeyDown: (event) => {
+          if (event.key === 'Enter' || event.key === ' ') fileRef.current?.click?.()
+        },
+      }, t('backupImport')),
+      h('input', {
+        ref: fileRef,
+        type: 'file',
+        accept: 'application/json,.json',
+        style: { display: 'none' },
+        onChange: onImportFile,
+      }),
+      h('span', {
+        role: 'button',
+        tabIndex: 0,
+        className: 'qat-btn',
+        'data-act': 'clear',
+        onClick: () => {
+          if (flash === t('clearConfirm')) {
+            clearData().then(() => say(t('clearedDone')))
+            return
+          }
+          onClear()
+        },
+        onKeyDown: (event) => {
+          if (event.key === 'Enter' || event.key === ' ') onClear()
+        },
+      }, t('backupClear')),
+    ),
+    flash ? h('div', { className: 'qat-sethint', 'data-flash': 'true' }, flash) : null,
       )
     }
 
@@ -5764,116 +5825,116 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     function WordListPanel({ t, rows, hint, onPick, onClose }) {
       const list = Array.isArray(rows) ? rows : []
       return h('div', { className: 'qat-wordlist' },
-        h('div', { className: 'qat-wordlist-head' },
-          h('span', { className: 'qat-picker-title' }, t('wordListTitle', { n: list.length })),
-          hint ? h('span', { className: 'qat-panel-sub' }, hint) : null,
-          h('span', { className: 'qat-grow' }),
-          h('button', {
-            type: 'button',
-            className: 'qat-iconbtn',
-            title: t('close'),
-            'aria-label': t('close'),
-            'data-act': 'wordlist-close',
-            onClick: () => onClose?.(),
-          }, h(Icon, { name: 'close', size: 14 })),
-        ),
-        list.length === 0
-          ? h('div', { className: 'qat-loading' }, t('wordListEmpty'))
-          : h('div', { className: 'qat-wordlist-list' }, list.map((row) => h('button', {
-            key: `${row.index}:${row.word}`,
-            type: 'button',
-            className: 'qat-wordlist-row',
-            'data-state': row.state,
-            'data-no': String(row.index + 1),
-            'data-active': row.state === 'current' ? 'true' : 'false',
-            title: `${row.word}${row.zh ? ` · ${row.zh}` : ''}`,
-            'aria-label': `${row.index + 1} ${row.word}`,
-            onClick: () => onPick?.(row),
-          },
-            h('span', { className: 'qat-wordlist-no' }, String(row.index + 1)),
-            h('span', { className: 'qat-wordlist-word' }, row.word),
-            row.ipa ? h('span', { className: 'qat-wordlist-ipa' }, row.ipa) : null,
-            h('span', { className: 'qat-wordlist-zh' }, row.zh || ''),
-            h('span', { className: 'qat-wordlist-state', 'data-state': row.state },
-              t(WORDLIST_STATE_LABEL[row.state] ?? WORDLIST_STATE_LABEL.idle)),
-          ))),
+    h('div', { className: 'qat-wordlist-head' },
+      h('span', { className: 'qat-picker-title' }, t('wordListTitle', { n: list.length })),
+      hint ? h('span', { className: 'qat-panel-sub' }, hint) : null,
+      h('span', { className: 'qat-grow' }),
+      h('button', {
+        type: 'button',
+        className: 'qat-iconbtn',
+        title: t('close'),
+        'aria-label': t('close'),
+        'data-act': 'wordlist-close',
+        onClick: () => onClose?.(),
+      }, h(Icon, { name: 'close', size: 14 })),
+    ),
+    list.length === 0
+      ? h('div', { className: 'qat-loading' }, t('wordListEmpty'))
+      : h('div', { className: 'qat-wordlist-list' }, list.map((row) => h('button', {
+        key: `${row.index}:${row.word}`,
+        type: 'button',
+        className: 'qat-wordlist-row',
+        'data-state': row.state,
+        'data-no': String(row.index + 1),
+        'data-active': row.state === 'current' ? 'true' : 'false',
+        title: `${row.word}${row.zh ? ` · ${row.zh}` : ''}`,
+        'aria-label': `${row.index + 1} ${row.word}`,
+        onClick: () => onPick?.(row),
+      },
+        h('span', { className: 'qat-wordlist-no' }, String(row.index + 1)),
+        h('span', { className: 'qat-wordlist-word' }, row.word),
+        row.ipa ? h('span', { className: 'qat-wordlist-ipa' }, row.ipa) : null,
+        h('span', { className: 'qat-wordlist-zh' }, row.zh || ''),
+        h('span', { className: 'qat-wordlist-state', 'data-state': row.state },
+          t(WORDLIST_STATE_LABEL[row.state] ?? WORDLIST_STATE_LABEL.idle)),
+      ))),
       )
     }
 
     function WrongBookPanel({ t, rows, query, sort, dicts, mastered, onQuery, onSort, onMastered, onReview, onClear, onClose }) {
       return h('div', { className: 'qat-picker' },
-        h('div', { className: 'qat-picker-head' },
-          h('span', { className: 'qat-picker-title' }, t('wrongTitle', { n: rows.length })),
-          h('input', {
-            className: 'qat-search qat-wrongsearch',
-            type: 'text',
-            value: query ?? '',
-            placeholder: t('wrongSearch'),
-            onChange: (event) => onQuery?.(event.target.value),
-          }),
-          dicts && dicts.length > 1
-            ? h('span', { className: 'qat-chips' }, [
-              h('span', {
-                key: '__all',
-                ...pressable(() => onSort?.({ dictId: '' })),
-                className: 'qat-chip',
-                'data-active': !dicts.find((item) => item.active) ? 'true' : 'false',
-              }, t('allDicts')),
-              ...dicts.map((item) => h('span', {
-                key: item.id,
-                ...pressable(() => onSort?.({ dictId: item.active ? '' : item.id })),
-                className: 'qat-chip',
-                'data-active': item.active ? 'true' : 'false',
-              }, `${item.name} ${item.count}`)),
-            ])
-            : null,
+    h('div', { className: 'qat-picker-head' },
+      h('span', { className: 'qat-picker-title' }, t('wrongTitle', { n: rows.length })),
+      h('input', {
+        className: 'qat-search qat-wrongsearch',
+        type: 'text',
+        value: query ?? '',
+        placeholder: t('wrongSearch'),
+        onChange: (event) => onQuery?.(event.target.value),
+      }),
+      dicts && dicts.length > 1
+        ? h('span', { className: 'qat-chips' }, [
           h('span', {
-            ...pressable(() => onSort?.({ sort: sort === 'recent' ? 'count' : 'recent' })),
-            className: 'qat-btn',
-            'data-act': 'sort',
-          }, sort === 'recent' ? t('sortRecent') : t('sortCount')),
-          h('span', { className: 'qat-grow' }),
-          rows.length
-            ? h('span', {
-              ...pressable(() => onReview(rows.slice(0, 20).map((row) => row.word))),
-              className: 'qat-btn',
-            }, t('reviewTop'))
-            : null,
-          rows.length
-            ? h('span', {
-              ...pressable(onClear),
-              className: 'qat-btn',
-            }, t('clearWrong'))
-            : null,
+            key: '__all',
+            ...pressable(() => onSort?.({ dictId: '' })),
+            className: 'qat-chip',
+            'data-active': !dicts.find((item) => item.active) ? 'true' : 'false',
+          }, t('allDicts')),
+          ...dicts.map((item) => h('span', {
+            key: item.id,
+            ...pressable(() => onSort?.({ dictId: item.active ? '' : item.id })),
+            className: 'qat-chip',
+            'data-active': item.active ? 'true' : 'false',
+          }, `${item.name} ${item.count}`)),
+        ])
+        : null,
+      h('span', {
+        ...pressable(() => onSort?.({ sort: sort === 'recent' ? 'count' : 'recent' })),
+        className: 'qat-btn',
+        'data-act': 'sort',
+      }, sort === 'recent' ? t('sortRecent') : t('sortCount')),
+      h('span', { className: 'qat-grow' }),
+      rows.length
+        ? h('span', {
+          ...pressable(() => onReview(rows.slice(0, 20).map((row) => row.word))),
+          className: 'qat-btn',
+        }, t('reviewTop'))
+        : null,
+      rows.length
+        ? h('span', {
+          ...pressable(onClear),
+          className: 'qat-btn',
+        }, t('clearWrong'))
+        : null,
+      h('span', {
+        ...pressable(onClose),
+        className: 'qat-btn',
+      }, t('close')),
+    ),
+    rows.length === 0
+      ? h('div', { className: 'qat-loading' }, t('wrongEmpty'))
+      : h('div', { className: 'qat-dictscroll' }, rows.map((row) => {
+        const meta = lookup(row.word)
+        const phone = phoneticOf(meta, getSettings().accent)
+        return h('div', {
+          key: `${row.dictId}:${row.word}`,
+          className: 'qat-wrongrow',
+          title: [row.word, phone.text, meta?.zh].filter(Boolean).join(' '),
+        },
+          h('span', { className: 'qat-wrongword' }, row.word),
+          phone.text ? h('span', { className: 'qat-wrongipa' }, phone.text) : null,
+          h('span', { className: 'qat-wrongzh' }, meta?.zh ?? ''),
+          h('span', { className: 'qat-wrongcount' }, `×${row.wrongCount}`),
           h('span', {
-            ...pressable(onClose),
-            className: 'qat-btn',
-          }, t('close')),
-        ),
-        rows.length === 0
-          ? h('div', { className: 'qat-loading' }, t('wrongEmpty'))
-          : h('div', { className: 'qat-dictscroll' }, rows.map((row) => {
-            const meta = lookup(row.word)
-            const phone = phoneticOf(meta, getSettings().accent)
-            return h('div', {
-              key: `${row.dictId}:${row.word}`,
-              className: 'qat-wrongrow',
-              title: [row.word, phone.text, meta?.zh].filter(Boolean).join(' '),
-            },
-              h('span', { className: 'qat-wrongword' }, row.word),
-              phone.text ? h('span', { className: 'qat-wrongipa' }, phone.text) : null,
-              h('span', { className: 'qat-wrongzh' }, meta?.zh ?? ''),
-              h('span', { className: 'qat-wrongcount' }, `×${row.wrongCount}`),
-              h('span', {
-                ...pressable(() => onMastered?.(row)),
-                className: 'qat-icon',
-                'data-act': 'mastered',
-                'data-active': (mastered || []).includes(`${row.dictId || ''}:${row.word}`) ? 'true' : 'false',
-                title: t('markMastered'),
-                'aria-label': t('markMastered'),
-              }, h(Icon, { name: 'check', size: 13 })),
-            )
-          })),
+            ...pressable(() => onMastered?.(row)),
+            className: 'qat-icon',
+            'data-act': 'mastered',
+            'data-active': (mastered || []).includes(`${row.dictId || ''}:${row.word}`) ? 'true' : 'false',
+            title: t('markMastered'),
+            'aria-label': t('markMastered'),
+          }, h(Icon, { name: 'check', size: 13 })),
+        )
+      })),
       )
     }
 
@@ -5882,51 +5943,52 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
      * 键盘两视图（热力 / 排行）用本地 state 切；
      * defaultView 只给测试和「记住上次视图」留口子，正常入口不传。
      */
-    function StatsPanel({ t, days, weeks, letters, summary, onClose, defaultView = 'heat' }) {
+    function StatsPanel({ t, days, weeks, letters, summary, records = [], onClose, defaultView = 'heat' }) {
       const max = Math.max(1, ...days.map((day) => day.words))
       const [kbdView, setKbdView] = useState(defaultView)
       return h('div', { className: 'qat-picker' },
-        h('div', { className: 'qat-picker-head' },
-          h('span', { className: 'qat-picker-title' }, t('statsTitle')),
-          h('span', { className: 'qat-grow' }),
-          h('span', {
-            ...pressable(onClose),
-            className: 'qat-btn',
-          }, t('close')),
-        ),
-        h('div', { className: 'qat-stats-nums' },
-          h('span', null, t('statWords', { n: summary.words })),
-          h('span', null, t('statChapters', { n: summary.chapters })),
-          h('span', null, t('accuracyShort', { n: summary.accuracy })),
-          h('span', null, `WPM ${summary.wpm}`),
-        ),
-        letters && letters.length
-          ? h('div', null,
-            h('div', { className: 'qat-letters' },
-              h('span', { className: 'qat-letters-label' }, t('lettersTitle')),
-              ...letters.map((item) => h('span', {
-                key: item.letter,
-                className: 'qat-chip qat-letterchip',
-              }, `${item.letter} ×${item.count}`))),
-            h(KeyboardHeat, { letters, t, view: kbdView, onView: setKbdView }))
-          : null,
-        h('div', { className: 'qat-heat' }, (weeks || []).map((col, index) =>
-          h('div', { key: index, className: 'qat-heatcol' }, col.days.map((day) =>
-            h('div', {
-              key: day.day,
-              className: 'qat-heatcell',
-              'data-level': day.future ? 'future' : String(day.level),
-              title: `${day.day} · ${t('statWords', { n: day.words })}`,
-            }))))),
-        h('div', { className: 'qat-bars' }, days.map((day) =>
-          h('div', { key: day.day, className: 'qat-barcol', title: `${day.day} · ${t('statWords', { n: day.words })}` },
-            h('div', {
-              className: 'qat-barfill',
-              'data-empty': day.words === 0 ? 'true' : 'false',
-              style: { height: `${Math.round((day.words / max) * 100)}%` },
-            }),
-            h('span', { className: 'qat-barlabel' }, day.day.slice(5)),
-          ))),
+    h('div', { className: 'qat-picker-head' },
+      h('span', { className: 'qat-picker-title' }, t('statsTitle')),
+      h('span', { className: 'qat-grow' }),
+      h('span', {
+        ...pressable(onClose),
+        className: 'qat-btn',
+      }, t('close')),
+    ),
+    h('div', { className: 'qat-stats-nums' },
+      h('span', null, t('statWords', { n: summary.words })),
+      h('span', null, t('statChapters', { n: summary.chapters })),
+      h('span', null, t('accuracyShort', { n: summary.accuracy })),
+      h('span', null, `WPM ${summary.wpm}`),
+    ),
+    letters && letters.length
+      ? h('div', null,
+        h('div', { className: 'qat-letters' },
+          h('span', { className: 'qat-letters-label' }, t('lettersTitle')),
+          ...letters.map((item) => h('span', {
+            key: item.letter,
+            className: 'qat-chip qat-letterchip',
+          }, `${item.letter} ×${item.count}`))),
+        h(KeyboardHeat, { letters, t, view: kbdView, onView: setKbdView }))
+      : null,
+    h('div', { className: 'qat-heat' }, (weeks || []).map((col, index) =>
+      h('div', { key: index, className: 'qat-heatcol' }, col.days.map((day) =>
+        h('div', {
+          key: day.day,
+          className: 'qat-heatcell',
+          'data-level': day.future ? 'future' : String(day.level),
+          title: `${day.day} · ${t('statWords', { n: day.words })}`,
+        }))))),
+    TrendChart({ t, trend: trendSeries(records) }),
+    h('div', { className: 'qat-bars' }, days.map((day) =>
+      h('div', { key: day.day, className: 'qat-barcol', title: `${day.day} · ${t('statWords', { n: day.words })}` },
+        h('div', {
+          className: 'qat-barfill',
+          'data-empty': day.words === 0 ? 'true' : 'false',
+          style: { height: `${Math.round((day.words / max) * 100)}%` },
+        }),
+        h('span', { className: 'qat-barlabel' }, day.day.slice(5)),
+      ))),
       )
     }
 
@@ -5934,9 +5996,9 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const t = useT(ctx)
       const [dictId, setDictId] = useState(readDictId)
       const [chapter, setChapter] = useState(() => {
-        const id = readDictId()
-        const dict = builtinById(id)
-        return resumeChapter(readChapterPos(), id, dict ? chapterCount(dict) : 0)
+    const id = readDictId()
+    const dict = builtinById(id)
+    return resumeChapter(readChapterPos(), id, dict ? chapterCount(dict) : 0)
       })
       const [round, setRound] = useState(0)
       // 内置词库可直接同步出词条 → 首帧就能练；其余词库先显示加载态
@@ -5971,58 +6033,59 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
 
       const settings = useSyncExternalStore(subscribeSettings, getSettings, getSettings)
       const judgeOptions = useMemo(
-        // accent 一起带上：面板里的音标要跟着口音设置重渲染
-        () => ({ caseSensitive: settings.caseSensitive, ignorePunct: settings.ignorePunct, accent: settings.accent }),
-        [settings.caseSensitive, settings.ignorePunct, settings.accent],
+    // accent 一起带上：面板里的音标要跟着口音设置重渲染
+    () => ({ caseSensitive: settings.caseSensitive, ignorePunct: settings.ignorePunct, accent: settings.accent }),
+    [settings.caseSensitive, settings.ignorePunct, settings.accent],
       )
       const meta = dictionaryById(dictId)
       const chapterTotal = chapterCount(meta)
 
       // 词库词条：内存 → IndexedDB → 网络；拉不到才退回内置采样
       useEffect(() => {
-        let cancelled = false
-        setLoading(true)
-        setError('')
-        loadDictWords(dictId)
-          .then((words) => {
-            if (!cancelled) setAll(words)
-          })
-          .catch((err) => {
-            if (cancelled) return
-            setAll(err?.fallbackWords ?? wordsSync(dictId))
-            setError(t('loadFailed'))
-          })
-          .finally(() => {
-            if (!cancelled) setLoading(false)
-          })
-        return () => {
-          cancelled = true
-        }
+    let cancelled = false
+    setLoading(true)
+    setError('')
+    loadDictWords(dictId)
+      .then((words) => {
+        if (!cancelled) setAll(words)
+      })
+      .catch((err) => {
+        if (cancelled) return
+        setAll(err?.fallbackWords ?? wordsSync(dictId))
+        setError(t('loadFailed'))
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
       }, [dictId])
 
       // 进度（哪些章打完了）+ 今日统计
       const refreshStats = useCallback(() => {
-        let cancelled = false
-        Promise.all([readProgress(dictId), readChapterRecords(600), readWordRecords(4000)]).then(([rows, chapters, words]) => {
-          if (cancelled) return
-          const map = {}
-          for (const row of rows || []) map[row.chapter] = row
-          setProgress(map)
-          setRecords(words || [])
-          setMastered(readMastered())
-          const [day] = lastDays(chapters, 1)
-          setToday(day && day.words > 0 ? day : null)
-          setWrongRows(collectWrongWords(words, 200))
-          setStats({
-            days: lastDays(chapters, 14),
-            weeks: heatmapWeeks(chapters, 12),
-            letters: topWrongLetters(chapters, 5),
-            summary: summarize(chapters),
-          })
-        })
-        return () => {
-          cancelled = true
-        }
+    let cancelled = false
+    Promise.all([readProgress(dictId), readChapterRecords(600), readWordRecords(4000)]).then(([rows, chapters, words]) => {
+      if (cancelled) return
+      const map = {}
+      for (const row of rows || []) map[row.chapter] = row
+      setProgress(map)
+      setRecords(words || [])
+      setMastered(readMastered())
+      const [day] = lastDays(chapters, 1)
+      setToday(day && day.words > 0 ? day : null)
+      setWrongRows(collectWrongWords(words, 200))
+      setStats({
+        days: lastDays(chapters, 14),
+        weeks: heatmapWeeks(chapters, 12),
+        letters: topWrongLetters(chapters, 5),
+        summary: summarize(chapters),
+        records: chapters,
+      })
+    })
+    return () => {
+      cancelled = true
+    }
       }, [dictId])
 
       useEffect(() => refreshStats(), [refreshStats])
@@ -6030,80 +6093,80 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       // 挂载后一次性校正章节：上次那章已经打完、又没有中途存档 → 直接接下一章
       const chapterFixedRef = useRef(false)
       useEffect(() => {
-        if (chapterFixedRef.current) return
-        if (!all?.length) return
-        // 进度是异步读回来的：没读到就先等，否则「上一章打完了吗」永远判成没打完
-        if (!progress || !Object.keys(progress).length) return
-        chapterFixedRef.current = true
-        const total = chapterCount({ length: all.length })
-        if (!total) return
-        const saved = readSession()
-        const target = resumeChapterSmart(progress, readChapterPos(), dictId, total, Boolean(saved))
-        if (target !== chapter) {
-          // 只换章、不把 round 顶上去：round > 0 会切成随机 20 词，跑到别的章节去了
-          setChapter(target)
-          setRound(0)
-          setJump(null)
-        }
+    if (chapterFixedRef.current) return
+    if (!all?.length) return
+    // 进度是异步读回来的：没读到就先等，否则「上一章打完了吗」永远判成没打完
+    if (!progress || !Object.keys(progress).length) return
+    chapterFixedRef.current = true
+    const total = chapterCount({ length: all.length })
+    if (!total) return
+    const saved = readSession()
+    const target = resumeChapterSmart(progress, readChapterPos(), dictId, total, Boolean(saved))
+    if (target !== chapter) {
+      // 只换章、不把 round 顶上去：round > 0 会切成随机 20 词，跑到别的章节去了
+      setChapter(target)
+      setRound(0)
+      setJump(null)
+    }
       }, [all, chapter, dictId, progress])
 
       // 章内词条 → 单词字符串（音标/中文由 lookup 从已加载词库里查）
       const chapterWords = useMemo(() => {
-        const words = all || []
-        if (!words.length) return []
-        const picked = round === 0 ? wordsOfChapter(words, chapter) : sampleFromWords(words, 20)
-        return picked.map((entry) => (typeof entry === 'string' ? entry : entry.w))
+    const words = all || []
+    if (!words.length) return []
+    const picked = round === 0 ? wordsOfChapter(words, chapter) : sampleFromWords(words, 20)
+    return picked.map((entry) => (typeof entry === 'string' ? entry : entry.w))
       }, [all, chapter, round])
 
       // 词表抽屉的行：状态优先级 current > mastered > wrong > done > idle
       const wordRows = useMemo(
-        () => wordListRows({ words: chapterWords, index: activeIndex, records, mastered, dictId }),
-        [activeIndex, chapterWords, dictId, mastered, records],
+    () => wordListRows({ words: chapterWords, index: activeIndex, records, mastered, dictId }),
+    [activeIndex, chapterWords, dictId, mastered, records],
       )
       const handleIndex = useCallback((value) => setActiveIndex(value), [])
 
       const choose = (id) => {
-        if (!id) return
-        setDictId(id)
-        writeDictId(id)
-        setChapter(0)
-        setRound(0)
-        setPicker(false)
-        setQuery('')
-        setCategory('')
-        setJump(null)
-        setListOpen(false)
+    if (!id) return
+    setDictId(id)
+    writeDictId(id)
+    setChapter(0)
+    setRound(0)
+    setPicker(false)
+    setQuery('')
+    setCategory('')
+    setJump(null)
+    setListOpen(false)
       }
       const chooseChapter = (index) => {
-        setChapter(index)
-        setRound(0)
-        setJump(null)
+    setChapter(index)
+    setRound(0)
+    setJump(null)
       }
       const again = () => {
-        setJump(null)
-        setRound((value) => value + 1)
+    setJump(null)
+    setRound((value) => value + 1)
       }
 
       // 章节位置存起来：关掉面板再打开，还是这一章
       useEffect(() => {
-        if (all?.length) writeChapterPos(dictId, chapter)
+    if (all?.length) writeChapterPos(dictId, chapter)
       }, [all, chapter, dictId])
 
       // 打完一章自动接下一章：开着 autoNext 就不用每次点「下一章」
       const nextTimer = useRef(null)
       useEffect(() => () => {
-        if (nextTimer.current !== null) clearTimeout(nextTimer.current)
+    if (nextTimer.current !== null) clearTimeout(nextTimer.current)
       }, [])
       const finishChapter = useCallback(() => {
-        setJump(null)
-        refreshStats()
-        if (!settings.autoNext) return
-        if (nextTimer.current !== null) clearTimeout(nextTimer.current)
-        nextTimer.current = setTimeout(() => {
-          nextTimer.current = null
-          setChapter((value) => (value + 1) % chapterTotal)
-          setRound((value) => value + 1)
-        }, 1200)
+    setJump(null)
+    refreshStats()
+    if (!settings.autoNext) return
+    if (nextTimer.current !== null) clearTimeout(nextTimer.current)
+    nextTimer.current = setTimeout(() => {
+      nextTimer.current = null
+      setChapter((value) => (value + 1) % chapterTotal)
+      setRound((value) => value + 1)
+    }, 1200)
       }, [chapterTotal, refreshStats, settings.autoNext])
 
       // 目录只取一次（catalog() 内部有缓存，但别在渲染里问 5 遍）
@@ -6112,223 +6175,224 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const recent = readRecent().map((id) => byId.get(id)).filter(Boolean)
       const categories = groupByCategory(dicts)
       const list = query.trim()
-        ? searchCatalog(query, 80)
-        : (category ? dicts.filter((item) => item.category === category) : dicts)
+    ? searchCatalog(query, 80)
+    : (category ? dicts.filter((item) => item.category === category) : dicts)
 
       return h('div', { className: 'qat-panel' },
-        h(Styles),
-        h('div', { className: 'qat-panel-head' },
-          h('span', { className: 'qat-panel-title' }, t('title')),
-          h('button', {
-            type: 'button',
-            className: 'qat-select qat-dictbtn',
-            title: t('dictTitle'),
-            'data-picker': picker ? 'open' : 'closed',
-            onClick: () => {
-              setReview(null)
-              setView('practice')
-              setPicker((value) => !value)
-            },
-          }, h(DictBadge, { meta, size: 20, label: t('dictBadgeTitle', { name: meta.name }) }), meta.name, h(Icon, { name: 'caret', size: 12 })),
-          h('span', { className: 'qat-panel-sub' }, `${meta.category} · ${meta.length} 词 · ${chapterTotal} 章`),
-          h('span', { className: 'qat-grow' }),
-          h('button', {
-            type: 'button',
-            className: 'qat-iconbtn',
-            title: t('wordListOpen'),
-            'aria-label': t('wordListOpen'),
-            'data-act': 'wordlist',
-            'data-on': listOpen ? 'true' : 'false',
-            onClick: () => {
-              setView('practice')
-              setReview(null)
-              setListOpen((value) => !value)
-            },
-          }, h(Icon, { name: 'list', size: 15 })),
-          h('button', {
-            type: 'button',
-            className: 'qat-iconbtn',
-            title: t('wrongBook'),
-            'aria-label': t('wrongBook'),
-            'data-act': 'wrong',
-            'data-on': view === 'wrong' ? 'true' : 'false',
-            onClick: () => setView((current) => (current === 'wrong' ? 'practice' : 'wrong')),
-          }, h(Icon, { name: 'book', size: 15 })),
-          h('button', {
-            type: 'button',
-            className: 'qat-iconbtn',
-            title: t('stats'),
-            'aria-label': t('stats'),
-            'data-act': 'stats',
-            'data-on': view === 'stats' ? 'true' : 'false',
-            onClick: () => setView((current) => (current === 'stats' ? 'practice' : 'stats')),
-          }, h(Icon, { name: 'stats', size: 15 })),
-          h('button', {
-            type: 'button',
-            className: 'qat-iconbtn',
-            title: t('again'),
-            'aria-label': t('again'),
-            'data-act': 'again',
-            onClick: again,
-          }, h(Icon, { name: 'again', size: 15 })),
-        ),
-        h('div', { className: 'qat-tools' },
-          h('select', {
-            className: 'qat-select qat-chapter',
-            value: chapter,
-            title: t('chapterTitle'),
-            onChange: (event) => chooseChapter(Number(event.target.value)),
+    h(Styles),
+    h('div', { className: 'qat-panel-head' },
+      h('span', { className: 'qat-panel-title' }, t('title')),
+      h('button', {
+        type: 'button',
+        className: 'qat-select qat-dictbtn',
+        title: t('dictTitle'),
+        'data-picker': picker ? 'open' : 'closed',
+        onClick: () => {
+          setReview(null)
+          setView('practice')
+          setPicker((value) => !value)
+        },
+      }, h(DictBadge, { meta, size: 20, label: t('dictBadgeTitle', { name: meta.name }) }), meta.name, h(Icon, { name: 'caret', size: 12 })),
+      h('span', { className: 'qat-panel-sub' }, `${meta.category} · ${meta.length} 词 · ${chapterTotal} 章`),
+      h('span', { className: 'qat-grow' }),
+      h('button', {
+        type: 'button',
+        className: 'qat-iconbtn',
+        title: t('wordListOpen'),
+        'aria-label': t('wordListOpen'),
+        'data-act': 'wordlist',
+        'data-on': listOpen ? 'true' : 'false',
+        onClick: () => {
+          setView('practice')
+          setReview(null)
+          setListOpen((value) => !value)
+        },
+      }, h(Icon, { name: 'list', size: 15 })),
+      h('button', {
+        type: 'button',
+        className: 'qat-iconbtn',
+        title: t('wrongBook'),
+        'aria-label': t('wrongBook'),
+        'data-act': 'wrong',
+        'data-on': view === 'wrong' ? 'true' : 'false',
+        onClick: () => setView((current) => (current === 'wrong' ? 'practice' : 'wrong')),
+      }, h(Icon, { name: 'book', size: 15 })),
+      h('button', {
+        type: 'button',
+        className: 'qat-iconbtn',
+        title: t('stats'),
+        'aria-label': t('stats'),
+        'data-act': 'stats',
+        'data-on': view === 'stats' ? 'true' : 'false',
+        onClick: () => setView((current) => (current === 'stats' ? 'practice' : 'stats')),
+      }, h(Icon, { name: 'stats', size: 15 })),
+      h('button', {
+        type: 'button',
+        className: 'qat-iconbtn',
+        title: t('again'),
+        'aria-label': t('again'),
+        'data-act': 'again',
+        onClick: again,
+      }, h(Icon, { name: 'again', size: 15 })),
+    ),
+    h('div', { className: 'qat-tools' },
+      h('select', {
+        className: 'qat-select qat-chapter',
+        value: chapter,
+        title: t('chapterTitle'),
+        onChange: (event) => chooseChapter(Number(event.target.value)),
+      },
+        Array.from({ length: chapterTotal }, (_, index) => {
+          const done = progress[index]?.done
+          return h('option', { key: index, value: index }, `${index + 1} / ${chapterTotal}${done ? ' ✓' : ''}`)
+        }),
+      ),
+      h('select', {
+        className: 'qat-select qat-dictation',
+        value: settings.dictation,
+        title: t('dictation'),
+        onChange: (event) => setSetting('dictation', event.target.value),
+      },
+        DICTATION_MODES.map((mode) => h('option', { key: mode, value: mode }, t(`dictation_${mode}`))),
+      ),
+      h('span', { className: 'qat-grow' }),
+      // 实时速度：紧挨着今日数据，小字置灰，练习中一直在动但不抢注意力
+      h('span', { className: 'qat-live-speed' },
+        t('liveSpeed', { wpm: liveWpm })),
+      today
+        ? h('span', { className: 'qat-panel-sub qat-today' },
+          t('todayStats', { words: today.words, accuracy: today.accuracy, wpm: today.wpm }))
+        : null,
+    ),
+    listOpen
+      ? h(WordListPanel, {
+        t,
+        rows: wordRows,
+        hint: t('wordListHint'),
+        onPick: (row) => {
+          setJump({ index: row.index })
+          setListOpen(false)
+        },
+        onClose: () => setListOpen(false),
+      })
+      : null,
+    error ? h('div', { className: 'qat-note' }, error) : null,
+    review
+      ? h(Trainer, {
+        key: `review:${reviewNonce}:${review.join(',')}`,
+        words: review,
+        variant: 'panel',
+        showMeta: true,
+        options: judgeOptions,
+        dictation: settings.dictation,
+        dictId: '',
+        chapter: null,
+        // 复练（错词 / 本轮打错）没有章号：卡片头部这一格说清楚在练什么
+        headTag: t('panelHeadReview', { n: review.length }),
+        onFinish: refreshStats,
+        onReview: (words) => setReview(words),
+        onRetryWrong: (words) => {
+          setReview(words)
+          setReviewNonce((value) => value + 1)
+        },
+        onLiveWpm: setLiveWpm,
+        ctx,
+      })
+      : loading
+      ? h('div', { className: 'qat-loading' }, t('loading'))
+      : picker
+        ? h(DictPicker, {
+          t,
+          dictId,
+          query,
+          category,
+          recent,
+          categories,
+          list,
+          onQuery: setQuery,
+          onCategory: setCategory,
+          onPick: choose,
+          onImported: (id) => {
+            // 新建完直接切到这个词表，省一次点击
+            choose(id)
           },
-            Array.from({ length: chapterTotal }, (_, index) => {
-              const done = progress[index]?.done
-              return h('option', { key: index, value: index }, `${index + 1} / ${chapterTotal}${done ? ' ✓' : ''}`)
-            }),
-          ),
-          h('select', {
-            className: 'qat-select qat-dictation',
-            value: settings.dictation,
-            title: t('dictation'),
-            onChange: (event) => setSetting('dictation', event.target.value),
-          },
-            DICTATION_MODES.map((mode) => h('option', { key: mode, value: mode }, t(`dictation_${mode}`))),
-          ),
-          h('span', { className: 'qat-grow' }),
-          // 实时速度：紧挨着今日数据，小字置灰，练习中一直在动但不抢注意力
-          h('span', { className: 'qat-live-speed' },
-            t('liveSpeed', { wpm: liveWpm })),
-          today
-            ? h('span', { className: 'qat-panel-sub qat-today' },
-              t('todayStats', { words: today.words, accuracy: today.accuracy, wpm: today.wpm }))
-            : null,
-        ),
-        listOpen
-          ? h(WordListPanel, {
+          onClose: () => setPicker(false),
+        })
+        : view === 'wrong'
+          ? h(WrongBookPanel, {
             t,
-            rows: wordRows,
-            hint: t('wordListHint'),
-            onPick: (row) => {
-              setJump({ index: row.index })
-              setListOpen(false)
-            },
-            onClose: () => setListOpen(false),
-          })
-          : null,
-        error ? h('div', { className: 'qat-note' }, error) : null,
-        review
-          ? h(Trainer, {
-            key: `review:${reviewNonce}:${review.join(',')}`,
-            words: review,
-            variant: 'panel',
-            showMeta: true,
-            options: judgeOptions,
-            dictation: settings.dictation,
-            dictId: '',
-            chapter: null,
-            // 复练（错词 / 本轮打错）没有章号：卡片头部这一格说清楚在练什么
-            headTag: t('panelHeadReview', { n: review.length }),
-            onFinish: refreshStats,
-            onReview: (words) => setReview(words),
-            onRetryWrong: (words) => {
-              setReview(words)
-              setReviewNonce((value) => value + 1)
-            },
-            onLiveWpm: setLiveWpm,
-            ctx,
-          })
-          : loading
-          ? h('div', { className: 'qat-loading' }, t('loading'))
-          : picker
-            ? h(DictPicker, {
-              t,
-              dictId,
-              query,
-              category,
-              recent,
-              categories,
-              list,
-              onQuery: setQuery,
-              onCategory: setCategory,
-              onPick: choose,
-              onImported: (id) => {
-                // 新建完直接切到这个词表，省一次点击
-                choose(id)
-              },
-              onClose: () => setPicker(false),
-            })
-            : view === 'wrong'
-              ? h(WrongBookPanel, {
-                t,
-                rows: filterWrongWords(wrongRows, {
-                  query: wrongQuery,
-                  dictId: wrongDict,
-                  sort: wrongSort,
-                  mastered,
-                }),
-                mastered,
-                onMastered: (row) => {
-                  toggleMastered(row.dictId, row.word)
-                  setMastered(readMastered())
-                },
-                query: wrongQuery,
-                sort: wrongSort,
-                dicts: [...new Set(wrongRows.map((row) => row.dictId))].filter(Boolean).map((id) => ({
-                  id,
-                  name: dictionaryById(id).name,
-                  count: wrongRows.filter((row) => row.dictId === id).length,
-                  active: wrongDict === id,
-                })),
-                onQuery: setWrongQuery,
-                onSort: (patch) => {
-                  if (patch.dictId !== undefined) setWrongDict(patch.dictId)
-                  if (patch.sort !== undefined) setWrongSort(patch.sort)
-                },
-                onReview: (words) => {
-                  setReview(words)
-                  setView('practice')
-                },
-                onClear: refreshStats,
-                onClose: () => setView('practice'),
-              })
-              : view === 'stats'
-                ? h(StatsPanel, {
-                  t,
-                  days: stats.days,
-                  weeks: stats.weeks,
-                  letters: stats.letters,
-                  summary: stats.summary,
-                  onClose: () => setView('practice'),
-                })
-                : h(Trainer, {
-              key: `${dictId}:${chapter}:${round}`,
-              words: chapterWords,
-              variant: 'panel',
-              showMeta: true,
-              options: judgeOptions,
-              dictation: settings.dictation,
-              dictId,
-              chapter: round === 0 ? chapter : null,
-              chapterTotal,
-              // 面板头部已有标题，这格换成章号（chapter 为 null 时说复练）
-              headTag: t('panelHeadChapter', { n: chapter + 1 }),
-              jump,
-              onIndex: handleIndex,
-              onFinish: finishChapter,
-              onReview: (words) => {
-                setReview(words)
-                setChapter(0)
-              },
-              // 本轮打错的词：原样丢给 review 通道，用这些词起一轮新的
-              onRetryWrong: (words) => {
-                if (!words?.length) return
-                setReview(words)
-                setReviewNonce((value) => value + 1)
-              },
-              // 走 chooseChapter：跟下拉选章同一条路（章内词表 + 进度才对得上）；
-              // 末章由 nextChapterIndex 绕回第 1 章，不再置灰
-              onNextChapter: () => chooseChapter(nextChapterIndex(chapter, chapterTotal)),
-              onLiveWpm: setLiveWpm,
-              ctx,
+            rows: filterWrongWords(wrongRows, {
+              query: wrongQuery,
+              dictId: wrongDict,
+              sort: wrongSort,
+              mastered,
             }),
+            mastered,
+            onMastered: (row) => {
+              toggleMastered(row.dictId, row.word)
+              setMastered(readMastered())
+            },
+            query: wrongQuery,
+            sort: wrongSort,
+            dicts: [...new Set(wrongRows.map((row) => row.dictId))].filter(Boolean).map((id) => ({
+              id,
+              name: dictionaryById(id).name,
+              count: wrongRows.filter((row) => row.dictId === id).length,
+              active: wrongDict === id,
+            })),
+            onQuery: setWrongQuery,
+            onSort: (patch) => {
+              if (patch.dictId !== undefined) setWrongDict(patch.dictId)
+              if (patch.sort !== undefined) setWrongSort(patch.sort)
+            },
+            onReview: (words) => {
+              setReview(words)
+              setView('practice')
+            },
+            onClear: refreshStats,
+            onClose: () => setView('practice'),
+          })
+          : view === 'stats'
+            ? h(StatsPanel, {
+              t,
+              days: stats.days,
+              weeks: stats.weeks,
+              letters: stats.letters,
+              records: stats.records,
+              summary: stats.summary,
+              onClose: () => setView('practice'),
+            })
+            : h(Trainer, {
+          key: `${dictId}:${chapter}:${round}`,
+          words: chapterWords,
+          variant: 'panel',
+          showMeta: true,
+          options: judgeOptions,
+          dictation: settings.dictation,
+          dictId,
+          chapter: round === 0 ? chapter : null,
+          chapterTotal,
+          // 面板头部已有标题，这格换成章号（chapter 为 null 时说复练）
+          headTag: t('panelHeadChapter', { n: chapter + 1 }),
+          jump,
+          onIndex: handleIndex,
+          onFinish: finishChapter,
+          onReview: (words) => {
+            setReview(words)
+            setChapter(0)
+          },
+          // 本轮打错的词：原样丢给 review 通道，用这些词起一轮新的
+          onRetryWrong: (words) => {
+            if (!words?.length) return
+            setReview(words)
+            setReviewNonce((value) => value + 1)
+          },
+          // 走 chooseChapter：跟下拉选章同一条路（章内词表 + 进度才对得上）；
+          // 末章由 nextChapterIndex 绕回第 1 章，不再置灰
+          onNextChapter: () => chooseChapter(nextChapterIndex(chapter, chapterTotal)),
+          onLiveWpm: setLiveWpm,
+          ctx,
+        }),
       )
     }
 
@@ -6337,92 +6401,93 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     return {
       // 纯逻辑导出，只给测试用；Harness 不读这个字段
       __test: {
-        judgeTyping, parseWords, format, pushChar, lookup, dictionaries, sampleWords, groupByCategory,
-        catalog, normalizeWord, normalizeWords, chapterCount, wordsOfChapter, sampleFromWords,
-        inspectWord, phoneticOf, MAX_WORD_LENGTH, LONG_WORD_CHARS, DROP_REASONS,
-        cleanPhone, bracketPhone, PHONE_PLACEHOLDER,
-        splitSense, splitSenses, sensesOf, SENSE_LIMIT,
-        searchCatalog, readRecent, catalogSize: () => catalog().length, wordsSync, loadDictWords,
-        effectiveTarget, stripPunct, maskLetters, DICTATION_MODES, readSettings, getSettings, setSetting,
-        subscribeSettings, SETTING_DEFAULTS, DICT, heatLevel,
-        dayKey, aggregateDaily, summarize, lastDays, readProgress, readChapterRecords, readWordRecords,
-        recordWord, recordChapter, saveProgress,
-        dictSourceList, DICT_PIN, activeMs, clockText, clockVisible, progressOf, shouldWarnConflict, resolveHotkey, calcWpm, calcAccuracy, shouldStartOnTab, saveSession, readSession, clearSession, sameSession,
-        calcLiveWpm, windowedWpm, pushSpeedSample, LIVE_WINDOW_MS, LIVE_HEARTBEAT_MS, LIVE_WPM_CAP, CHARS_PER_WORD,
-        setOpen, getOpen, readDictId, writeDictId, releaseStuckComposer, ACCENTS, resolveAccent, shouldBlockSend, isSendTrigger, shouldClearDraft,
-        ICONS, GLYPH, Icon, ensureStyles, Styles, CSS, lookup, lookupOnce, clearLookupCache, wordIndex, clearCatalogCache, buildCatalog,
-        components: { Trainer, ResultScreen, PracticePanel, PanelGlyph, ComposerTrainer, SidebarButton, DictPicker, DictBadge, WrongBookPanel, StatsPanel, SettingsSection, SettingRow, WordListPanel, TipLine, FingerHint, KeyboardHeat, KeyboardBars },
-        dictBadge, badgeText, badgeTone, badgeWords, BADGE_TONES,
-        tipState, tipKey, nextWrongCount, TIP_THRESHOLDS, TIP_MASK, CLICK_TONES,
-        fingerOf, keyHighlight, FINGER_IDS, FINGER_MAP, FINGER_COLORS,
-        collectWrongWords, heatmapWeeks, heatLevel, filterWrongWords, DICT,
-        wordListRows, WORDLIST_LIMIT, WORDLIST_STATES, WORDLIST_STATE_LABEL,
-        serializeBackup, parseBackup, BACKUP_VERSION, BACKUP_LIMITS, playClick, pressable,
-        topWrongLetters, readMastered, writeMastered, toggleMastered, masteredKey, MASTERED_KEY,
-        readCustomDicts, writeCustomDicts, parseCustomWords, saveCustomDict, removeCustomDict, clearCustomCache,
-        customWords, isCustomId, CUSTOM_PREFIX, CUSTOM_LIMIT, dictionaryById, chapterCount,
-        exportBackup, importData, clearData, readMirror, writeMirror, MIRROR_KEY,
-        keyboardHeat, KEY_ROWS, cacheStats, clearDictCache,
-        keyLayout, KEYBOARD_GEOM, KEYBOARD_VIEW, heatBars, KEY_BARS_TOP,
-        fingerOf, keyHighlight, keyPosition, keyGeom, fingerKeyboardNode,
-        FINGER_MAP, FINGER_IDS, FINGER_LABELS, FINGER_COLORS, FINGER_KEY,
-        parseCustomFile, serializeCustomDict, splitCsvLine, toCustomWord, downloadText, withSlashes,
-        stepIndex, toWordList, isRoundDone,
-        wrapWord, fitWordStyle, wordLines, FIT_SIZES, CHAR_RATIO,
-        WORD_SCALES, WORD_SCALE_FACTOR, clampWordScale, scaleWordSizes, wordStyleFor,
-        VOICE_RATES, CLICK_VOLUMES, clampVoiceRate, clampClickVolume,
-        readBarProgress, writeBarProgress, resumeIndex,
-        readChapterPos, writeChapterPos, resumeChapter, resumeChapterSmart, BAR_KEY, CHAPTER_KEY, wordsOfRound, nextChapterIndex, pronunciationSrc, pronunciationType, speakWithTts,
-        speak, speakMeaning, cancelMeaning, meaningLang, shouldReadMeaning, MEANING_DELAY_MS,
+    judgeTyping, parseWords, format, pushChar, lookup, dictionaries, sampleWords, groupByCategory,
+    catalog, normalizeWord, normalizeWords, chapterCount, wordsOfChapter, sampleFromWords,
+    inspectWord, phoneticOf, MAX_WORD_LENGTH, LONG_WORD_CHARS, DROP_REASONS,
+    cleanPhone, bracketPhone, PHONE_PLACEHOLDER,
+    splitSense, splitSenses, sensesOf, SENSE_LIMIT,
+    searchCatalog, readRecent, catalogSize: () => catalog().length, wordsSync, loadDictWords,
+    effectiveTarget, stripPunct, maskLetters, DICTATION_MODES, readSettings, getSettings, setSetting,
+    subscribeSettings, SETTING_DEFAULTS, DICT, heatLevel,
+    dayKey, aggregateDaily, summarize, lastDays, readProgress, readChapterRecords, readWordRecords,
+    recordWord, recordChapter, saveProgress,
+    dictSourceList, DICT_PIN, activeMs, clockText, clockVisible, progressOf, shouldWarnConflict, resolveHotkey, calcWpm, calcAccuracy, shouldStartOnTab, saveSession, readSession, clearSession, sameSession,
+    calcLiveWpm, windowedWpm, pushSpeedSample, LIVE_WINDOW_MS, LIVE_HEARTBEAT_MS, LIVE_WPM_CAP, CHARS_PER_WORD,
+    setOpen, getOpen, readDictId, writeDictId, releaseStuckComposer, ACCENTS, resolveAccent, shouldBlockSend, isSendTrigger, shouldClearDraft,
+    ICONS, GLYPH, Icon, ensureStyles, Styles, CSS, lookup, lookupOnce, clearLookupCache, wordIndex, clearCatalogCache, buildCatalog,
+    components: { Trainer, ResultScreen, PracticePanel, PanelGlyph, ComposerTrainer, SidebarButton, DictPicker, DictBadge, WrongBookPanel, StatsPanel, SettingsSection, SettingRow, WordListPanel, TipLine, FingerHint, KeyboardHeat, KeyboardBars },
+    dictBadge, badgeText, badgeTone, badgeWords, BADGE_TONES,
+    tipState, tipKey, nextWrongCount, TIP_THRESHOLDS, TIP_MASK, CLICK_TONES,
+    fingerOf, keyHighlight, FINGER_IDS, FINGER_MAP, FINGER_COLORS,
+    collectWrongWords, heatmapWeeks, heatLevel, filterWrongWords, DICT,
+    wordListRows, WORDLIST_LIMIT, WORDLIST_STATES, WORDLIST_STATE_LABEL,
+    serializeBackup, parseBackup, BACKUP_VERSION, BACKUP_LIMITS, playClick, pressable,
+    topWrongLetters, readMastered, writeMastered, toggleMastered, masteredKey, MASTERED_KEY,
+    trendSeries, polylineOf,
+    readCustomDicts, writeCustomDicts, parseCustomWords, saveCustomDict, removeCustomDict, clearCustomCache,
+    customWords, isCustomId, CUSTOM_PREFIX, CUSTOM_LIMIT, dictionaryById, chapterCount,
+    exportBackup, importData, clearData, readMirror, writeMirror, MIRROR_KEY,
+    keyboardHeat, KEY_ROWS, cacheStats, clearDictCache,
+    keyLayout, KEYBOARD_GEOM, KEYBOARD_VIEW, heatBars, KEY_BARS_TOP,
+    fingerOf, keyHighlight, keyPosition, keyGeom, fingerKeyboardNode,
+    FINGER_MAP, FINGER_IDS, FINGER_LABELS, FINGER_COLORS, FINGER_KEY,
+    parseCustomFile, serializeCustomDict, splitCsvLine, toCustomWord, downloadText, withSlashes,
+    stepIndex, toWordList, isRoundDone,
+    wrapWord, fitWordStyle, wordLines, FIT_SIZES, CHAR_RATIO,
+    WORD_SCALES, WORD_SCALE_FACTOR, clampWordScale, scaleWordSizes, wordStyleFor,
+    VOICE_RATES, CLICK_VOLUMES, clampVoiceRate, clampClickVolume,
+    readBarProgress, writeBarProgress, resumeIndex,
+    readChapterPos, writeChapterPos, resumeChapter, resumeChapterSmart, BAR_KEY, CHAPTER_KEY, wordsOfRound, nextChapterIndex, pronunciationSrc, pronunciationType, speakWithTts,
+    speak, speakMeaning, cancelMeaning, meaningLang, shouldReadMeaning, MEANING_DELAY_MS,
       },
       inject: ['slots', 'locale'],
       apply(ctx) {
-        PLUGIN_CTX = ctx
-        ensureStyles()
-        ctx.effect(() => ctx.locale.register(NS, 'zh', DICT.zh))
-        ctx.effect(() => ctx.locale.register(NS, 'en', DICT.en))
-        ctx.on('locale/change', bumpLocale)
+    PLUGIN_CTX = ctx
+    ensureStyles()
+    ctx.effect(() => ctx.locale.register(NS, 'zh', DICT.zh))
+    ctx.effect(() => ctx.locale.register(NS, 'en', DICT.en))
+    ctx.on('locale/change', bumpLocale)
 
-        // 1) 侧栏左上角：和"插件"同一排的面板图标
-        ctx.effect(() => ctx.slots.inject('sidebar.panellist', () => ctx.slots.register(
-          { name: 'sidebar.panellist', id: COMMAND, order: 5, label: () => '跟打' },
-          (props) => h(PanelGlyph, props),
-        )))
+    // 1) 侧栏左上角：和"插件"同一排的面板图标
+    ctx.effect(() => ctx.slots.inject('sidebar.panellist', () => ctx.slots.register(
+      { name: 'sidebar.panellist', id: COMMAND, order: 5, label: () => '跟打' },
+      (props) => h(PanelGlyph, props),
+    )))
 
-        // 2) 跟打面板：词库分类 + 大字
-        ctx.effect(() => ctx.slots.inject('main', () => ctx.slots.register(
-          { name: 'main', key: COMMAND },
-          () => h(PracticePanel, { ctx }),
-        )))
+    // 2) 跟打面板：词库分类 + 大字
+    ctx.effect(() => ctx.slots.inject('main', () => ctx.slots.register(
+      { name: 'main', key: COMMAND },
+      () => h(PracticePanel, { ctx }),
+    )))
 
-        // 2) 输入框正上方：跟打条（打字发生在真正的 composer 里）
-        // 载入就先擦一遍：旧版本可能把 composer 的输入法属性写死过
-        try {
-          releaseStuckComposer()
-        } catch {
-          /* ignore */
-        }
+    // 2) 输入框正上方：跟打条（打字发生在真正的 composer 里）
+    // 载入就先擦一遍：旧版本可能把 composer 的输入法属性写死过
+    try {
+      releaseStuckComposer()
+    } catch {
+      /* ignore */
+    }
 
-        ctx.effect(() => ctx.slots.inject('conversation.input.dock', () => ctx.slots.register(
-          { name: 'conversation.input.dock', id: COMMAND, order: 10 },
-          (props) => h(ComposerTrainer, { useInput: props.useInput, inputActions: props.inputActions, ctx }),
-        )))
+    ctx.effect(() => ctx.slots.inject('conversation.input.dock', () => ctx.slots.register(
+      { name: 'conversation.input.dock', id: COMMAND, order: 10 },
+      (props) => h(ComposerTrainer, { useInput: props.useInput, inputActions: props.inputActions, ctx }),
+    )))
 
-        // 3) 设置页：判定规则与默写形态
-        ctx.effect(() => ctx.slots.inject('settings.section', () => ctx.slots.register(
-          { name: 'settings.section', id: `${COMMAND}-settings`, order: 25, label: () => '跟打' },
-          () => h(SettingsSection),
-        )))
+    // 3) 设置页：判定规则与默写形态
+    ctx.effect(() => ctx.slots.inject('settings.section', () => ctx.slots.register(
+      { name: 'settings.section', id: `${COMMAND}-settings`, order: 25, label: () => '跟打' },
+      () => h(SettingsSection),
+    )))
 
-        // 4) `/qwerty-autotype` 指令行：同一张卡片
-        ctx.effect(() => ctx.slots.inject('conversation.chat.commandview', () => ctx.slots.register(
-          { name: 'conversation.chat.commandview', key: COMMAND },
-          (props) => h(Trainer, {
-            words: parseWords(props?.node?.args),
-            variant: 'command',
-            ctx,
-          }),
-        )))
+    // 4) `/qwerty-autotype` 指令行：同一张卡片
+    ctx.effect(() => ctx.slots.inject('conversation.chat.commandview', () => ctx.slots.register(
+      { name: 'conversation.chat.commandview', key: COMMAND },
+      (props) => h(Trainer, {
+        words: parseWords(props?.node?.args),
+        variant: 'command',
+        ctx,
+      }),
+    )))
 
       },
     }
