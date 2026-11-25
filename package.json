@@ -1,6 +1,6 @@
 {
   "name": "@local/qwerty-autotype-ui",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "private": true,
   "type": "module",
   "description": "Qwerty 跟打的对话界面：/qwerty-autotype 在对话里长出一张跟打卡片。",
