@@ -39,8 +39,9 @@
     "data": "node scripts/build-index.mjs && node scripts/build-dicts.mjs",
     "index:inline": "node scripts/build-index.mjs --count --inline client.js",
     "audit": "node scripts/audit-dicts.mjs",
-    "verify": "node --check client.js && node test-client-logic.mjs && node scripts/smoke-apply.mjs",
-    "smoke": "node scripts/smoke-apply.mjs"
+    "verify": "node --check client.js && node test-client-logic.mjs && node scripts/smoke-apply.mjs && node scripts/check-size.mjs",
+    "smoke": "node scripts/smoke-apply.mjs",
+    "size": "node scripts/check-size.mjs"
   },
   "dsh": {
     "bundle": {
