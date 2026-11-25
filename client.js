@@ -1481,6 +1481,7 @@ window.__ModuleLoader__.load({
         chapterTitle: '选择章节',
         speak: '读一遍',
         todayStats: '今日 {words} 词 · 正确率 {accuracy}% · {wpm} WPM',
+        liveSpeed: '实时 {wpm} WPM',
         accuracyShort: '正确率 {n}%',
         prevTip: '上一个（Ctrl/⌘+←）',
         skipTip: '跳过（Ctrl/⌘+→）',
@@ -1589,6 +1590,7 @@ window.__ModuleLoader__.load({
         chapterTitle: 'Chapter',
         speak: 'Read aloud',
         todayStats: 'Today {words} words · {accuracy}% · {wpm} WPM',
+        liveSpeed: 'Live {wpm} WPM',
         accuracyShort: '{n}% accuracy',
         prevTip: 'Previous (⌘/Ctrl+←)',
         skipTip: 'Skip (⌘/Ctrl+→)',
@@ -1681,6 +1683,7 @@ window.__ModuleLoader__.load({
 .qat-bar-empty{font-size:12px;color:var(--dsw-alias-label-tertiary)}
 .qat-bar-center{display:flex;align-items:center;justify-content:center;min-width:0;width:100%}
 .qat-bar-count{position:absolute;left:0;top:50%;transform:translateY(-50%);font-size:11px;color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums}
+.qat-bar-speed{position:absolute;right:24px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--dsw-alias-label-tertiary);opacity:.75;font-variant-numeric:tabular-nums;pointer-events:none}
 .qat-bar-gloss{font-size:12px;color:var(--dsw-alias-label-tertiary);max-width:34%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .qat-bar-close{position:absolute;right:0;top:50%;transform:translateY(-50%);opacity:.45;font-size:13px}
 .qat-bar-close:hover{opacity:.9}
@@ -1789,6 +1792,7 @@ window.__ModuleLoader__.load({
 .qat-iconbtn[data-on="true"]{color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-bg-sunken)}
 .qat-panel-title{font-size:15px;font-weight:600;color:var(--dsw-alias-label-primary)}
 .qat-panel-sub{font-size:12px;color:var(--dsw-alias-label-secondary)}
+.qat-live-speed{font-size:11px;color:var(--dsw-alias-label-tertiary);opacity:.75;font-variant-numeric:tabular-nums;white-space:nowrap}
 .qat-card[data-variant="panel"]{width:100%;box-sizing:border-box;border:1px solid var(--dsw-alias-border-l1);border-radius:12px;padding:24px;background:var(--dsw-alias-bg-layer-1)}
 .qat-card[data-variant="panel"] .qat-head{justify-content:center}
 .qat-card[data-variant="panel"] .qat-word{font-size:56px;justify-content:center;gap:2px;margin:8px 0 4px}
@@ -2035,6 +2039,76 @@ window.__ModuleLoader__.load({
       const bad = Number(retries) || 0
       if (ok + bad <= 0) return 0
       return Math.round((ok / (ok + bad)) * 100)
+    }
+
+    /* ------------------------------------------------------- live speed (G2) */
+
+    /**
+     * 实时速度的取样窗口：只看最近 8 秒。
+     * 比 3 秒稳（一次短停顿不会把数字砸到 0），比 30 秒灵敏（能看出「现在打得快」）。
+     */
+    const LIVE_WINDOW_MS = 8000
+    /** 心跳间隔：1 秒推一条采样。再密只是白白重渲染，看不出差别 */
+    const LIVE_HEARTBEAT_MS = 1000
+    /** 5 个正确字符折算 1 个词（WPM 的通用定义，和 calcWpm 的「词」同口径） */
+    const CHARS_PER_WORD = 5
+    /** 上限兜底：手抖连击、时钟回拨都会算出荒谬值，这里直接压住 */
+    const LIVE_WPM_CAP = 400
+
+    /**
+     * 实时 WPM：`正确字符数 ÷ 5 ÷ 分钟数`，四舍五入到整数，并压到 LIVE_WPM_CAP 以内。
+     * 口径说明：结算用 calcWpm(词数, 秒)，打字过程中还没「整词完成」这个概念，
+     * 所以按 5 字符 = 1 词换算成同一个 WPM 标尺（上游 Speed 组件也是「字符 / 时间」）。
+     * 参数缺失 / 非正数 / 非有限值一律回 0，不显示 NaN 或 Infinity。
+     */
+    function calcLiveWpm(input) {
+      const chars = Number(input?.chars) || 0
+      const ms = Number(input?.ms) || 0
+      if (!(chars > 0) || !(ms > 0)) return 0
+      const perMinute = (chars / CHARS_PER_WORD) * (60000 / ms)
+      if (!Number.isFinite(perMinute) || perMinute <= 0) return 0
+      return Math.min(LIVE_WPM_CAP, Math.round(perMinute))
+    }
+
+    /**
+     * 追加一条采样：`{ t: 毫秒时刻, chars: 到此刻为止的累计正确字符数 }`，返回新数组。
+     * - `paused: true` 的那条直接丢弃：暂停期间不该产生样本，否则「原地停 10 秒」
+     *   会把窗口时间撑长、速度被压低（暂停既不该涨也不该跌）。
+     * - 同一次调用顺手剪掉窗口左边界以外的旧样本，数组长度天然有界，不用另设上限。
+     */
+    function pushSpeedSample(samples, sample, windowMs = LIVE_WINDOW_MS) {
+      const list = Array.isArray(samples) ? samples.slice() : []
+      if (sample?.paused) return list
+      const t = Number(sample?.t)
+      const chars = Number(sample?.chars)
+      if (!Number.isFinite(t) || !Number.isFinite(chars) || chars < 0) return list
+      const span = Number(windowMs) > 0 ? Number(windowMs) : LIVE_WINDOW_MS
+      const kept = list.filter((item) => Number(item?.t) >= t - span)
+      kept.push({ t, chars })
+      return kept
+    }
+
+    /**
+     * 最近窗口里的速度：取窗口内的首尾两条采样，用字符差 / 时间差算 WPM。
+     * 样本不足两条直接回 0 —— 冷启动（刚开始打、刚暂停完）不显示假数字。
+     * 窗口外的旧样本一律忽略；字符数没变化（停手了）也回 0。
+     */
+    function windowedWpm(samples, now, windowMs = LIVE_WINDOW_MS) {
+      const list = Array.isArray(samples) ? samples : []
+      const at = Number(now)
+      if (!Number.isFinite(at) || list.length < 2) return 0
+      const span = Number(windowMs) > 0 ? Number(windowMs) : LIVE_WINDOW_MS
+      const inside = list
+        .filter((item) => Number.isFinite(Number(item?.t)) && Number.isFinite(Number(item?.chars)))
+        .filter((item) => Number(item.t) <= at && Number(item.t) >= at - span)
+        .sort((a, b) => Number(a.t) - Number(b.t))
+      if (inside.length < 2) return 0
+      const first = inside[0]
+      const last = inside[inside.length - 1]
+      return calcLiveWpm({
+        chars: Number(last.chars) - Number(first.chars),
+        ms: Number(last.t) - Number(first.t),
+      })
     }
 
     /**
@@ -2312,7 +2386,7 @@ window.__ModuleLoader__.load({
      */
     function Trainer({
       words, variant, onClose, showMeta = false, options, dictation = 'none',
-      dictId = '', chapter = null, onFinish, onReview, onNextChapter, ctx,
+      dictId = '', chapter = null, onFinish, onReview, onNextChapter, onLiveWpm, ctx,
     }) {
       const t = useT(ctx)
       const [state, setState] = useState({
@@ -2340,6 +2414,11 @@ window.__ModuleLoader__.load({
       /** 本轮打错时"该打却没打对"的字母计数 */
       const lettersRef = useRef({})
       const pausedRef = useRef(false)
+      /** 实时速度：累计打对的字符数（打错的不算） */
+      const liveChars = useRef(0)
+      /** 最近窗口的速度采样，1 秒一条 */
+      const speedSamples = useRef([])
+      const [liveWpm, setLiveWpm] = useState(0)
 
       useEffect(() => {
         stateRef.current = state
@@ -2387,13 +2466,18 @@ window.__ModuleLoader__.load({
         pausedRef.current = next
         if (next) {
           clock.current = { ms: activeMs(clock.current, Date.now()), last: null }
+          // 暂停就把实时速度的样本清空：不暂停时「停住的时间」会被算进窗口，
+          // 数字只会往下掉；清空后重新积累两条样本才显示（暂停不涨也不跌）。
+          speedSamples.current = []
+          setLiveWpm(0)
+          if (typeof onLiveWpm === 'function') onLiveWpm(0)
         } else {
           clock.current = { ...clock.current, last: Date.now() }
         }
         setPaused(next)
         setState((prev) => ({ ...prev, typed: '', flash: false }))
         live.current.typed = ''
-      }, [])
+      }, [onLiveWpm])
 
       // 失焦 / 切标签页自动暂停，回来继续（手动暂停的状态不会被焦点事件解除）
       useEffect(() => {
@@ -2450,6 +2534,31 @@ window.__ModuleLoader__.load({
       const meta = lookup(current)
       const ipaText = meta?.ipa ?? ''
       const gloss = meta?.zh ?? ''
+
+      // 实时速度心跳：1 秒推一条采样，只对最近窗口求值；暂停时一条都不推。
+      // done 之后停表：结算值由下面的 done 分支直接显示，不留一个会跳的实时数字。
+      useEffect(() => {
+        if (done) return undefined
+        const tick = () => {
+          if (pausedRef.current) return
+          const now = Date.now()
+          speedSamples.current = pushSpeedSample(speedSamples.current, { t: now, chars: liveChars.current })
+          const wpm = windowedWpm(speedSamples.current, now)
+          setLiveWpm(wpm)
+          if (typeof onLiveWpm === 'function') onLiveWpm(wpm)
+        }
+        tick()
+        const id = setInterval(tick, LIVE_HEARTBEAT_MS)
+        return () => clearInterval(id)
+      }, [done, onLiveWpm])
+
+      // done 之后把结算 WPM 交回面板（今日数据那一带显示的是「这一轮的平均」，
+      // 口径和卡片里的 WPM 一致：整轮词数 / 有效用时）
+      useEffect(() => {
+        if (!done || typeof onLiveWpm !== 'function') return
+        const settled = calcWpm(total, Math.max(1, Math.round(activeMs(clock.current, state.finishedAt ?? Date.now()) / 1000)))
+        onLiveWpm(settled)
+      }, [done, onLiveWpm, state.finishedAt, total])
 
       const setTyped = useCallback((value) => {
         live.current.typed = value
@@ -2526,6 +2635,10 @@ window.__ModuleLoader__.load({
         const verdict = judgeTyping(guess, value, options)
         if (verdict.state === 'over') return
         if (verdict.state !== 'bad') {
+          // 实时速度只统计「打对了的字符」：value 是受控输入框的全文，
+          // 和上一次的长度差就是本次新增的正确字符（打错会被清空重打，不计数）
+          const grew = value.length - String(live.current.typed ?? '').length
+          if (grew > 0) liveChars.current += grew
           setTyped(value)
           if (verdict.state === 'done') {
             playClick('hit')
@@ -2589,13 +2702,18 @@ window.__ModuleLoader__.load({
         live.current = { index: 0, typed: '', locked: false, timer: null }
         wrongRef.current = 0
         lettersRef.current = {}
+        // 新的一轮：实时速度的累计字符和采样一起归零
+        liveChars.current = 0
+        speedSamples.current = []
+        setLiveWpm(0)
+        if (typeof onLiveWpm === 'function') onLiveWpm(0)
         setMistakes([])
         if (variant === 'panel') clearSession()
         setAuto(false)
         setState({ index: 0, typed: '', flash: false, hits: 0, retries: 0, finishedAt: null })
         const input = inputRef.current
         if (input) input.focus()
-      }, [])
+      }, [onLiveWpm])
 
       if (total === 0) {
         return h('div', { className: 'qat-card' }, h(Styles), h('div', { className: 'qat-hint' }, t('empty')))
@@ -2915,6 +3033,10 @@ window.__ModuleLoader__.load({
       const lockRef = useRef({ locked: false, timer: null })
       const draftRef = useRef('')
       const startedAt = useRef(Date.now())
+      /** 实时速度：累计打对的字符数 + 最近窗口的采样（1 秒一条心跳） */
+      const liveChars = useRef(0)
+      const speedSamples = useRef([])
+      const [liveWpm, setLiveWpm] = useState(0)
 
       // 词库词条按需加载：整本拿到，顺序往下打；失败退回内置兜底
       useEffect(() => {
@@ -3012,10 +3134,27 @@ window.__ModuleLoader__.load({
       const loopRef = useRef(false)
       const pausedRef = useRef(false)
 
-      /** 暂停只意味着「不吃键」，条上没有计时器 */
+      /** 暂停只意味着「不吃键」，条上没有计时器；实时速度的采样就地清空，
+       * 否则暂停那段空白会被算进窗口、把数字压下去 */
       const applyPaused = useCallback((next) => {
         pausedRef.current = next
+        speedSamples.current = []
+        setLiveWpm(0)
       }, [])
+
+      // 实时速度心跳：条开着才计时，1 秒一条采样；暂停时一条都不推（数字原地冻住再清空）
+      useEffect(() => {
+        if (!isOpen) return undefined
+        const tick = () => {
+          if (pausedRef.current) return
+          const now = Date.now()
+          speedSamples.current = pushSpeedSample(speedSamples.current, { t: now, chars: liveChars.current })
+          setLiveWpm(windowedWpm(speedSamples.current, now))
+        }
+        tick()
+        const id = setInterval(tick, LIVE_HEARTBEAT_MS)
+        return () => clearInterval(id)
+      }, [isOpen])
 
       const goPrev = useCallback(() => {
         const prev = Math.max(0, stateRef.current.index - 1)
@@ -3046,10 +3185,13 @@ window.__ModuleLoader__.load({
         const stepped = pushChar(goal, stateRef.current.typed, ch)
         if (stepped.result === 'over') return
         if (stepped.result === 'ok') {
+          // 实时速度只统计打对的字符（打错会清空重打，不计数）
+          liveChars.current += 1
           setState((prev) => ({ ...prev, typed: stepped.typed }))
           return
         }
         if (stepped.result === 'done') {
+          liveChars.current += 1
           playClick('hit')
           setState((prev) => ({ ...prev, typed: stepped.typed }))
           lockRef.current.locked = true
@@ -3337,6 +3479,10 @@ window.__ModuleLoader__.load({
       const restart = useCallback(() => {
         startedAt.current = Date.now()
         lockRef.current = { locked: false, timer: null }
+        // 开新一轮：实时速度的累计字符和采样一起归零
+        liveChars.current = 0
+        speedSamples.current = []
+        setLiveWpm(0)
         setAuto(false)
         setRound((value) => value + 1)
         setState({ index: 0, typed: '', flash: false, hits: 0, retries: 0, finishedAt: null })
@@ -3348,6 +3494,9 @@ window.__ModuleLoader__.load({
         writeDictId(id)
         startedAt.current = Date.now()
         lockRef.current = { locked: false, timer: null }
+        liveChars.current = 0
+        speedSamples.current = []
+        setLiveWpm(0)
         setAuto(false)
         setState({ index: 0, typed: '', flash: false, hits: 0, retries: 0, finishedAt: null })
       }, [])
@@ -3390,6 +3539,8 @@ window.__ModuleLoader__.load({
         h(Styles),
         // 进度与关闭都绝对定位在两侧，中间那块才是真正居中的
         h('span', { className: 'qat-bar-count', title: t('dictTitle') }, `${position}/${total}`),
+        // 实时速度：贴在关闭按钮左边的次要点位，小字置灰，不和左侧进度抢位置
+        h('span', { className: 'qat-bar-speed' }, t('liveSpeed', { wpm: liveWpm })),
         h('span', { className: 'qat-bar-center' },
           h('span', { className: 'qat-wordblock' },
           h('span', { className: 'qat-word', 'data-flash': state.flash ? 'true' : 'false' },
@@ -3914,6 +4065,8 @@ window.__ModuleLoader__.load({
       const [category, setCategory] = useState('')
       const [progress, setProgress] = useState({})
       const [today, setToday] = useState(null)
+      /** 实时速度：跟打卡片每秒回吐一次，显示在「今日数据」那一带 */
+      const [liveWpm, setLiveWpm] = useState(0)
       const [view, setView] = useState('practice')  // practice | wrong | stats
       const [wrongRows, setWrongRows] = useState([])
       const [wrongQuery, setWrongQuery] = useState('')
@@ -4091,6 +4244,9 @@ window.__ModuleLoader__.load({
             DICTATION_MODES.map((mode) => h('option', { key: mode, value: mode }, t(`dictation_${mode}`))),
           ),
           h('span', { className: 'qat-grow' }),
+          // 实时速度：紧挨着今日数据，小字置灰，练习中一直在动但不抢注意力
+          h('span', { className: 'qat-live-speed' },
+            t('liveSpeed', { wpm: liveWpm })),
           today
             ? h('span', { className: 'qat-panel-sub qat-today' },
               t('todayStats', { words: today.words, accuracy: today.accuracy, wpm: today.wpm }))
@@ -4109,6 +4265,7 @@ window.__ModuleLoader__.load({
             chapter: null,
             onFinish: refreshStats,
             onReview: (words) => setReview(words),
+            onLiveWpm: setLiveWpm,
             ctx,
           })
           : loading
@@ -4191,6 +4348,7 @@ window.__ModuleLoader__.load({
               onNextChapter: chapter + 1 < chapterTotal
                 ? () => setChapter((value) => Math.min(value + 1, chapterTotal - 1))
                 : null,
+              onLiveWpm: setLiveWpm,
               ctx,
             }),
       )
@@ -4209,6 +4367,7 @@ window.__ModuleLoader__.load({
         dayKey, aggregateDaily, summarize, lastDays, readProgress, readChapterRecords, readWordRecords,
         recordWord, recordChapter, saveProgress,
         dictSourceList, DICT_PIN, activeMs, resolveHotkey, calcWpm, calcAccuracy, shouldStartOnTab, saveSession, readSession, clearSession, sameSession,
+        calcLiveWpm, windowedWpm, pushSpeedSample, LIVE_WINDOW_MS, LIVE_HEARTBEAT_MS, LIVE_WPM_CAP, CHARS_PER_WORD,
         setOpen, getOpen, readDictId, writeDictId, releaseStuckComposer, ACCENTS, resolveAccent, shouldBlockSend, isSendTrigger, shouldClearDraft,
         ICONS, GLYPH, Icon,
         components: { Trainer, PracticePanel, PanelGlyph, ComposerTrainer, SidebarButton, DictPicker, WrongBookPanel, StatsPanel, SettingsSection, SettingRow },
