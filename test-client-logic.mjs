@@ -3587,6 +3587,123 @@ renderTest.setSetting('shuffle', false)
 
 await recordFlow
 
+// —— N24：发音预取（对齐上游 usePrefetchPronunciationSound） ——
+check('预取开关默认开着', renderTest.PREFETCH_ENABLED, true)
+check('预取：取下一个词', renderTest.nextWordToPrefetch(['a', 'b', 'c'], 0), 'b')
+check('预取：最后一个词之后没有下一个', renderTest.nextWordToPrefetch(['a', 'b'], 1), '')
+check('预取：越界给空串', renderTest.nextWordToPrefetch(['a'], 9), '')
+check('预取：空数组给空串', renderTest.nextWordToPrefetch([], 0), '')
+check('预取：词条对象也吃', renderTest.nextWordToPrefetch([{ w: 'cancel' }, { w: 'govern' }], 0), 'govern')
+check('预取：非数组不炸', renderTest.nextWordToPrefetch(null, 0), '')
+check('预取：首尾空白剃掉', renderTest.nextWordToPrefetch(['a', '  govern  '], 0), 'govern')
+check('voice 关着不预取', renderTest.shouldPrefetch({ voice: false, word: 'cancel', dictation: 'none' }), false)
+check('下一个词是空的不预取', renderTest.shouldPrefetch({ voice: true, word: '   ', dictation: 'none' }), false)
+check('没有下一个词不预取', renderTest.shouldPrefetch({ voice: true, word: '', dictation: 'hideAll' }), false)
+check('正常预取', renderTest.shouldPrefetch({ voice: true, word: 'cancel', dictation: 'none' }), true)
+check('默写 hideAll 照样预取（预取的是声音，不是答案）',
+  renderTest.shouldPrefetch({ voice: true, word: 'cancel', dictation: 'hideAll' }), true)
+
+// —— N21：错词胶囊的键盘语义 ——
+check('胶囊键盘：Enter 读一遍', renderTest.pillActKey('Enter'), 'speak')
+check('胶囊键盘：空格读一遍', renderTest.pillActKey(' '), 'speak')
+check('胶囊键盘：老浏览器的 Spacebar 也认', renderTest.pillActKey('Spacebar'), 'speak')
+check('胶囊键盘：小写 enter 也认', renderTest.pillActKey('enter'), 'speak')
+check('胶囊键盘：其它键不动', renderTest.pillActKey('a'), '')
+check('胶囊键盘：没键值也不炸', renderTest.pillActKey(undefined), '')
+
+// —— N22：退出复习只清 review ——
+check('退出复习把 review 置空', renderTest.reviewExit(['cancel', 'govern']), null)
+check('退出复习没有参数也置空', renderTest.reviewExit(), null)
+
+// —— N20：词表行尾的发音小按钮 ——
+const wlSpoke = []
+let wlPicked = 0
+const wlSpeakCase = render('渲染：词表行尾发音按钮', () => renderTest.components.WordListPanel({
+  t: (key, vars) => (vars && vars.n !== undefined ? `${key}:${vars.n}` : key),
+  rows: renderTest.wordListRows({ words: ['cancel', 'govern'], index: 0 }),
+  hint: '',
+  onPick: () => { wlPicked += 1 },
+  onSpeak: (row) => wlSpoke.push(row.word),
+  onClose: () => {},
+}))
+const wlSpeakNode = findByAct(wlSpeakCase, 'wordlist-speak')
+check('词表每行都有发音按钮', nodesByClass(wlSpeakCase, 'qat-wordlist-speak').length, 2)
+check('发音按钮和行是同级兄弟（不嵌套 button）', (function () {
+  const rows = nodesByClass(wlSpeakCase, 'qat-wordlist-row').length
+  const wraps = nodesByClass(wlSpeakCase, 'qat-wordlist-item').length
+  return [rows, wraps].join(',')
+})(), '2,2')
+check('发音按钮吞掉 mousedown（不把焦点从隐形输入框抢走）', (function () {
+  let prevented = false
+  wlSpeakNode?.props?.onMouseDown?.({ preventDefault: () => { prevented = true } })
+  return prevented
+})(), true)
+let wlStopped = ''
+wlSpeakNode?.props?.onClick?.({ preventDefault: () => {}, stopPropagation: () => { wlStopped = 'yes' } })
+check('点发音只读这个词', wlSpoke, ['cancel'])
+check('点发音不跳行（onPick 没被调用）', wlPicked, 0)
+check('点发音顺手拦住冒泡', wlStopped, 'yes')
+const wlNoSpeak = render('渲染：词表抽屉（不传 onSpeak）', () => renderTest.components.WordListPanel({
+  t: (key) => key,
+  rows: renderTest.wordListRows({ words: ['cancel'] }),
+  onPick: () => {},
+  onClose: () => {},
+}))
+check('不传 onSpeak 就不画发音按钮', findByAct(wlNoSpeak, 'wordlist-speak'), null)
+
+// —— N21：错词胶囊可点发音（保留 span 形态，不跳转、不关结算页） ——
+const pillNode = findByAct(resultScreen, 'pill-speak')
+check('错词胶囊带 data-act=pill-speak', Boolean(pillNode), true)
+check('胶囊还是一个 span（要留在 flex 里）', pillNode?.type, 'span')
+check('胶囊可聚焦、角色是按钮', [pillNode?.props?.role, pillNode?.props?.tabIndex].join(','), 'button,0')
+const pillAudios = []
+sandbox.window.Audio = function (src) {
+  pillAudios.push(src)
+  this.play = () => Promise.resolve()
+  this.pause = () => {}
+}
+renderTest.setSetting('voice', true)
+const retriedBefore = retriedWords.length
+pillNode?.props?.onClick?.({ preventDefault: () => {} })
+check('点胶囊读这个词', pillAudios.length, 1)
+check('胶囊读的是这个词的 MP3', String(pillAudios[0]).includes(encodeURIComponent('cancel')), true)
+check('点胶囊不跳转、不重练、不关结算页', retriedWords.length - retriedBefore, 0)
+let pillKeyPrevented = false
+pillNode?.props?.onKeyDown?.({ key: 'Enter', preventDefault: () => { pillKeyPrevented = true } })
+check('胶囊 Enter 也读（并 preventDefault）', [pillAudios.length, pillKeyPrevented], [2, true])
+pillNode?.props?.onKeyDown?.({ key: 'a', preventDefault: () => { pillKeyPrevented = 'nope' } })
+check('胶囊其它键不读', pillAudios.length, 2)
+renderTest.setSetting('voice', false)
+pillNode?.props?.onClick?.({ preventDefault: () => {} })
+check('voice 关着点胶囊什么都不做', pillAudios.length, 2)
+renderTest.setSetting('voice', true)
+delete sandbox.window.Audio
+
+// —— N22：复习卡片上的明确出口 ——
+const exitCalls = []
+const reviewCard = render('渲染：复习中的卡片（带出口）', () => renderTest.components.Trainer({
+  words: ['cancel', 'govern'],
+  variant: 'panel',
+  showMeta: true,
+  headTag: 'panelHeadReview:2',
+  onExitReview: () => exitCalls.push('exit'),
+  onReview: () => {},
+  ctx: ctxStub,
+}))
+const exitNode = findByAct(reviewCard, 'review-exit')
+check('复习卡片有出口按钮', Boolean(exitNode), true)
+check('出口按钮用 reviewExit 文案', gatherText(reviewCard).includes('reviewExit'), true)
+exitNode?.props?.onClick?.()
+check('点出口只回调一次', exitCalls, ['exit'])
+check('普通卡片没有复习出口', findByAct(trainer, 'review-exit'), null)
+check('面板把出口接到 reviewExit（清 review、不打结算、不 submit）',
+  /onExitReview: \(\) => setReview\(reviewExit\(review\)\)/.test(source), true)
+
+// 新入口在样式表里得有规则，不然按钮是裸的
+check('新入口在样式表里有规则', [
+  '\\.qat-wordlist-item\\{', '\\.qat-wordlist-speak\\{', '\\.qat-review-exit\\{',
+].every((re) => new RegExp(re).test(source)), true)
+
 if (failures > 0) {
   console.log(`\n${failures} FAILED`)
   process.exit(1)

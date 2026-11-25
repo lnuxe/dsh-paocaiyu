@@ -2354,6 +2354,7 @@ window.__ModuleLoader__.load({
     chapterTitle: '选择章节',
     panelHeadChapter: '第 {n} 章',
     panelHeadReview: '复练 {n} 词',
+    reviewExit: '退出复习',
     speak: '读一遍',
     todayStats: '今日 {words} 词 · 正确率 {accuracy}% · {wpm} WPM',
     liveSpeed: '实时 {wpm} WPM',
@@ -2523,6 +2524,7 @@ window.__ModuleLoader__.load({
     chapterTitle: 'Chapter',
     panelHeadChapter: 'Chapter {n}',
     panelHeadReview: 'Review {n} words',
+    reviewExit: 'Exit review',
     speak: 'Read aloud',
     todayStats: 'Today {words} words · {accuracy}% · {wpm} WPM',
     liveSpeed: 'Live {wpm} WPM',
@@ -2736,6 +2738,11 @@ window.__ModuleLoader__.load({
 .qat-wordlist{display:flex;flex-direction:column;gap:6px;border:1px solid var(--dsw-alias-border-l1);border-radius:12px;padding:10px 12px;background:var(--dsw-alias-bg-layer-1)}
 .qat-wordlist-head{display:flex;align-items:center;gap:8px}
 .qat-wordlist-list{display:flex;flex-direction:column;gap:2px;max-height:340px;overflow:auto;padding-right:4px}
+.qat-wordlist-item{display:flex;align-items:center;gap:2px;border-radius:8px}
+.qat-wordlist-item .qat-wordlist-row{flex:1 1 auto;width:auto;min-width:0}
+.qat-wordlist-speak{flex:none;display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:6px;color:var(--dsw-alias-label-tertiary);cursor:pointer;opacity:.45;transition:opacity .12s}
+.qat-wordlist-item:hover .qat-wordlist-speak,.qat-wordlist-speak:focus-visible{opacity:1}
+.qat-wordlist-speak:hover{color:var(--dsw-alias-brand-primary)}
 .qat-wordlist-row{display:flex;align-items:baseline;gap:8px;width:100%;box-sizing:border-box;border:0;background:transparent;border-radius:8px;padding:5px 8px;font:inherit;font-size:13px;text-align:left;color:var(--dsw-alias-label-primary);cursor:pointer}
 .qat-wordlist-row:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .qat-wordlist-row[data-state="current"]{background:var(--dsw-alias-interactive-bg-hover);box-shadow:inset 2px 0 0 var(--dsw-alias-brand-primary)}
@@ -2827,7 +2834,9 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
 .qat-mistakes{display:flex;flex-direction:column;align-items:flex-start;gap:5px;font-size:12px;color:var(--dsw-alias-label-secondary);margin-top:2px}
 .qat-mistakes-title{color:var(--dsw-alias-label-secondary)}
 .qat-mistakes-list{display:flex;flex-wrap:wrap;align-items:center;gap:6px;color:var(--dsw-alias-state-error-primary);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-.qat-mistake{display:inline-flex;align-items:baseline;gap:5px;padding:1px 7px;border-radius:6px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-state-error-primary);line-height:1.5}
+.qat-mistake{display:inline-flex;align-items:baseline;gap:5px;padding:1px 7px;border-radius:6px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-state-error-primary);line-height:1.5;cursor:pointer;user-select:none}
+.qat-mistake:hover,.qat-mistake:focus-visible{border-color:var(--dsw-alias-brand-primary)}
+.qat-mistake:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px}
 .qat-mistake[data-wrong="1"]{color:var(--dsw-alias-label-primary)}
 .qat-mistake-zh{font-family:inherit;font-size:11px;color:var(--dsw-alias-label-tertiary);font-weight:400;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .qat-mistake-ipa{font-size:10px;color:var(--dsw-alias-label-tertiary);opacity:.9}
@@ -2917,6 +2926,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
 .qat-input:focus{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:-1px}
 .qat-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--dsw-alias-label-secondary)}
 .qat-btn{display:inline-flex;align-items:center;gap:4px;user-select:none;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary);border-radius:8px;padding:4px 10px;font-size:12px;cursor:pointer;line-height:1.6}
+.qat-review-exit{padding:2px 8px;font-size:11px;line-height:1.5}
 .qat-btn:hover{border-color:var(--dsw-alias-brand-primary)}
 .qat-btn[data-active="true"]{border-color:var(--dsw-alias-brand-primary);color:var(--dsw-alias-brand-primary)}
 .qat-hint{font-size:12px;color:var(--dsw-alias-label-secondary);line-height:1.5}
@@ -3838,6 +3848,12 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       return 'us'
     }
 
+    /**
+     * 发音预取的模块级开关（N24）：默认开着。预取只把下一个词的 MP3 拉进浏览器缓存，
+     * 不发声、不写存档；要一刀切关掉改这里。
+     */
+    const PREFETCH_ENABLED = true
+
     let AUDIO_NODE = null
 
     /** 有道教 MP3 优先（上游就是这么放的），失败退回浏览器 TTS */
@@ -4123,11 +4139,28 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
             const meta = lookup(row.word)
             const zh = meta?.zh ?? ''
             const phone = phoneticOf(meta, getSettings().accent)
+            /** 点胶囊＝读这个词；voice 关着就什么都不做（不跳转、不关结算页） */
+            const speakPill = () => {
+              if (!getSettings().voice) return false
+              return speak(row.word, { accent: resolveAccent(row.word) })
+            }
             return h('span', {
               key: row.word,
               className: 'qat-mistake',
+              role: 'button',
+              tabIndex: 0,
               'data-wrong': String(row.wrongCount),
+              'data-act': 'pill-speak',
               title: [row.word, phone.text, zh].filter(Boolean).join(' '),
+              onClick: (event) => {
+                event?.preventDefault?.()
+                speakPill()
+              },
+              onKeyDown: (event) => {
+                if (!pillActKey(event?.key)) return
+                event.preventDefault()
+                speakPill()
+              },
             },
               h('span', null, `${row.word} ×${row.wrongCount}`),
               // 音标之前拿到手却没画：错词胶囊上也该看得见怎么读
@@ -4192,6 +4225,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       words, variant, onClose, showMeta = false, options, dictation = 'none',
       dictId = '', chapter = null, chapterTotal = 0, onFinish, onReview, onRetryWrong, onNextChapter, ctx,
       jump = null, onIndex, onLiveWpm, headTag = '', hovering: hoverStart = false, restartNonce = 0,
+      onExitReview,
     }) {
       const t = useT(ctx)
       const [state, setState] = useState({
@@ -4368,6 +4402,42 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       // 跟打条是流水线：没有「完成」态，索引绕圈
       const done = isRoundDone(state.index, total)
       const current = done ? '' : (words[state.index] ?? '')
+      /**
+       * 下一个词的发音预取（对齐上游 usePrefetchPronunciationSound）：建一个
+       * display:none 的 Audio 挂到 head 上，让浏览器先把 MP3 拉下来，换词 / 卸载就摘掉。
+       * 播放器 AUDIO_NODE 是「正在放的那个」，这里单独一个 ref，不复用。
+       * 默写（含 hideAll）也照预取：预取的是声音，屏幕上不泄露答案。
+       */
+      const prefetchRef = useRef(null)
+      useEffect(() => {
+    if (!PREFETCH_ENABLED) return undefined
+    if (typeof document === 'undefined' || !document.head) return undefined
+    const next = nextWordToPrefetch(words, state.index)
+    if (!shouldPrefetch({ voice: voiceOn, dictation, word: next })) return undefined
+    let node = null
+    try {
+      const AudioCtor = typeof window !== 'undefined' && typeof window.Audio === 'function'
+        ? window.Audio
+        : (typeof Audio === 'function' ? Audio : null)
+      if (!AudioCtor) return undefined
+      node = new AudioCtor(pronunciationSrc(next, resolveAccent(next)))
+      node.preload = 'auto'
+      node.crossOrigin = 'anonymous'
+      node.style.display = 'none'
+      document.head.appendChild(node)
+      prefetchRef.current = node
+    } catch {
+      return undefined
+    }
+    return () => {
+      prefetchRef.current = null
+      try {
+        node.parentNode?.removeChild(node)
+      } catch {
+        /* 已经被摘掉了 */
+      }
+    }
+      }, [words, state.index, voiceOn, dictation])
       // 判定用的目标串（忽略标点 / 大小写）与展示用的遮罩
       const target = effectiveTarget(current, options)
       // 悬停在词上且开了开关：整词放开（对齐上游 getLetterVisible 的第一支）
@@ -4630,6 +4700,15 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     helpOpen ? h('div', { className: 'qat-help', 'data-help': 'true' }, t('hotkeysList')) : null,
     h('div', { className: 'qat-head' },
       h('span', { className: variant === 'panel' ? 'qat-headtag' : 'qat-title' }, headLabel),
+      // 复习中给一个明确出口：只清 review 回普通面板，不打结算、不 submit()
+      onExitReview
+        ? h('span', {
+          ...pressable(onExitReview),
+          className: 'qat-btn qat-review-exit',
+          'data-act': 'review-exit',
+          title: t('reviewExit'),
+        }, t('reviewExit'))
+        : null,
       h('span', { className: 'qat-sep' }),
       h('span', null, t('progress', { done: Math.min(state.index, total), total })),
       h('span', { className: 'qat-sep' }),
@@ -5005,6 +5084,44 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     /** 一轮是否打完：面板打完要停，跟打条永远不停（走 stepIndex） */
     function isRoundDone(index, total) {
       return Number(total) > 0 && Number(index) >= Number(total)
+    }
+
+    /**
+     * 预取只看「下一个词」的读音：字符串和 { w } 词条都吃，
+     * 末尾 / 越界 / 空数组统一给空串（空串 = 不预取）。
+     */
+    function nextWordToPrefetch(words, index) {
+      if (!Array.isArray(words)) return ''
+      const next = words[Number(index) + 1]
+      if (next === undefined || next === null) return ''
+      const text = typeof next === 'string' ? next : (next.w ?? next.word ?? '')
+      return String(text).trim()
+    }
+
+    /**
+     * 要不要预取：只看发音总开关 + 下一个词是不是空的。
+     * 默写（含 hideAll）照样预取——预取的是声音，不是屏幕上的答案；
+     * 所以 dictation 不进判断，传进来也不用。
+     */
+    function shouldPrefetch({ voice, word } = {}) {
+      if (voice !== true) return false
+      return String(word ?? '').trim() !== ''
+    }
+
+    /**
+     * 错词胶囊的键盘语义：Enter / 空格（含老浏览器的 'Spacebar'）＝读一遍，
+     * 其它键给空串，调用方据此什么都不做。
+     */
+    function pillActKey(key) {
+      const text = String(key ?? '')
+      if (text.toLowerCase() === 'enter') return 'speak'
+      if (text === ' ' || text === 'Spacebar') return 'speak'
+      return ''
+    }
+
+    /** 退出复习：把 review 置空（回到普通面板），不回结算、不 submit() */
+    function reviewExit() {
+      return null
     }
 
     /**
@@ -6146,7 +6263,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
      * 词表抽屉：本章的词一列，当前词高亮、打过的标状态，点一行直接跳过去。
      * 行数据由 wordListRows 算好，这里只管画（所以测试能单独渲染它）。
      */
-    function WordListPanel({ t, rows, hint, onPick, onClose }) {
+    function WordListPanel({ t, rows, hint, onPick, onSpeak, onClose }) {
       const list = Array.isArray(rows) ? rows : []
       return h('div', { className: 'qat-wordlist' },
     h('div', { className: 'qat-wordlist-head' },
@@ -6164,23 +6281,41 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     ),
     list.length === 0
       ? h('div', { className: 'qat-loading' }, t('wordListEmpty'))
-      : h('div', { className: 'qat-wordlist-list' }, list.map((row) => h('button', {
+      : h('div', { className: 'qat-wordlist-list' }, list.map((row) => h('div', {
         key: `${row.index}:${row.word}`,
-        type: 'button',
-        className: 'qat-wordlist-row',
-        'data-state': row.state,
-        'data-no': String(row.index + 1),
-        'data-active': row.state === 'current' ? 'true' : 'false',
-        title: `${row.word}${row.zh ? ` · ${row.zh}` : ''}`,
-        'aria-label': `${row.index + 1} ${row.word}`,
-        onClick: () => onPick?.(row),
+        className: 'qat-wordlist-item',
       },
-        h('span', { className: 'qat-wordlist-no' }, String(row.index + 1)),
-        h('span', { className: 'qat-wordlist-word' }, row.word),
-        row.ipa ? h('span', { className: 'qat-wordlist-ipa' }, row.ipa) : null,
-        h('span', { className: 'qat-wordlist-zh' }, row.zh || ''),
-        h('span', { className: 'qat-wordlist-state', 'data-state': row.state },
-          t(WORDLIST_STATE_LABEL[row.state] ?? WORDLIST_STATE_LABEL.idle)),
+        h('button', {
+          type: 'button',
+          className: 'qat-wordlist-row',
+          'data-state': row.state,
+          'data-no': String(row.index + 1),
+          'data-active': row.state === 'current' ? 'true' : 'false',
+          title: `${row.word}${row.zh ? ` · ${row.zh}` : ''}`,
+          'aria-label': `${row.index + 1} ${row.word}`,
+          onClick: () => onPick?.(row),
+        },
+          h('span', { className: 'qat-wordlist-no' }, String(row.index + 1)),
+          h('span', { className: 'qat-wordlist-word' }, row.word),
+          row.ipa ? h('span', { className: 'qat-wordlist-ipa' }, row.ipa) : null,
+          h('span', { className: 'qat-wordlist-zh' }, row.zh || ''),
+          h('span', { className: 'qat-wordlist-state', 'data-state': row.state },
+            t(WORDLIST_STATE_LABEL[row.state] ?? WORDLIST_STATE_LABEL.idle)),
+        ),
+        // 行尾小喇叭：和行是兄弟节点（不嵌在 button 里），点它只发音、不跳转。
+        // pressable 的 onMouseDown preventDefault 保证焦点不被从隐形输入框抢走。
+        onSpeak
+          ? h('span', {
+            ...pressable((event) => {
+              event?.stopPropagation?.()
+              onSpeak(row)
+            }),
+            className: 'qat-wordlist-speak',
+            'data-act': 'wordlist-speak',
+            title: t('speak'),
+            'aria-label': t('speak'),
+          }, h(Icon, { name: 'speak', size: 12 }))
+          : null,
       ))),
       )
     }
@@ -6453,6 +6588,14 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       )
       const handleIndex = useCallback((value) => setActiveIndex(value), [])
 
+      /**
+       * 词表行尾小喇叭的薄包装：总开关关着就什么都不做（不发请求、不抢焦点），
+       * 开着就按当前口音读一遍。
+       */
+      const speakWord = useCallback((word) => (
+        getSettings().voice ? speak(word, { accent: resolveAccent(word) }) : false
+      ), [])
+
       const choose = (id) => {
     if (!id) return
     setDictId(id)
@@ -6653,6 +6796,8 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
           setJump({ index: row.index })
           setListOpen(false)
         },
+        // 行尾小喇叭：只读音，不跳行；抽屉保持打开，可以连着听几个
+        onSpeak: (row) => speakWord(row.word),
         onClose: () => setListOpen(false),
       })
       : null,
@@ -6669,6 +6814,8 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         chapter: null,
         // 复练（错词 / 本轮打错）没有章号：卡片头部这一格说清楚在练什么
         headTag: t('panelHeadReview', { n: review.length }),
+        // 复习出口：清 review 回普通面板（不触发结算、不 submit），打完了也能退
+        onExitReview: () => setReview(reviewExit(review)),
         onFinish: refreshStats,
         onReview: (words) => setReview(words),
         onRetryWrong: (words) => {
@@ -6825,6 +6972,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     readChapterPos, writeChapterPos, resumeChapter, resumeChapterSmart, BAR_KEY, CHAPTER_KEY, wordsOfRound, nextChapterIndex, pronunciationSrc, pronunciationType, speakWithTts,
     isKanji, notationParts, notationNodes, romajiToHiragana,
     speak, speakMeaning, cancelMeaning, meaningLang, shouldReadMeaning, MEANING_DELAY_MS,
+    nextWordToPrefetch, shouldPrefetch, PREFETCH_ENABLED, pillActKey, reviewExit,
       },
       inject: ['slots', 'locale'],
       apply(ctx) {
