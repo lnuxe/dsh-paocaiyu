@@ -131,6 +131,11 @@ function createFakeIndexedDB() {
         request.done(rows.get(key))
         return request
       },
+      delete(key) {
+        const request = makeRequest()
+        request.done(rows.delete(key))
+        return request
+      },
       clear() {
         const request = makeRequest()
         rows.clear()
@@ -3877,6 +3882,279 @@ check('面板把出口接到 reviewExit（清 review、不打结算、不 submit
 check('新入口在样式表里有规则', [
   '\\.qat-wordlist-item\\{', '\\.qat-wordlist-speak\\{', '\\.qat-review-exit\\{',
 ].every((re) => new RegExp(re).test(source)), true)
+
+/* ================================================================== *
+ * 结算页结语 / 撒花（N6） + 错词本分页 / 单删 / 详情 / CSV（N8）
+ * ================================================================== */
+const tagT = (key, vars) => {
+  if (vars && vars.page !== undefined) return `${key}:${vars.page}/${vars.pages}`
+  if (vars && vars.n !== undefined) return `${key}:${vars.n}`
+  if (vars && vars.at !== undefined) return `${key}:${vars.at}`
+  if (vars && vars.name !== undefined) return `${key}:${vars.name}`
+  return key
+}
+const { doneMessage, confettiBits, paginate, dropWord, removeWordRecord, detailOf, wrongCsv, csvCell, csvName, WRONG_PAGE_SIZE } = renderTest
+
+// —— doneMessage：四档（含没数据） ——
+check('结语：没数据不渲染', doneMessage({ total: 0, hits: 0, retries: 0 }), { key: '', level: -1 })
+check('结语：全对 = 完美', doneMessage({ total: 20, hits: 20, retries: 0 }), { key: 'donePerfect', level: 2 })
+check('结语：正确率 90 = 很稳', doneMessage({ total: 10, hits: 9, retries: 1 }), { key: 'doneGreat', level: 1 })
+check('结语：正确率 80 = 继续练', doneMessage({ total: 10, hits: 8, retries: 2 }), { key: 'doneKeepGoing', level: 0 })
+check('结语：容错空入参', doneMessage(), { key: '', level: -1 })
+
+// —— confettiBits：只有满分才撒花 ——
+check('撒花：level 2 是 12 片', confettiBits(2), 12)
+check('撒花：level 1 不撒', confettiBits(1), 0)
+check('撒花：level 0 不撒', confettiBits(0), 0)
+check('撒花：level -1 不撒', confettiBits(-1), 0)
+
+// —— 结算页：默写按钮 / 结语 / 撒花 ——
+let n6Next = 0
+let n6Restart = 0
+renderTest.setSetting('dictation', 'none')
+renderTest.setSetting('dictationOpenBy', 'user')
+const n6Perfect = render('渲染：结算页满分', () => renderTest.components.ResultScreen({
+  t: tagT,
+  total: 20,
+  elapsed: 30,
+  hits: 20,
+  retries: 0,
+  mistakes: [],
+  words: ['cancel'],
+  onRestart: () => { n6Restart += 1 },
+  onNextChapter: () => { n6Next += 1 },
+}))
+check('结算页有「默写本章节」按钮', findByAct(n6Perfect, 'dictation-auto') !== null, true)
+check('默写按钮文案用 dictationAuto', gatherText(n6Perfect).includes('dictationAuto'), true)
+check('满分：结语 data-level=2', findNodesByClass(n6Perfect, 'qat-done-note')[0]?.props?.['data-level'], '2')
+check('满分：结语文案是 donePerfect', gatherText(n6Perfect).includes('donePerfect'), true)
+check('满分：撒花层出现', findNodesByClass(n6Perfect, 'qat-confetti').length, 1)
+check('满分：撒花 12 片', findNodesByClass(n6Perfect, 'qat-confetti-bit').length, 12)
+check('撒花：aria-hidden', findNodesByClass(n6Perfect, 'qat-confetti')[0]?.props?.['aria-hidden'], 'true')
+check('撒花：第一片用 CSS 变量控位置', findNodesByClass(n6Perfect, 'qat-confetti-bit')[0]?.props?.style?.['--qat-i'], 0)
+const n6Button = findByAct(n6Perfect, 'dictation-auto')
+n6Button?.props?.onClick?.()
+check('默写按钮：先置 auto 再进下一章', [n6Next, n6Restart].join(','), '1,0')
+check('默写按钮：设置落成 hideAll/auto', (function () {
+  const live = renderTest.getSettings()
+  return [live.dictation, live.dictationOpenBy].join(',')
+})(), 'hideAll,auto')
+
+const activeScreen = render('渲染：结算页（auto 已开）', () => renderTest.components.ResultScreen({
+  t: tagT,
+  total: 20,
+  elapsed: 30,
+  hits: 20,
+  retries: 0,
+  mistakes: [],
+  words: ['cancel'],
+  onRestart: () => { n6Restart += 1 },
+  onNextChapter: () => { n6Next += 1 },
+}))
+check('auto 已开：按钮 data-active=true', findByAct(activeScreen, 'dictation-auto')?.props?.['data-active'], 'true')
+findByAct(activeScreen, 'dictation-auto')?.props?.onClick?.()
+check('auto 已开：再点是重开本章', [n6Next, n6Restart].join(','), '1,1')
+check('auto 已开：退出 auto', (function () {
+  const live = renderTest.getSettings()
+  return [live.dictation, live.dictationOpenBy].join(',')
+})(), 'none,user')
+renderTest.setSetting('dictation', 'none')
+renderTest.setSetting('dictationOpenBy', 'user')
+
+const n6Great = render('渲染：结算页很稳', () => renderTest.components.ResultScreen({
+  t: tagT, total: 10, elapsed: 20, hits: 9, retries: 1, mistakes: [], words: ['cancel'],
+  onRestart: () => {}, onNextChapter: () => {},
+}))
+check('很稳：结语 data-level=1', findNodesByClass(n6Great, 'qat-done-note')[0]?.props?.['data-level'], '1')
+check('很稳：不撒花', findNodesByClass(n6Great, 'qat-confetti').length, 0)
+const n6None = render('渲染：结算页没数据', () => renderTest.components.ResultScreen({
+  t: tagT, total: 0, elapsed: 0, hits: 0, retries: 0, mistakes: [], words: [],
+  onRestart: () => {},
+}))
+check('没数据：不画结语', findNodesByClass(n6None, 'qat-done-note').length, 0)
+check('没数据：不撒花', findNodesByClass(n6None, 'qat-confetti').length, 0)
+check('非满分不撒花', findNodesByClass(resultScreen, 'qat-confetti').length, 0)
+check('继续练：data-level=0', findNodesByClass(resultScreen, 'qat-done-note')[0]?.props?.['data-level'], '0')
+
+// —— 撒花纯 CSS + 只用 token；reduced motion 关掉 ——
+const confettiCss = source.slice(source.indexOf('.qat-confetti{'), source.indexOf('@media (prefers-reduced-motion: reduce){.qat-confetti-bit'))
+check('撒花 CSS 不用字面量颜色', /#[0-9a-f]{3,8}|rgba?\(|:\s*(?:white|black|red)\b/i.test(confettiCss), false)
+check('撒花 CSS 循环用 3 个 token',
+  ['var(--dsw-alias-brand-primary)', 'var(--dsw-alias-state-success-primary)', 'var(--dsw-alias-state-warn-primary)']
+    .every((token) => confettiCss.includes(token)), true)
+check('撒花是 CSS 动画', confettiCss.includes('animation:qat-confetti-fall'), true)
+check('reduced motion 关掉撒花动画',
+  source.includes('@media (prefers-reduced-motion: reduce){.qat-confetti-bit{animation:none'), true)
+check('新样式规则存在', ['\\.qat-done-note\\{', '\\.qat-confetti\\{', '\\.qat-pager\\{', '\\.qat-detail\\{']
+  .every((re) => new RegExp(re).test(source)), true)
+check('结算页/错词本改动没有新增 submit(',
+  // 只算真调用：注释里写「不 submit()」不算（E1/E3 两段的注释都会提到这个词）
+  source.slice(source.indexOf('function doneMessage'), source.indexOf('function StatsPanel'))
+    .replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '').includes('submit('), false)
+
+// —— paginate：首页 / 末页 / 夹取 / 空 / 非数组 ——
+const pages25 = Array.from({ length: 25 }, (_, index) => ({ word: `w${index}`, dictId: 'cet4', wrongCount: 1 }))
+check('分页常量是 20', WRONG_PAGE_SIZE, 20)
+check('分页：第一页 20 条', paginate(pages25, 1).rows.length, 20)
+check('分页：第二页 5 条', paginate(pages25, 2).rows.length, 5)
+check('分页：总页数 2', paginate(pages25, 1).pages, 2)
+check('分页：total 是原条数', paginate(pages25, 2).total, 25)
+check('分页：越界夹到末页', paginate(pages25, 99).page, 2)
+check('分页：0 夹到第一页', paginate(pages25, 0).page, 1)
+check('分页：空数组也给 1 页', paginate([], 1), { page: 1, pages: 1, rows: [], total: 0 })
+check('分页：非数组当空', paginate(null, 3), { page: 1, pages: 1, rows: [], total: 0 })
+check('分页：删掉末页唯一一条后页码夹回', (function () {
+  const rows21 = Array.from({ length: 21 }, (_, index) => ({ word: `w${index}` }))
+  const clamped = paginate(dropWord(rows21, 'w20'), 2)
+  return [clamped.page, clamped.pages, clamped.rows.length].join(',')
+})(), '1,1,20')
+
+// —— 单删纯函数：不改原数组 ——
+const dropSource = [{ word: 'cancel' }, { word: 'govern' }]
+const dropped = dropWord(dropSource, 'CANCEL')
+check('dropWord：大小写不敏感删掉', dropped.length, 1)
+check('dropWord：不改原数组', dropSource.length, 2)
+check('dropWord：返回新数组', dropped !== dropSource, true)
+const recordSource = [
+  { word: 'cancel', dictId: 'cet4' },
+  { word: 'cancel', dictId: 'cet6' },
+  { word: 'govern', dictId: 'cet4' },
+]
+check('removeWordRecord：按词库只删一条', removeWordRecord(recordSource, 'cancel', 'cet4').length, 2)
+check('removeWordRecord：不传词库删全部同名', removeWordRecord(recordSource, 'cancel').length, 1)
+check('removeWordRecord：不改原数组', recordSource.length, 3)
+
+// —— detailOf：容错 + 正常字段 ——
+check('详情：空行给空值不抛', detailOf({}), { word: '', ipa: '', senses: [], wrongCount: 0, at: 0, dictId: '' })
+check('详情：非对象也不抛', detailOf(null), { word: '', ipa: '', senses: [], wrongCount: 0, at: 0, dictId: '' })
+const applyDetail = detailOf({ word: 'apply', dictId: 'cet4', wrongCount: 3, at: 123 })
+check('详情：音标 / 释义 / 次数 / 时间 / 词库', [
+  applyDetail.word, applyDetail.ipa.length > 0, applyDetail.senses.length > 3, applyDetail.wrongCount, applyDetail.at, applyDetail.dictId,
+].join('|'), 'apply|true|true|3|123|cet4')
+
+// —— wrongCsv：BOM / 表头 / 引号 / 逗号 / 换行 / 空数据 ——
+const emptyCsv = wrongCsv([])
+check('CSV：BOM 开头', emptyCsv.charCodeAt(0), 0xFEFF)
+check('CSV：空数据只有表头 + 行尾', emptyCsv.slice(1), 'word,ipa,zh,wrongCount,dictId\r\n')
+check('CSV：表头字段顺序', emptyCsv.slice(1).split('\r\n')[0], 'word,ipa,zh,wrongCount,dictId')
+const oneCsv = wrongCsv([{ word: 'cancel', dictId: 'cet4', wrongCount: 2 }])
+const oneLine = oneCsv.slice(1).split('\r\n')[1]
+check('CSV：数据行尾 CRLF', oneCsv.endsWith('\r\n'), true)
+check('CSV：数据行列数', oneLine.split(',').length, 5)
+check('CSV：打错次数是第四列', oneLine.split(',')[3], '2')
+check('CSV：逗号字段包引号', csvCell('a,b'), '"a,b"')
+check('CSV：引号翻倍', csvCell('a"b'), '"a""b"')
+check('CSV：换行字段包引号', csvCell('a\nb'), '"a\nb"')
+const trickyCsv = wrongCsv([{ word: 'cancel', dictId: 'a,"b"\nc', wrongCount: 1 }])
+check('CSV：整行里逗号/引号/换行都被转义', trickyCsv.includes('"a,""b""\nc"'), true)
+check('CSV：文件名带日期', csvName(new Date(2026, 10, 24, 12)), 'wrong-words-20261124.csv')
+check('CSV：坏日期回退 19700101', csvName('not-a-date'), 'wrong-words-19700101.csv')
+
+// —— 错词本渲染：分页条只在 >20 条时出现 + 单删 + 导出入口 ——
+const pagedWrong = render('渲染：错词本 25 条', () => renderTest.components.WrongBookPanel({
+  t: tagT,
+  rows: pages25,
+  query: '',
+  sort: 'count',
+  dicts: [],
+  mastered: [],
+  onQuery: () => {},
+  onSort: () => {},
+  onMastered: () => {},
+  onReview: () => {},
+  onClear: () => {},
+  onClose: () => {},
+  onDelete: () => {},
+}))
+check('错词本 >20 条出分页条', findNodesByClass(pagedWrong, 'qat-pager').length, 1)
+check('错词本第一页只画 20 行', findNodesByClass(pagedWrong, 'qat-wrongrow').length, 20)
+check('分页条有上一页/下一页', [findByAct(pagedWrong, 'wrong-prev') !== null, findByAct(pagedWrong, 'wrong-next') !== null].join(','), 'true,true')
+check('分页条显示 pageOf', gatherText(pagedWrong).includes('pageOf:1/2'), true)
+check('错词本 <=20 条不分页', findNodesByClass(wrongCase, 'qat-pager').length, 0)
+const exactly20 = render('渲染：错词本刚好 20 条', () => renderTest.components.WrongBookPanel({
+  t: tagT,
+  rows: pages25.slice(0, 20),
+  query: '', sort: 'count', dicts: [], mastered: [],
+  onQuery: () => {}, onSort: () => {}, onMastered: () => {}, onReview: () => {}, onClear: () => {}, onClose: () => {}, onDelete: () => {},
+}))
+check('错词本刚好 20 条不分页', findNodesByClass(exactly20, 'qat-pager').length, 0)
+check('错词本有导出入口', findByAct(pagedWrong, 'wrong-export') !== null, true)
+check('导出按钮文案用 exportCsv', gatherText(pagedWrong).includes('exportCsv'), true)
+const deleteCalls = []
+const deleteWrong = render('渲染：错词本单删', () => renderTest.components.WrongBookPanel({
+  t: tagT,
+  rows: [{ word: 'cancel', dictId: 'cet4', wrongCount: 2 }, { word: 'govern', dictId: 'cet6', wrongCount: 1 }],
+  query: '', sort: 'count', dicts: [], mastered: [],
+  onQuery: () => {}, onSort: () => {}, onMastered: () => {}, onReview: () => {}, onClear: () => {}, onClose: () => {},
+  onDelete: (word, dictId) => deleteCalls.push([word, dictId]),
+}))
+const deleteNode = findByAct(deleteWrong, 'wrong-del')
+findByAct(deleteWrong, 'wrong-del')?.props?.onClick?.({ stopPropagation: () => {} })
+check('单删按钮把 word + dictId 交给上层', deleteCalls, [['cancel', 'cet4']])
+check('单删按钮是 qat-iconbtn + aria-label',
+  [hasClass(collectClasses(deleteNode), 'qat-iconbtn'), deleteNode?.props?.['aria-label']].join(','), 'true,delete')
+
+// —— 详情弹窗：点行打开 / 音标 / 释义最多 3 段 / 关闭 ——
+let detailHook = 0
+const detailReact = {
+  ...reactForRender,
+  useState: (value) => {
+    detailHook += 1
+    if (detailHook === 1) return [1, () => {}]
+    if (detailHook === 2) return [{ word: 'apply', dictId: 'cet4', wrongCount: 4, at: 1234567890 }, () => {}]
+    return [typeof value === 'function' ? value() : value, () => {}]
+  },
+}
+const detailPlugin = factory((name) => {
+  if (name === 'react') return detailReact
+  throw new Error(`unexpected require: ${name}`)
+})
+const detailTree = render('渲染：错词详情弹窗', () => detailPlugin.__test.components.WrongBookPanel({
+  t: tagT,
+  rows: [{ word: 'apply', dictId: 'cet4', wrongCount: 4, at: 1234567890 }],
+  query: '', sort: 'count', dicts: [], mastered: [],
+  onQuery: () => {}, onSort: () => {}, onMastered: () => {}, onReview: () => {}, onClear: () => {}, onClose: () => {}, onDelete: () => {},
+}))
+check('详情：有遮罩 + 弹窗', [findNodesByClass(detailTree, 'qat-detail-mask').length, findNodesByClass(detailTree, 'qat-detail').length].join(','), '1,1')
+check('详情：显示单词', gatherText(findNodesByClass(detailTree, 'qat-detail')[0]).includes('apply'), true)
+check('详情：显示音标', findNodesByClass(detailTree, 'qat-detail-ipa').length, 1)
+check('详情：释义最多 3 段', findNodesByClass(detailTree, 'qat-sense').length, 3)
+check('详情：超出显示 +N', gatherText(detailTree).includes('+4'), true)
+check('详情：有打错次数与最近时间', gatherText(detailTree).includes('detailWrongCount:4') && gatherText(detailTree).includes('detailLastAt'), true)
+check('详情：有词库名', gatherText(detailTree).includes('detailDict'), true)
+check('详情：词库 id 挂在节点上', findNodesByClass(detailTree, 'qat-detail-meta')[0]?.children?.some((node) => node?.props?.['data-dict-id'] === 'cet4'), true)
+check('详情：关闭按钮', findByAct(detailTree, 'detail-close') !== null, true)
+check('详情：不用原生 dialog', source.includes("h('dialog'") || source.includes("createElement('dialog'"), false)
+
+await recordFlow
+
+// —— removeWordRecords：IDB + mastered 一起清 ——
+const removeFlow = await (async () => {
+  const { recordWord, readWordRecords, removeWordRecords, readMastered, writeMastered, masteredKey } = plugin.__test
+  await recordWord({ word: 'zebra', dictId: 'cet4', wrongCount: 2, at: 1 })
+  await recordWord({ word: 'zebra', dictId: 'cet6', wrongCount: 1, at: 2 })
+  writeMastered([masteredKey('cet4', 'zebra'), masteredKey('cet6', 'zebra'), masteredKey('cet4', 'other')])
+  const removed = await removeWordRecords('zebra', 'cet4')
+  const afterOne = await readWordRecords()
+  const masteredOne = readMastered()
+  const removedAll = await removeWordRecords('zebra')
+  const afterAll = await readWordRecords()
+  const masteredAll = readMastered()
+  return {
+    removed,
+    afterOne: afterOne.filter((row) => row.word === 'zebra').length,
+    masteredOne,
+    removedAll,
+    afterAll: afterAll.filter((row) => row.word === 'zebra').length,
+    masteredAll,
+  }
+})()
+check('单删存储：按词库删 1 条', removeFlow.removed, 1)
+check('单删存储：另一词库的同名记录还在', removeFlow.afterOne, 1)
+check('单删存储：mastered 只清对应词库', removeFlow.masteredOne.includes('cet6:zebra') && !removeFlow.masteredOne.includes('cet4:zebra'), true)
+check('单删存储：不传词库删干净', [removeFlow.removedAll, removeFlow.afterAll].join(','), '1,0')
+check('单删存储：mastered 同名项清空、别的保留', removeFlow.masteredAll.join(','), 'cet4:other')
+
 
 if (failures > 0) {
   console.log(`\n${failures} FAILED`)

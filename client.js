@@ -702,6 +702,60 @@ window.__ModuleLoader__.load({
       })
     }
 
+    /**
+     * 从练习记录里删掉一个词（可按词库限定），并把镜像与「已掌握」里的同名项一起清掉。
+     * 返回删掉的记录条数；IndexedDB 不可用时返回 0，但仍会清镜像与 mastered。
+     */
+    function removeWordRecords(word, dictId) {
+      const target = String(word ?? '')
+      if (!target) return Promise.resolve(0)
+      const wanted = dictId === undefined || dictId === null || dictId === '' ? null : String(dictId)
+      return withStore(WORD_STORE, 'readwrite', (tx, done) => {
+    const store = tx.objectStore(WORD_STORE)
+    const request = store.getAll()
+    request.onsuccess = () => {
+      const rows = Array.isArray(request.result) ? request.result : []
+      let removed = 0
+      let pending = 0
+      const settle = () => {
+        pending -= 1
+        if (pending <= 0) done(removed)
+      }
+      for (const row of rows) {
+        if (String(row?.word ?? '') !== target) continue
+        if (wanted !== null && String(row?.dictId ?? '') !== wanted) continue
+        pending += 1
+        try {
+          const del = store.delete(row.id)
+          del.onsuccess = () => {
+            removed += 1
+            settle()
+          }
+          del.onerror = settle
+        } catch {
+          settle()
+        }
+      }
+      if (pending === 0) done(0)
+    }
+    request.onerror = () => done(0)
+      }).then((removed) => {
+    const mirror = readMirror()
+    const keptRecords = removeWordRecord(mirror.wordRecords, target, wanted)
+    if (keptRecords.length !== mirror.wordRecords.length) {
+      writeMirror({ ...mirror, wordRecords: keptRecords })
+    }
+    const keys = readMastered()
+    const keptKeys = keys.filter((key) => {
+      if (key === target) return false
+      if (!key.endsWith(`:${target}`)) return true
+      return wanted !== null && key !== `${wanted}:${target}`
+    })
+    if (keptKeys.length !== keys.length) writeMastered(keptKeys)
+    return removed ?? 0
+      })
+    }
+
     /** 记一章：词数 / 对错 / 用时（秒） */
     function recordChapter(entry) {
       if (!entry) return Promise.resolve(null)
@@ -2337,6 +2391,9 @@ window.__ModuleLoader__.load({
     autoTitle: '自动打',
     doneTitle: '这一轮打完了',
     doneBody: '完成 {total}/{total}，用时 {sec}s，命中 {hits}，重打 {retries}',
+    donePerfect: '完美，一个都没打错',
+    doneGreat: '这章很稳',
+    doneKeepGoing: '慢一点，把错的再打两遍',
     again: '再来一轮',
     resultWrongTitle: '本轮打错 {n} 个',
     resultRetryWrong: '重练这些词',
@@ -2478,6 +2535,15 @@ window.__ModuleLoader__.load({
     wrongEmpty: '还没有错词。打错过的词会自动出现在这里。',
     reviewTop: '重练前 20',
     clearWrong: '刷新',
+    pageOf: '第 {page} / {pages} 页',
+    prevPage: '上一页',
+    nextPage: '下一页',
+    exportCsv: '导出 CSV',
+    delete: '删除',
+    detailTitle: '错词详情',
+    detailWrongCount: '打错 {n} 次',
+    detailLastAt: '最近 {at}',
+    detailDict: '词库：{name}',
     stats: '统计',
     statsTitle: '近 14 天',
     statWords: '{n} 词',
@@ -2513,6 +2579,9 @@ window.__ModuleLoader__.load({
     loading: 'Loading dictionary…',
     doneTitle: 'Round complete',
     doneBody: '{total}/{total} done in {sec}s — {hits} hits, {retries} retries',
+    donePerfect: 'Perfect — not a single miss',
+    doneGreat: 'Solid chapter',
+    doneKeepGoing: 'Slow down and retype the misses',
     again: 'Go again',
     resultWrongTitle: 'Mistyped {n} this round',
     resultRetryWrong: 'Retry these',
@@ -2650,6 +2719,15 @@ window.__ModuleLoader__.load({
     wrongEmpty: 'No wrong words yet — mistyped words land here automatically.',
     reviewTop: 'Review top 20',
     clearWrong: 'Refresh',
+    pageOf: 'Page {page} / {pages}',
+    prevPage: 'Previous page',
+    nextPage: 'Next page',
+    exportCsv: 'Export CSV',
+    delete: 'Delete',
+    detailTitle: 'Wrong word',
+    detailWrongCount: '{n} mistakes',
+    detailLastAt: 'Last {at}',
+    detailDict: 'Dictionary: {name}',
     stats: 'Stats',
     statsTitle: 'Last 14 days',
     statWords: '{n} words',
@@ -2732,9 +2810,24 @@ window.__ModuleLoader__.load({
 .qat-loading{color:var(--dsw-alias-label-secondary);font-size:13px;padding:24px 0;text-align:center}
 .qat-letter[data-mask="true"]{color:var(--dsw-alias-label-tertiary);opacity:.55}
 .qat-picker-title{font-size:13px;color:var(--dsw-alias-label-secondary)}
-.qat-wrongrow{display:flex;align-items:baseline;gap:10px;padding:6px 8px;border-radius:8px}
+.qat-wrongrow{display:flex;align-items:center;gap:8px;padding:3px 2px;border-radius:8px;cursor:pointer}
 .qat-wrongrow:hover{background:var(--dsw-alias-interactive-bg-hover)}
-.qat-wrongrow{display:flex;align-items:center;gap:8px;padding:3px 2px}
+.qat-wrongdel{width:22px;height:22px;opacity:.55}
+.qat-wrongdel:hover{opacity:1;color:var(--dsw-alias-state-error-primary)}
+.qat-pager{display:flex;align-items:center;justify-content:flex-end;gap:8px;font-size:12px;color:var(--dsw-alias-label-secondary)}
+.qat-pagerbtn{display:inline-flex;align-items:center;justify-content:center;width:28px;height:26px;padding:0}
+.qat-pagerbtn[data-disabled="true"]{opacity:.4;pointer-events:none}
+.qat-pageinfo{font-size:12px;color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums}
+.qat-detail-mask{position:fixed;inset:0;z-index:70;display:flex;align-items:center;justify-content:center;padding:20px;background:color-mix(in srgb,var(--dsw-alias-label-primary) 26%,transparent)}
+.qat-detail{position:relative;z-index:1;width:min(420px,100%);max-height:70vh;overflow:auto;display:flex;flex-direction:column;gap:8px;padding:16px 18px;border:1px solid var(--dsw-alias-border-l1);border-radius:14px;background:var(--dsw-alias-bg-layer-1);box-shadow:0 14px 44px color-mix(in srgb,var(--dsw-alias-label-primary) 24%,transparent)}
+.qat-detail-head{display:flex;align-items:center;gap:8px}
+.qat-detail-title{font-size:12px;color:var(--dsw-alias-label-tertiary)}
+.qat-detail-word{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:28px;line-height:1.2;color:var(--dsw-alias-label-primary);overflow-wrap:anywhere}
+.qat-detail-ipa{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;color:var(--dsw-alias-label-secondary)}
+.qat-detail-senses{display:flex;flex-direction:column;gap:3px;font-size:14px;line-height:1.55;color:var(--dsw-alias-label-secondary)}
+.qat-detail .qat-sense{display:flex;align-items:baseline;gap:6px}
+.qat-detail .qat-pos{flex:none;font-size:11px;color:var(--dsw-alias-label-tertiary);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.qat-detail-meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:12px;color:var(--dsw-alias-label-tertiary);border-top:1px solid var(--dsw-alias-border-l1);padding-top:8px}
 .qat-icon[data-active="true"][data-act="mastered"]{color:var(--dsw-alias-state-success-primary);opacity:1}
 .qat-wrongword{font-size:14px;color:var(--dsw-alias-label-primary);min-width:110px}
 .qat-wrongzh{flex:1;font-size:12px;color:var(--dsw-alias-label-tertiary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -2945,8 +3038,17 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
 .qat-card[data-variant="panel"] .qat-tip{justify-content:center;margin-top:-4px}
 .qat-card[data-variant="command"] .qat-tip{justify-content:center}
 .qat-bar-tip{font-size:11px;line-height:1.3;letter-spacing:0;font-family:inherit;color:var(--dsw-alias-label-tertiary);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;pointer-events:none}
-.qat-done{display:flex;flex-direction:column;gap:8px}
+.qat-done{position:relative;display:flex;flex-direction:column;gap:8px}
 .qat-done-title{color:var(--dsw-alias-state-success-primary);font-weight:600;font-size:13px}
+.qat-done-note{font-size:12px;line-height:1.5;color:var(--dsw-alias-label-secondary)}
+.qat-done-note[data-level="2"]{color:var(--dsw-alias-state-success-primary)}
+.qat-done-note[data-level="1"]{color:var(--dsw-alias-label-primary)}
+.qat-confetti{position:absolute;left:0;right:0;top:-10px;height:96px;pointer-events:none;overflow:hidden}
+.qat-confetti-bit{position:absolute;top:0;left:calc(4% + var(--qat-i) * 7.5%);width:6px;height:10px;border-radius:2px;background:var(--dsw-alias-brand-primary);opacity:0;animation:qat-confetti-fall 1.5s ease-out both;animation-delay:calc(var(--qat-i) * 55ms)}
+.qat-confetti-bit:nth-child(3n+2){background:var(--dsw-alias-state-success-primary)}
+.qat-confetti-bit:nth-child(3n){background:var(--dsw-alias-state-warn-primary)}
+@keyframes qat-confetti-fall{0%{opacity:1;transform:translateY(-6px) rotate(0deg)}100%{opacity:0;transform:translateY(92px) rotate(280deg)}}
+@media (prefers-reduced-motion: reduce){.qat-confetti-bit{animation:none;opacity:.7}}
 .qat-done-acts{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .qat-btn-retry{border-color:var(--dsw-alias-state-error-primary);color:var(--dsw-alias-state-error-primary)}
 /* 面板头部的「重开」与工具行的「默写本章节」：小一号，和图标按钮、下拉同一行不抢戏 */
@@ -4173,6 +4275,25 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       return next
     }
 
+    /**
+     * 结算页结语：全对 > 90% > 继续练，三档只给一个 key。
+     * total 为 0（没数据）返回空 key + level -1，UI 据此整块不渲染。
+     */
+    function doneMessage({ total, hits, retries } = {}) {
+      const count = Number(total) || 0
+      if (count <= 0) return { key: '', level: -1 }
+      const misses = Number(retries) || 0
+      if (misses === 0) return { key: 'donePerfect', level: 2 }
+      return calcAccuracy(hits, misses) >= 90
+    ? { key: 'doneGreat', level: 1 }
+    : { key: 'doneKeepGoing', level: 0 }
+    }
+
+    /** 撒花只在满分（level 2）时开，12 片是纯 CSS 动画的固定数量 */
+    function confettiBits(level) {
+      return Number(level) === 2 ? 12 : 0
+    }
+
     /* --------------------------------------------------------------- trainer */
 
     /**
@@ -4188,8 +4309,37 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       // 清单只来自本轮 mistakes；全打对就是空数组，整块不渲染
       const rows = wordsOfRound(mistakes, words)
       const retry = () => onRetryWrong?.(rows.map((row) => row.word))
+      const message = doneMessage({ total, hits, retries })
+      const bits = confettiBits(message.level)
+      const live = getSettings()
+      // 已经被「默写本章节」开着：按钮亮起，再点一下是退出 auto 并重开本章
+      const dictationOn = live.dictation !== 'none' && live.dictationOpenBy === 'auto'
+      const dictate = () => {
+        if (dictationOn) {
+          // chapter 动作对 auto 的效果就是退出并复位 user（和面板那个开关同一套状态机）
+          applyDictation({ type: 'chapter' })
+          if (onRestart) onRestart()
+          else onNextChapter?.()
+          return
+        }
+        // 先落设置再换章：换章 effect 会看到 openBy='auto'，由它决定后续生命周期
+        applyDictation({ type: 'auto', value: 'hideAll' })
+        if (onNextChapter) onNextChapter()
+        else onRestart?.()
+      }
       return h('div', { className: 'qat-done' },
+    bits
+      ? h('div', { className: 'qat-confetti', 'aria-hidden': 'true' },
+        Array.from({ length: bits }, (_, index) => h('span', {
+          key: index,
+          className: 'qat-confetti-bit',
+          style: { '--qat-i': index },
+        })))
+      : null,
     h('div', { className: 'qat-done-title' }, t('doneTitle')),
+    message.key
+      ? h('div', { className: 'qat-done-note', 'data-level': String(message.level) }, t(message.key))
+      : null,
     h('div', { className: 'qat-hint' }, t('doneBody', { total, sec: elapsed, hits, retries })),
     h('div', { className: 'qat-done-metrics' },
       h('span', null, `WPM ${calcWpm(total, elapsed)}`),
@@ -4250,6 +4400,15 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
           className: 'qat-btn qat-btn-retry',
           'data-act': 'retry-wrong',
         }, t('resultRetryWrong'))
+        : null,
+      onNextChapter || onRestart
+        ? h('span', {
+          ...pressable(dictate),
+          className: 'qat-btn qat-dictate',
+          'data-act': 'dictation-auto',
+          'data-active': dictationOn ? 'true' : 'false',
+          title: t('dictationAuto'),
+        }, t('dictationAuto'))
         : null,
       onNextChapter
         ? h('span', {
@@ -6486,10 +6645,103 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       )
     }
 
-    function WrongBookPanel({ t, rows, query, sort, dicts, mastered, onQuery, onSort, onMastered, onReview, onClear, onClose }) {
+    /* ------------------------------------------------ 错词本：分页 / 删除 / 详情 / CSV */
+
+    /** 一页多少条（对齐上游 ErrorBook/Pagination.tsx 的 ITEM_PER_PAGE） */
+    const WRONG_PAGE_SIZE = 20
+
+    /**
+     * 分页：页从 1 开始，越界夹到 [1, pages]，pages 至少 1。
+     * 非数组按空处理；total 始终是原条数（不是当前页条数）。
+     */
+    function paginate(rows, page, size = WRONG_PAGE_SIZE) {
+      const list = Array.isArray(rows) ? rows : []
+      const total = list.length
+      const step = Math.max(1, Math.floor(Number(size)) || WRONG_PAGE_SIZE)
+      const pages = Math.max(1, Math.ceil(total / step))
+      const raw = Math.floor(Number(page))
+      const current = Math.min(Math.max(Number.isFinite(raw) ? raw : 1, 1), pages)
+      return {
+    page: current,
+    pages,
+    rows: list.slice((current - 1) * step, current * step),
+    total,
+      }
+    }
+
+    /** 从错词行里去掉一个词（不改原数组；大小写不敏感） */
+    function dropWord(rows, word) {
+      const list = Array.isArray(rows) ? rows : []
+      const target = String(word ?? '').toLowerCase()
+      if (!target) return list.slice()
+      return list.filter((row) => String(row?.word ?? '').toLowerCase() !== target)
+    }
+
+    /** 从原始记录里去掉一个词（可按 dictId 限定；不改原数组） */
+    function removeWordRecord(list, word, dictId) {
+      const rows = Array.isArray(list) ? list : []
+      const target = String(word ?? '')
+      if (!target) return rows.slice()
+      const wanted = dictId === undefined || dictId === null || dictId === '' ? null : String(dictId)
+      return rows.filter((row) => {
+    if (String(row?.word ?? '') !== target) return true
+    return wanted !== null && String(row?.dictId ?? '') !== wanted
+      })
+    }
+
+    /** 行 → 详情弹窗要的字段；缺什么给空值，不抛 */
+    function detailOf(row) {
+      const word = String(row?.word ?? '')
+      const meta = word ? lookup(word) : undefined
+      return {
+    word,
+    ipa: phoneticOf(meta, getSettings().accent).text,
+    senses: sensesOf(meta),
+    wrongCount: Number(row?.wrongCount) || 0,
+    at: Number(row?.at ?? row?.lastAt) || 0,
+    dictId: String(row?.dictId ?? ''),
+      }
+    }
+
+    /** CSV 单元格：逗号 / 引号 / 换行时包双引号，内部引号翻倍 */
+    function csvCell(value) {
+      const text = String(value ?? '')
+      return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
+    }
+
+    /** 错词 CSV：BOM 开头防 Excel 中文乱码，行尾 CRLF；空数据也保留表头 */
+    function wrongCsv(rows) {
+      const list = Array.isArray(rows) ? rows : []
+      const head = 'word,ipa,zh,wrongCount,dictId'
+      const lines = list.map((row) => {
+    const detail = detailOf(row)
+    const zh = lookup(detail.word)?.zh ?? ''
+    return [detail.word, detail.ipa, zh, detail.wrongCount, detail.dictId].map(csvCell).join(',')
+      })
+      return `\uFEFF${[head, ...lines].join('\r\n')}\r\n`
+    }
+
+    /** 导出文件名：wrong-words-YYYYMMDD.csv（local 日期，纯函数可测） */
+    function csvName(now) {
+      const date = now instanceof Date ? now : new Date(now)
+      const stamp = Number.isNaN(date.getTime())
+    ? '19700101'
+    : `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`
+      return `wrong-words-${stamp}.csv`
+    }
+
+    function WrongBookPanel({ t, rows, query, sort, dicts, mastered, onQuery, onSort, onMastered, onReview, onClear, onClose, onDelete }) {
+      const list = Array.isArray(rows) ? rows : []
+      const [page, setPage] = useState(1)
+      const [detail, setDetail] = useState(null)
+      const view = paginate(list, page)
+      const detailData = detail ? detailOf(detail) : null
+      const shownSenses = detailData ? detailData.senses.slice(0, 3) : []
+      const moreSenses = detailData ? detailData.senses.length - shownSenses.length : 0
+      const exportCsv = () => downloadText(csvName(Date.now()), wrongCsv(list))
       return h('div', { className: 'qat-picker' },
     h('div', { className: 'qat-picker-head' },
-      h('span', { className: 'qat-picker-title' }, t('wrongTitle', { n: rows.length })),
+      h('span', { className: 'qat-picker-title' }, t('wrongTitle', { n: list.length })),
       h('input', {
         className: 'qat-search qat-wrongsearch',
         type: 'text',
@@ -6519,13 +6771,20 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         'data-act': 'sort',
       }, sort === 'recent' ? t('sortRecent') : t('sortCount')),
       h('span', { className: 'qat-grow' }),
-      rows.length
+      list.length
         ? h('span', {
-          ...pressable(() => onReview(rows.slice(0, 20).map((row) => row.word))),
+          ...pressable(() => onReview(list.slice(0, WRONG_PAGE_SIZE).map((row) => row.word))),
           className: 'qat-btn',
         }, t('reviewTop'))
         : null,
-      rows.length
+      list.length
+        ? h('span', {
+          ...pressable(exportCsv),
+          className: 'qat-btn',
+          'data-act': 'wrong-export',
+        }, t('exportCsv'))
+        : null,
+      list.length
         ? h('span', {
           ...pressable(onClear),
           className: 'qat-btn',
@@ -6536,30 +6795,123 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         className: 'qat-btn',
       }, t('close')),
     ),
-    rows.length === 0
+    list.length === 0
       ? h('div', { className: 'qat-loading' }, t('wrongEmpty'))
-      : h('div', { className: 'qat-dictscroll' }, rows.map((row) => {
+      : h('div', { className: 'qat-dictscroll' }, view.rows.map((row) => {
         const meta = lookup(row.word)
         const phone = phoneticOf(meta, getSettings().accent)
         return h('div', {
           key: `${row.dictId}:${row.word}`,
           className: 'qat-wrongrow',
+          role: 'button',
+          tabIndex: 0,
           title: [row.word, phone.text, meta?.zh].filter(Boolean).join(' '),
+          onClick: () => setDetail(row),
+          onKeyDown: (event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault()
+              setDetail(row)
+            }
+          },
         },
           h('span', { className: 'qat-wrongword' }, row.word),
           phone.text ? h('span', { className: 'qat-wrongipa' }, phone.text) : null,
           h('span', { className: 'qat-wrongzh' }, meta?.zh ?? ''),
           h('span', { className: 'qat-wrongcount' }, `×${row.wrongCount}`),
           h('span', {
-            ...pressable(() => onMastered?.(row)),
+            ...pressable((event) => {
+              event?.stopPropagation?.()
+              onMastered?.(row)
+            }),
             className: 'qat-icon',
             'data-act': 'mastered',
             'data-active': (mastered || []).includes(`${row.dictId || ''}:${row.word}`) ? 'true' : 'false',
             title: t('markMastered'),
             'aria-label': t('markMastered'),
           }, h(Icon, { name: 'check', size: 13 })),
+          h('span', {
+            ...pressable((event) => {
+              event?.stopPropagation?.()
+              onDelete?.(row.word, row.dictId)
+            }),
+            className: 'qat-iconbtn qat-wrongdel',
+            'data-act': 'wrong-del',
+            title: t('delete'),
+            'aria-label': t('delete'),
+          }, h(Icon, { name: 'close', size: 12 })),
         )
       })),
+    list.length > WRONG_PAGE_SIZE
+      ? h('div', { className: 'qat-pager' },
+        h('span', {
+          ...pressable(() => {
+            if (view.page > 1) setPage(view.page - 1)
+          }),
+          className: 'qat-btn qat-pagerbtn',
+          'data-act': 'wrong-prev',
+          'data-disabled': view.page <= 1 ? 'true' : 'false',
+          'aria-label': t('prevPage'),
+          title: t('prevPage'),
+        }, h(Icon, { name: 'prev', size: 12 })),
+        h('span', { className: 'qat-pageinfo' }, t('pageOf', { page: view.page, pages: view.pages })),
+        h('span', {
+          ...pressable(() => {
+            if (view.page < view.pages) setPage(view.page + 1)
+          }),
+          className: 'qat-btn qat-pagerbtn',
+          'data-act': 'wrong-next',
+          'data-disabled': view.page >= view.pages ? 'true' : 'false',
+          'aria-label': t('nextPage'),
+          title: t('nextPage'),
+        }, h(Icon, { name: 'next', size: 12 })),
+      )
+      : null,
+    detailData
+      ? h('div', {
+        className: 'qat-detail-mask',
+        onClick: () => setDetail(null),
+      },
+        h('div', {
+          className: 'qat-detail',
+          role: 'dialog',
+          'aria-label': t('detailTitle'),
+          onClick: (event) => event?.stopPropagation?.(),
+        },
+          h('div', { className: 'qat-detail-head' },
+            h('span', { className: 'qat-detail-title' }, t('detailTitle')),
+            h('span', { className: 'qat-grow' }),
+            h('span', {
+              ...pressable(() => setDetail(null)),
+              className: 'qat-iconbtn',
+              'data-act': 'detail-close',
+              title: t('close'),
+              'aria-label': t('close'),
+            }, h(Icon, { name: 'close', size: 14 })),
+          ),
+          h('div', { className: 'qat-detail-word' }, detailData.word),
+          detailData.ipa ? h('div', { className: 'qat-detail-ipa' }, detailData.ipa) : null,
+          shownSenses.length
+            ? h('div', { className: 'qat-detail-senses' },
+              shownSenses.map((sense, index) => h('div', {
+                key: index,
+                className: 'qat-sense',
+              },
+                sense.pos ? h('span', { className: 'qat-pos' }, sense.pos) : null,
+                h('span', { className: 'qat-sense-body' }, sense.body),
+              )),
+              moreSenses > 0 ? h('div', { className: 'qat-sense-more' }, `+${moreSenses}`) : null,
+            )
+            : null,
+          h('div', { className: 'qat-detail-meta' },
+            h('span', null, t('detailWrongCount', { n: detailData.wrongCount })),
+            detailData.at ? h('span', null, t('detailLastAt', { at: new Date(detailData.at).toLocaleString() })) : null,
+            detailData.dictId
+              ? h('span', { 'data-dict-id': detailData.dictId }, t('detailDict', { name: dictionaryById(detailData.dictId)?.name || detailData.dictId }))
+              : null,
+          ),
+        ),
+      )
+      : null,
       )
     }
 
@@ -6808,9 +7160,15 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       // 换章 / 换一轮才叫换章：openBy='auto' 的默写自动关掉并复位 'user'。
       // restart 不碰 chapter/round，所以重开本章不会被误判成换章。
       const dictationMountRef = useRef(true)
+      // 结算页「默写本章节 → 下一章」：这次换章要保住 auto，不能被换章 effect 关掉
+      const keepDictationRef = useRef(false)
       useEffect(() => {
     if (dictationMountRef.current) {
       dictationMountRef.current = false
+      return
+    }
+    if (keepDictationRef.current) {
+      keepDictationRef.current = false
       return
     }
     applyDictation({ type: 'chapter' })
@@ -7025,6 +7383,9 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
               toggleMastered(row.dictId, row.word)
               setMastered(readMastered())
             },
+            onDelete: (word, dictId) => {
+              removeWordRecords(word, dictId).then(refreshStats)
+            },
             query: wrongQuery,
             sort: wrongSort,
             dicts: [...new Set(wrongRows.map((row) => row.dictId))].filter(Boolean).map((id) => ({
@@ -7083,8 +7444,13 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
             setReviewNonce((value) => value + 1)
           },
           // 走 chooseChapter：跟下拉选章同一条路（章内词表 + 进度才对得上）；
-          // 末章由 nextChapterIndex 绕回第 1 章，不再置灰
-          onNextChapter: () => chooseChapter(nextChapterIndex(chapter, chapterTotal)),
+          // 末章由 nextChapterIndex 绕回第 1 章，不再置灰。
+          // 结算页的「默写本章节 → 下一章」先落了 auto，这次换章要保住它。
+          onNextChapter: () => {
+            const target = nextChapterIndex(chapter, chapterTotal)
+            if (target !== chapter) keepDictationRef.current = true
+            chooseChapter(target)
+          },
           onLiveWpm: setLiveWpm,
           ctx,
         }),
@@ -7104,10 +7470,11 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     searchCatalog, readRecent, catalogSize: () => catalog().length, wordsSync, loadDictWords,
     effectiveTarget, stripPunct, maskLetters, answersRevealed, selectStyle,
     DICTATION_MODES, DICTATION_OPEN_BY, nextDictation, applyDictation, toggleDictationMode, nextDictationMode,
+    doneMessage, confettiBits, paginate, dropWord, removeWordRecord, detailOf, csvCell, wrongCsv, csvName,
     readSettings, getSettings, setSetting,
     subscribeSettings, SETTING_DEFAULTS, DICT, heatLevel,
     dayKey, aggregateDaily, summarize, lastDays, readProgress, readChapterRecords, readWordRecords,
-    recordWord, recordChapter, saveProgress,
+    recordWord, recordChapter, saveProgress, removeWordRecords,
     dictSourceList, DICT_PIN, activeMs, clockText, clockVisible, progressOf, shouldWarnConflict, resolveHotkey, peekKey, hotkeyAction, neighborWords, calcWpm, calcAccuracy, shouldStartOnTab, saveSession, readSession, clearSession, sameSession,
     calcLiveWpm, windowedWpm, pushSpeedSample, LIVE_WINDOW_MS, LIVE_HEARTBEAT_MS, LIVE_WPM_CAP, CHARS_PER_WORD,
     setOpen, getOpen, readDictId, writeDictId, releaseStuckComposer, ACCENTS, resolveAccent, shouldBlockSend, isSendTrigger, shouldClearDraft,
@@ -7117,6 +7484,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     tipState, tipKey, nextWrongCount, TIP_THRESHOLDS, TIP_MASK, CLICK_TONES,
     fingerOf, keyHighlight, FINGER_IDS, FINGER_MAP, FINGER_COLORS,
     collectWrongWords, heatmapWeeks, heatLevel, filterWrongWords, DICT,
+    WRONG_PAGE_SIZE, paginate, dropWord, removeWordRecord, detailOf, wrongCsv, csvName, csvCell,
     wordListRows, WORDLIST_LIMIT, WORDLIST_STATES, WORDLIST_STATE_LABEL,
     shuffleWords, chapterWordList,
     serializeBackup, parseBackup, BACKUP_VERSION, BACKUP_LIMITS, playClick, pressable,
