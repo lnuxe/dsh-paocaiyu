@@ -342,6 +342,9 @@ window.__ModuleLoader__.load({
     /** 超过这个字数就换小字号排版（长句子/词组不再撑爆一行） */
     const LONG_WORD_CHARS = 20
 
+    /** 面板卡片最多显示几条释义，多的收成「+N」（纯提示，不可点） */
+    const SENSE_LIMIT = 3
+
     /** inspectWord 的丢弃原因：审计脚本按这个枚举分类，顺序就是判定顺序 */
     const DROP_REASONS = ['empty', 'tooLong', 'badChars', 'noZh']
 
@@ -411,6 +414,85 @@ window.__ModuleLoader__.load({
         return { text: `${label}: ${value}`, label }
       }
       return { text: String(word?.ipa ?? ''), label: '' }
+    }
+
+    /**
+     * 释义里能当前缀的词性标记。长的写在前：`v` 不许先吃掉 `vt` 的前半截。
+     * 只认这些常见缩写，`(英)` / `[计算机]` 这类标注留在正文里不动。
+     */
+    const POS_TOKEN = '(?:adj|adv|prep|conj|pron|num|art|int|aux|abbr|vt|vi|n|v)'
+    const POS_HEAD_RE = new RegExp(`^${POS_TOKEN}\\.\\s*`, 'i')
+    const POS_TAIL_RE = new RegExp(`\\s*\\((${POS_TOKEN})\\.?\\)\\s*$`, 'i')
+    /** 中段词性（`… 文件 vt. 列队`）：前面得有空白，免得切在单词中间 */
+    const POS_MID_RE = new RegExp(`\\s+(?=${POS_TOKEN}\\.\\s)`, 'i')
+
+    /**
+     * 一条释义 → { pos, body }（纯函数，UI 与测试都只调它）。
+     * - 词性写在开头：`n. 苹果` → { pos: 'n.', body: '苹果' }
+     * - 词性写在结尾括号里：`期待的东西 (n.)`（CET-6 / Coder 词库就是这个形态）
+     * - 开头取到词性后紧跟的 `&vi.` 也归词性：`vt. &vi. 插入` → { pos: 'vt. & vi.', body: '插入' }
+     * - 两个都没有：pos 空串，body 是原文（中文释义大多数是这个形态）
+     * @param {string} text - 单条释义
+     * @returns {{ pos: string, body: string }}
+     */
+    function splitSense(text) {
+      let rest = String(text ?? '').replace(/\s+/g, ' ').trim()
+      let pos = ''
+      const head = rest.match(POS_HEAD_RE)
+      if (head) {
+        pos = head[0].trim().toLowerCase()
+        rest = rest.slice(head[0].length)
+        // 连着写的第二个词性也算词性，正文里不留 `&vi.`
+        let extra = rest.match(new RegExp(`^&\\s*(${POS_TOKEN}\\.)\\s*`, 'i'))
+        while (extra) {
+          pos = `${pos} & ${extra[1].toLowerCase()}`
+          rest = rest.slice(extra[0].length)
+          extra = rest.match(new RegExp(`^&\\s*(${POS_TOKEN}\\.)\\s*`, 'i'))
+        }
+      } else {
+        const tail = rest.match(POS_TAIL_RE)
+        if (tail) {
+          pos = `${tail[1].toLowerCase()}.`
+          rest = rest.slice(0, tail.index)
+        }
+      }
+      return { pos: pos.trim(), body: rest.trim() }
+    }
+
+    /**
+     * 释义串 → 条目数组。
+     * 上游 `trans[]` 在 normalizeWord 里是 `join('；')`，所以分号就是天然的条目分隔；
+     * 一条里再冒出中段词性（Coder / 考研词库常见）就再切一刀。
+     * @param {string} text - lookup 拿到的 zh
+     * @returns {Array<{ pos: string, body: string }>}
+     */
+    function splitSenses(text) {
+      const flat = String(text ?? '').replace(/\s+/g, ' ').trim()
+      if (!flat) return []
+      const out = []
+      for (const chunk of flat.split(/[；;\n]/)) {
+        for (const piece of String(chunk).split(POS_MID_RE)) {
+          const sense = splitSense(piece)
+          if (sense.pos || sense.body) out.push(sense)
+        }
+      }
+      return out
+    }
+
+    /**
+     * 词条 → 释义条目。老 IndexedDB 缓存里没有 senses 字段，就按 zh 现拆
+     * （lookup 结果进 LOOKUP_MEMO，一个词只拆一次）。
+     */
+    function sensesOf(entry) {
+      const cached = entry?.senses
+      if (Array.isArray(cached)) {
+        return cached
+          .map((item) => (typeof item === 'string'
+            ? splitSense(item)
+            : { pos: String(item?.pos ?? ''), body: String(item?.body ?? '') }))
+          .filter((sense) => sense.pos || sense.body)
+      }
+      return splitSenses(entry?.zh)
     }
 
     /** 批量归一化 + 去重（保序） */
@@ -1839,8 +1921,9 @@ window.__ModuleLoader__.load({
     function hitOf(entry) {
       // us / uk / notation 原样带出去：phoneticOf 按口音挑显示哪一支；
       // 老缓存条目只有 ipa，这三个就是 undefined，phoneticOf 会退回 ipa
+      // senses 一起带出去：面板卡片按条目分行渲染，跟打条继续用拼好的 zh
       return entry
-        ? { word: entry.w, ipa: entry.ipa, zh: entry.zh, us: entry.us, uk: entry.uk, notation: entry.notation }
+        ? { word: entry.w, ipa: entry.ipa, zh: entry.zh, us: entry.us, uk: entry.uk, notation: entry.notation, senses: sensesOf(entry) }
         : undefined
     }
 
@@ -1968,6 +2051,8 @@ window.__ModuleLoader__.load({
         loading: '正在加载词库…',
         loadFailed: '词库加载失败，先用内置词库继续',
         chapterTitle: '选择章节',
+        panelHeadChapter: '第 {n} 章',
+        panelHeadReview: '复练 {n} 词',
         speak: '读一遍',
         todayStats: '今日 {words} 词 · 正确率 {accuracy}% · {wpm} WPM',
         liveSpeed: '实时 {wpm} WPM',
@@ -2107,6 +2192,8 @@ window.__ModuleLoader__.load({
         searchResult: 'Results',
         loadFailed: 'Dictionary failed to load — using the built-in one',
         chapterTitle: 'Chapter',
+        panelHeadChapter: 'Chapter {n}',
+        panelHeadReview: 'Review {n} words',
         speak: 'Read aloud',
         todayStats: 'Today {words} words · {accuracy}% · {wpm} WPM',
         liveSpeed: 'Live {wpm} WPM',
@@ -2385,6 +2472,17 @@ window.__ModuleLoader__.load({
 .qat-gloss{display:flex;flex-direction:column;align-items:center;gap:4px;margin:6px 0 16px;text-align:center}
 .qat-gloss-ipa{font-size:15px;line-height:1.4;color:var(--dsw-alias-label-tertiary);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 .qat-gloss-zh{font-size:16px;line-height:1.5;color:var(--dsw-alias-label-secondary);max-width:34em}
+/* 跟打条空间小：释义还是拼好的一整行，宁可截断也不铺成多条 */
+.qat-card[data-variant="command"] .qat-gloss-zh{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+/* 面板释义：一条一行；音标比释义小一号、更淡，和释义只隔 3px */
+.qat-card[data-variant="panel"] .qat-gloss{gap:3px}
+.qat-card[data-variant="panel"] .qat-gloss-ipa{font-size:13px;line-height:1.35;letter-spacing:.01em}
+.qat-card[data-variant="panel"] .qat-gloss-zh{display:flex;flex-direction:column;align-items:center;gap:3px;max-width:none}
+.qat-card[data-variant="panel"] .qat-sense{display:flex;align-items:baseline;justify-content:center;gap:6px;max-width:30em;min-width:0;line-height:1.6;text-align:center;overflow-wrap:break-word;word-break:normal;hyphens:none}
+/* 词性：前置的淡色小字，等宽对齐，长释义换行时它不跟着换行 */
+.qat-card[data-variant="panel"] .qat-pos{flex:none;font-size:11px;line-height:1.6;color:var(--dsw-alias-label-tertiary);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.02em;opacity:.8}
+.qat-card[data-variant="panel"] .qat-sense-body{min-width:0;overflow-wrap:break-word;word-break:normal}
+.qat-card[data-variant="panel"] .qat-sense-more{font-size:12px;line-height:1.4;color:var(--dsw-alias-label-tertiary);max-width:30em}
 .qat-acts{display:inline-flex;align-items:center;gap:2px;opacity:.55}
 .qat-acts:hover{opacity:1}
 .qat-icon{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:5px;cursor:pointer;user-select:none;font-size:12px;line-height:1;gap:0}
@@ -2395,6 +2493,8 @@ window.__ModuleLoader__.load({
 .qat-card[data-variant="dock"]{width:100%}
 .qat-head{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--dsw-alias-label-secondary)}
 .qat-title{color:var(--dsw-alias-label-primary);font-weight:600;font-size:13px}
+/* 面板卡片头部第一格：不重复面板标题，改说章节 / 复练（淡一点，别和面板标题抢） */
+.qat-headtag{color:var(--dsw-alias-label-secondary);font-weight:600;font-size:12px;letter-spacing:.02em;white-space:nowrap}
 .qat-sep{width:1px;height:12px;background:var(--dsw-alias-border-l1)}
 .qat-grow{flex:1}
 .qat-word{display:flex;align-items:center;gap:2px;min-height:38px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:30px;line-height:1.15;letter-spacing:.02em;flex-wrap:wrap}
@@ -3413,7 +3513,7 @@ window.__ModuleLoader__.load({
     function Trainer({
       words, variant, onClose, showMeta = false, options, dictation = 'none',
       dictId = '', chapter = null, chapterTotal = 0, onFinish, onReview, onRetryWrong, onNextChapter, ctx,
-      jump = null, onIndex, onLiveWpm,
+      jump = null, onIndex, onLiveWpm, headTag = '',
     }) {
       const t = useT(ctx)
       const [state, setState] = useState({
@@ -3590,6 +3690,18 @@ window.__ModuleLoader__.load({
       // 日文假名词库没有中文释义：notation（假名）单独一行放在单词上方（对齐上游 Notation）
       const notation = String(meta?.notation ?? '')
       const gloss = meta?.zh ?? ''
+      // 释义条目：面板卡片按条分行渲染，多的收成 +N；跟打条继续用拼好的整串（不拆，省一次字符串处理）
+      const senses = variant === 'panel'
+        ? (Array.isArray(meta?.senses) ? meta.senses : splitSenses(gloss))
+        : []
+      const sensesShown = senses.slice(0, SENSE_LIMIT)
+      const sensesRest = senses.length - sensesShown.length
+      // 面板头部已经有一遍标题：卡片这一格换成章节 / 复练，标题在面板上只出现一次
+      const headLabel = variant === 'panel'
+        ? (headTag || (Number.isInteger(chapter) && chapter >= 0
+          ? t('panelHeadChapter', { n: chapter + 1 })
+          : t('panelHeadReview', { n: total })))
+        : t('title')
       const longWord = target.length > LONG_WORD_CHARS
       // 打错提示：3 / 4 / 5 次逐档揭示，打对（advance）归零
       const tip = tipState({ wrongCount: state.wordWrong, word: target, typed: state.typed })
@@ -3801,7 +3913,7 @@ window.__ModuleLoader__.load({
         h('div', { className: 'qat-sr', 'aria-live': 'polite', 'aria-atomic': 'true', role: 'status' }, announce),
         helpOpen ? h('div', { className: 'qat-help', 'data-help': 'true' }, t('hotkeysList')) : null,
         h('div', { className: 'qat-head' },
-          h('span', { className: 'qat-title' }, t('title')),
+          h('span', { className: variant === 'panel' ? 'qat-headtag' : 'qat-title' }, headLabel),
           h('span', { className: 'qat-sep' }),
           h('span', null, t('progress', { done: Math.min(state.index, total), total })),
           h('span', { className: 'qat-sep' }),
@@ -3889,7 +4001,23 @@ window.__ModuleLoader__.load({
             showMeta && (ipaText || gloss || notation)
               ? h('div', { className: 'qat-gloss' },
                 ipaText ? h('div', { className: 'qat-gloss-ipa' }, ipaText) : null,
-                gloss ? h('div', { className: 'qat-gloss-zh' }, gloss) : null,
+                // 面板卡片：一条释义一行（词性单独淡色小字），超过三条收成 +N；
+                // 跟打条空间小，还是把释义拼成一行。
+                // 没有释义（只有假名 / 只有音标）时不画空容器。
+                variant === 'panel'
+                  ? (sensesShown.length
+                    ? h('div', { className: 'qat-gloss-zh' },
+                      sensesShown.map((sense, index) => h('div', {
+                        key: index,
+                        className: 'qat-sense',
+                      },
+                        sense.pos ? h('span', { className: 'qat-pos' }, sense.pos) : null,
+                        h('span', { className: 'qat-sense-body' }, sense.body),
+                      )),
+                      sensesRest > 0 ? h('div', { className: 'qat-sense-more' }, `+${sensesRest}`) : null,
+                    )
+                    : null)
+                  : (gloss ? h('div', { className: 'qat-gloss-zh' }, gloss) : null),
                 current && voiceOn
                   ? h('span', {
                     ...pressable(() => {
@@ -5656,6 +5784,8 @@ window.__ModuleLoader__.load({
             dictation: settings.dictation,
             dictId: '',
             chapter: null,
+            // 复练（错词 / 本轮打错）没有章号：卡片头部这一格说清楚在练什么
+            headTag: t('panelHeadReview', { n: review.length }),
             onFinish: refreshStats,
             onReview: (words) => setReview(words),
             onRetryWrong: (words) => {
@@ -5738,6 +5868,8 @@ window.__ModuleLoader__.load({
               dictId,
               chapter: round === 0 ? chapter : null,
               chapterTotal,
+              // 面板头部已有一遍标题；卡片头部这一格换成章号（round > 0 时 chapter 是 null，也得说清在哪一章）
+              headTag: t('panelHeadChapter', { n: chapter + 1 }),
               jump,
               onIndex: handleIndex,
               onFinish: finishChapter,
@@ -5768,6 +5900,7 @@ window.__ModuleLoader__.load({
         judgeTyping, parseWords, format, pushChar, lookup, dictionaries, sampleWords, groupByCategory,
         catalog, normalizeWord, normalizeWords, chapterCount, wordsOfChapter, sampleFromWords,
         inspectWord, phoneticOf, MAX_WORD_LENGTH, LONG_WORD_CHARS, DROP_REASONS,
+        splitSense, splitSenses, sensesOf, SENSE_LIMIT,
         searchCatalog, readRecent, catalogSize: () => catalog().length, wordsSync, loadDictWords,
         effectiveTarget, stripPunct, maskLetters, DICTATION_MODES, readSettings, getSettings, setSetting,
         subscribeSettings, SETTING_DEFAULTS, DICT, heatLevel,
