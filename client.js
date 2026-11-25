@@ -3902,8 +3902,11 @@ window.__ModuleLoader__.load({
         loadDictWords(dictId)
           .then((all) => {
             if (!cancelled && all?.length) {
-              setWords(toWordList(all))
-              setState({ index: 0, typed: '', flash: false, hits: 0, retries: 0, wordWrong: 0, finishedAt: null })
+              const list = toWordList(all)
+              // round > 0 是「重开一轮」，必须从第一个词开始；初次挂载才接着上次那个词
+              const index = round > 0 ? 0 : resumeIndex(readBarProgress(), dictId, list.length)
+              setWords(list)
+              setState({ index, typed: '', flash: false, hits: 0, retries: 0, wordWrong: 0, finishedAt: null })
             }
           })
           .catch((err) => {
@@ -3915,6 +3918,10 @@ window.__ModuleLoader__.load({
       }, [dictId, round])
 
       useEffect(() => { stateRef.current = state }, [state])
+      // 每换一个词就存一次，Esc 关掉再打开能接着打
+      useEffect(() => {
+        if (!state.typed && state.index >= 0) writeBarProgress(dictId, state.index)
+      }, [dictId, state.index, state.typed])
       useEffect(() => { draftRef.current = draft }, [draft])
       useEffect(() => { wordsRef.current = words }, [words])
       useEffect(() => () => {
@@ -4384,6 +4391,8 @@ window.__ModuleLoader__.load({
       const chooseDict = useCallback((id) => {
         setDictId(id)
         writeDictId(id)
+        writeBarProgress(id, 0)
+        writeChapterPos(id, 0)
         startedAt.current = Date.now()
         lockRef.current = { locked: false, timer: null }
         liveChars.current = 0
@@ -5004,7 +5013,11 @@ window.__ModuleLoader__.load({
     function PracticePanel({ ctx }) {
       const t = useT(ctx)
       const [dictId, setDictId] = useState(readDictId)
-      const [chapter, setChapter] = useState(0)
+      const [chapter, setChapter] = useState(() => {
+        const id = readDictId()
+        const dict = builtinById(id)
+        return resumeChapter(readChapterPos(), id, dict ? chapterCount(dict) : 0)
+      })
       const [round, setRound] = useState(0)
       // 内置词库可直接同步出词条 → 首帧就能练；其余词库先显示加载态
       const [all, setAll] = useState(() => (builtinById(readDictId()) ?? {}).words ?? null)
@@ -5129,6 +5142,11 @@ window.__ModuleLoader__.load({
         setJump(null)
         setRound((value) => value + 1)
       }
+
+      // 章节位置存起来：关掉面板再打开，还是这一章
+      useEffect(() => {
+        if (all?.length) writeChapterPos(dictId, chapter)
+      }, [all, chapter, dictId])
 
       // 打完一章自动接下一章：开着 autoNext 就不用每次点「下一章」
       const nextTimer = useRef(null)

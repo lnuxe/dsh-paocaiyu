@@ -191,6 +191,7 @@ const {
   topWrongLetters, readMastered, writeMastered, toggleMastered, masteredKey,
   tipState, tipKey, nextWrongCount, TIP_THRESHOLDS, TIP_MASK, CLICK_TONES,
   shouldReadMeaning, meaningLang, speakMeaning, cancelMeaning, MEANING_DELAY_MS,
+  readBarProgress, writeBarProgress, resumeIndex, readChapterPos, writeChapterPos, resumeChapter, BAR_KEY, CHAPTER_KEY,
 } = plugin.__test
 
 // 实时速度（G2）单独解构：上面那一大段是多个子任务共用的，能不动就不动
@@ -1927,6 +1928,30 @@ check('样式里跟打条提示不抢布局', /\.qat-bar-tip\{[^}]*pointer-event
 check('样式里提示行不接收鼠标', /\.qat-tip\{[^}]*pointer-events:none/.test(source), true)
 check('两份字典都有提示文案', ['tipFirstLetter', 'tipTwoLetters', 'tipReveal'].every((key) => DICT.zh[key] && DICT.en[key]), true)
 check('三种提示文案都带 pattern 占位', ['tipFirstLetter', 'tipTwoLetters', 'tipReveal'].every((key) => DICT.zh[key].includes('{pattern}') && DICT.en[key].includes('{pattern}')), true)
+
+// —— 进度存档：Esc 关掉跟打条再打开，接着打上次那个词 ——
+const barStore = (() => {
+  const map = new Map()
+  return {
+    getItem: (key) => (map.has(key) ? map.get(key) : null),
+    setItem: (key, value) => map.set(key, String(value)),
+    removeItem: (key) => map.delete(key),
+  }
+})()
+globalThis.window = { ...(globalThis.window ?? {}), localStorage: barStore }
+check('存档键名固定', [renderTest.BAR_KEY, renderTest.CHAPTER_KEY], ['qwerty-autotype:bar-progress', 'qwerty-autotype:last-chapter'])
+check('没存过时读不到存档', renderTest.readBarProgress(), null)
+renderTest.writeBarProgress('cet4', 7)
+check('存档写进去能读回来', [renderTest.readBarProgress().dictId, renderTest.readBarProgress().index], ['cet4', 7])
+check('换词库的旧存档不认', renderTest.resumeIndex(renderTest.readBarProgress(), 'cet6', 20), 0)
+check('同一词库接着上次那个词', renderTest.resumeIndex(renderTest.readBarProgress(), 'cet4', 20), 7)
+check('词表变短时夹回第一个', renderTest.resumeIndex({ dictId: 'cet4', index: 7 }, 'cet4', 5), 0)
+check('空词表不会给出非法索引', renderTest.resumeIndex({ dictId: 'cet4', index: 3 }, 'cet4', 0), 0)
+check('负数索引归零', renderTest.resumeIndex({ dictId: 'cet4', index: -3 }, 'cet4', 20), 0)
+renderTest.writeChapterPos('cet4', 5)
+check('章节存档可读回', renderTest.resumeChapter(renderTest.readChapterPos(), 'cet4', 131), 5)
+check('章节存档换库不认', renderTest.resumeChapter(renderTest.readChapterPos(), 'cet6', 131), 0)
+check('章号越界夹到最后一章', renderTest.resumeChapter({ dictId: 'cet4', chapter: 999 }, 'cet4', 131), 130)
 
 await recordFlow
 
