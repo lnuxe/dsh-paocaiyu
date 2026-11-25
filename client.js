@@ -1262,6 +1262,79 @@ window.__ModuleLoader__.load({
       return list
     }
 
+    /** 词表抽屉一次列多少个词：和一章的词数对齐（对齐上游 WordList 只列当前章） */
+    const WORDLIST_LIMIT = 20
+
+    /**
+     * 词表行的状态，优先级从高到低：
+     * current（当前词） > mastered（已掌握） > wrong（打错过） > done（已打过） > idle（没碰过）
+     * 「当前词」永远压过其它状态；「已掌握」压过「打错过」，因为掌握是用户显式确认的结论。
+     */
+    const WORDLIST_STATES = ['current', 'mastered', 'wrong', 'done', 'idle']
+
+    /** 状态 → 文案 key（渲染和测试共用一份） */
+    const WORDLIST_STATE_LABEL = {
+      current: 'wordStateCurrent',
+      mastered: 'wordStateMastered',
+      wrong: 'wordStateWrong',
+      done: 'wordStateDone',
+      idle: 'wordStateIdle',
+    }
+
+    /**
+     * 词表抽屉的纯函数：本章的词 → 可渲染的行。
+     * @param input.words - 本轮词（字符串数组，或 { w / word, ipa, zh } 词条）
+     * @param input.index - 当前词的章内下标（打完后可能是 words.length，此时没有 current 行）
+     * @param input.records - wordRecords 原始记录（「打过」/「打错过」的判定来源）
+     * @param input.mastered - readMastered() 的结果（`dictId:word` 或裸 word 都认）
+     * @param input.dictId - 只统计该词库的记录 / 掌握标记（传空则不过滤）
+     * @param input.limit - 行数上限，默认 WORDLIST_LIMIT
+     * @returns [{ index, word, ipa, zh, state }]
+     */
+    function wordListRows(input) {
+      const {
+        words, index, records, mastered, dictId = '', limit = WORDLIST_LIMIT,
+      } = input || {}
+      const list = Array.isArray(words) ? words : []
+      const cap = Number.isFinite(limit) ? Math.max(0, Math.floor(limit)) : list.length
+      const current = Number.isInteger(index) ? index : -1
+
+      const typed = new Set()
+      const wrong = new Set()
+      for (const item of records || []) {
+        const word = item?.word
+        if (!word) continue
+        if (dictId && String(item.dictId ?? '') !== String(dictId)) continue
+        typed.add(String(word))
+        if (Number(item.wrongCount) > 0) wrong.add(String(word))
+      }
+
+      const known = new Set((mastered || []).map((key) => String(key)))
+      const masteredWord = (word) =>
+        known.has(word)
+        || known.has(masteredKey(dictId, word))
+        // 别的词库里标过掌握也认（用户视角里就是"这个词我掌握了"）
+        || [...known].some((key) => key.endsWith(`:${word}`))
+
+      const rows = []
+      for (let i = 0; i < list.length && rows.length < cap; i += 1) {
+        const entry = list[i]
+        const word = String(typeof entry === 'string' ? entry : (entry?.w ?? entry?.word ?? ''))
+        if (!word) continue
+        const meta = lookup(word)
+        const own = typeof entry === 'object' && entry ? entry : null
+        const ipa = String(own?.ipa ?? meta?.ipa ?? '')
+        const zh = String(own?.zh ?? meta?.zh ?? '')
+        let state = 'idle'
+        if (i === current) state = 'current'
+        else if (masteredWord(word)) state = 'mastered'
+        else if (wrong.has(word)) state = 'wrong'
+        else if (typed.has(word)) state = 'done'
+        rows.push({ index: i, word, ipa, zh, state })
+      }
+      return rows
+    }
+
     /** 最近 n 天（含今天），缺失的日子补零，供折线/柱状图直接画 */
     function lastDays(chapters, days, now) {
       const count = days ?? 30
@@ -1494,6 +1567,15 @@ window.__ModuleLoader__.load({
         pausedTip: '已暂停（失焦或切标签页会自动暂停）',
         resume: '继续',
         wrongBook: '错词本',
+        wordListOpen: '本章词表',
+        wordListTitle: '本章词表 {n} 个',
+        wordListEmpty: '这一章还没有词',
+        wordListHint: '点一行直接跳过去',
+        wordStateCurrent: '当前',
+        wordStateDone: '已打过',
+        wordStateWrong: '打错过',
+        wordStateMastered: '已掌握',
+        wordStateIdle: '未打',
         wrongSearch: '搜单词或释义',
         mistakesLabel: '本轮打错 {n} 个：',
         settingsTitle: '跟打',
@@ -1606,6 +1688,15 @@ window.__ModuleLoader__.load({
         pausedTip: 'Paused (auto-paused on blur or tab switch)',
         resume: 'Resume',
         wrongBook: 'Wrong words',
+        wordListOpen: 'Chapter words',
+        wordListTitle: 'Chapter words ({n})',
+        wordListEmpty: 'No words in this chapter',
+        wordListHint: 'Click a row to jump there',
+        wordStateCurrent: 'Now',
+        wordStateDone: 'Done',
+        wordStateWrong: 'Missed',
+        wordStateMastered: 'Mastered',
+        wordStateIdle: 'Idle',
         wrongSearch: 'Search word or meaning',
         mistakesLabel: 'Mistyped {n} this round:',
         settingsTitle: 'Typing drill',
@@ -1735,6 +1826,22 @@ window.__ModuleLoader__.load({
 .qat-wrongword{font-size:14px;color:var(--dsw-alias-label-primary);min-width:110px}
 .qat-wrongzh{flex:1;font-size:12px;color:var(--dsw-alias-label-tertiary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .qat-wrongcount{font-size:12px;color:var(--dsw-alias-state-error-primary)}
+.qat-wordlist{display:flex;flex-direction:column;gap:6px;border:1px solid var(--dsw-alias-border-l1);border-radius:12px;padding:10px 12px;background:var(--dsw-alias-bg-layer-1)}
+.qat-wordlist-head{display:flex;align-items:center;gap:8px}
+.qat-wordlist-list{display:flex;flex-direction:column;gap:2px;max-height:340px;overflow:auto;padding-right:4px}
+.qat-wordlist-row{display:flex;align-items:baseline;gap:8px;width:100%;box-sizing:border-box;border:0;background:transparent;border-radius:8px;padding:5px 8px;font:inherit;font-size:13px;text-align:left;color:var(--dsw-alias-label-primary);cursor:pointer}
+.qat-wordlist-row:hover{background:var(--dsw-alias-interactive-bg-hover)}
+.qat-wordlist-row[data-state="current"]{background:var(--dsw-alias-interactive-bg-hover);box-shadow:inset 2px 0 0 var(--dsw-alias-brand-primary)}
+.qat-wordlist-row[data-state="mastered"] .qat-wordlist-word{opacity:.7}
+.qat-wordlist-no{flex:none;width:22px;text-align:right;font-size:11px;color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums}
+.qat-wordlist-word{flex:none;min-width:108px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:14px;color:var(--dsw-alias-label-primary)}
+.qat-wordlist-ipa{flex:none;font-size:11px;color:var(--dsw-alias-label-tertiary);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.qat-wordlist-zh{flex:1;min-width:0;font-size:12px;color:var(--dsw-alias-label-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qat-wordlist-state{flex:none;font-size:11px;color:var(--dsw-alias-label-tertiary)}
+.qat-wordlist-state[data-state="current"]{color:var(--dsw-alias-brand-primary)}
+.qat-wordlist-state[data-state="done"]{color:var(--dsw-alias-state-success-primary)}
+.qat-wordlist-state[data-state="wrong"]{color:var(--dsw-alias-state-error-primary)}
+.qat-wordlist-state[data-state="mastered"]{color:var(--dsw-alias-state-success-primary);opacity:.85}
 .qat-stats-nums{display:flex;gap:16px;font-size:13px;color:var(--dsw-alias-label-secondary)}
 .qat-letters{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--dsw-alias-label-secondary);margin:2px 0 6px}
 .qat-letters-label{color:var(--dsw-alias-label-tertiary)}
@@ -2401,6 +2508,7 @@ window.__ModuleLoader__.load({
     function Trainer({
       words, variant, onClose, showMeta = false, options, dictation = 'none',
       dictId = '', chapter = null, chapterTotal = 0, onFinish, onReview, onRetryWrong, onNextChapter, ctx,
+      jump = null, onIndex,
     }) {
       const t = useT(ctx)
       const [state, setState] = useState({
@@ -2468,6 +2576,26 @@ window.__ModuleLoader__.load({
           finishedAt: null,
         })
       }, [chapter, dictId, variant, words])
+
+      /** 当前词索引往外报：词表抽屉要用它高亮「当前」那一行 */
+      useEffect(() => {
+        onIndex?.(state.index)
+      }, [onIndex, state.index])
+
+      /**
+       * 从词表抽屉跳词：jump 每次点击都是新对象，effect 才会重跑一次。
+       * 只挪索引、清掉半截输入与本词错误计数，不动本轮 hits/retries（不能把已有行为改坏）。
+       */
+      useEffect(() => {
+        if (!jump || !Number.isInteger(jump.index)) return
+        if (jump.index < 0 || jump.index >= words.length) return
+        live.current.index = jump.index
+        live.current.typed = ''
+        wrongRef.current = 0
+        setState((prev) => ({
+          ...prev, index: jump.index, typed: '', flash: false, finishedAt: null,
+        }))
+      }, [jump, words])
 
       /** 暂停/继续：暂停期间不计时，也吞掉击键 */
       const applyPaused = useCallback((next) => {
@@ -3926,6 +4054,49 @@ window.__ModuleLoader__.load({
     }
 
     /** 错词本浮层：列出打错过的词，可一键重练前 N 个 */
+    /**
+     * 词表抽屉：本章的词一列，当前词高亮、打过的标状态，点一行直接跳过去。
+     * 行数据由 wordListRows 算好，这里只管画（所以测试能单独渲染它）。
+     */
+    function WordListPanel({ t, rows, hint, onPick, onClose }) {
+      const list = Array.isArray(rows) ? rows : []
+      return h('div', { className: 'qat-wordlist' },
+        h('div', { className: 'qat-wordlist-head' },
+          h('span', { className: 'qat-picker-title' }, t('wordListTitle', { n: list.length })),
+          hint ? h('span', { className: 'qat-panel-sub' }, hint) : null,
+          h('span', { className: 'qat-grow' }),
+          h('button', {
+            type: 'button',
+            className: 'qat-iconbtn',
+            title: t('close'),
+            'aria-label': t('close'),
+            'data-act': 'wordlist-close',
+            onClick: () => onClose?.(),
+          }, h(Icon, { name: 'close', size: 14 })),
+        ),
+        list.length === 0
+          ? h('div', { className: 'qat-loading' }, t('wordListEmpty'))
+          : h('div', { className: 'qat-wordlist-list' }, list.map((row) => h('button', {
+            key: `${row.index}:${row.word}`,
+            type: 'button',
+            className: 'qat-wordlist-row',
+            'data-state': row.state,
+            'data-no': String(row.index + 1),
+            'data-active': row.state === 'current' ? 'true' : 'false',
+            title: `${row.word}${row.zh ? ` · ${row.zh}` : ''}`,
+            'aria-label': `${row.index + 1} ${row.word}`,
+            onClick: () => onPick?.(row),
+          },
+            h('span', { className: 'qat-wordlist-no' }, String(row.index + 1)),
+            h('span', { className: 'qat-wordlist-word' }, row.word),
+            row.ipa ? h('span', { className: 'qat-wordlist-ipa' }, row.ipa) : null,
+            h('span', { className: 'qat-wordlist-zh' }, row.zh || ''),
+            h('span', { className: 'qat-wordlist-state', 'data-state': row.state },
+              t(WORDLIST_STATE_LABEL[row.state] ?? WORDLIST_STATE_LABEL.idle)),
+          ))),
+      )
+    }
+
     function WrongBookPanel({ t, rows, query, sort, dicts, mastered, onQuery, onSort, onMastered, onReview, onClear, onClose }) {
       return h('div', { className: 'qat-picker' },
         h('div', { className: 'qat-picker-head' },
@@ -4075,6 +4246,14 @@ window.__ModuleLoader__.load({
       const [review, setReview] = useState(null)
       /** 重练的「第几遍」：错词清单重练时词可能和上一遍完全一样，靠它把 Trainer 重新挂起来 */
       const [reviewNonce, setReviewNonce] = useState(0)
+      /** 词表抽屉开没开 */
+      const [listOpen, setListOpen] = useState(false)
+      /** 词表里点中的行：每次点都换新对象，Trainer 的 effect 才会重跑 */
+      const [jump, setJump] = useState(null)
+      /** 卡片里的当前词索引（Trainer 上报，抽屉用它高亮） */
+      const [activeIndex, setActiveIndex] = useState(0)
+      /** wordRecords 原始记录：判断哪几个词「打过 / 打错过」 */
+      const [records, setRecords] = useState([])
 
       const settings = useSyncExternalStore(subscribeSettings, getSettings, getSettings)
       const judgeOptions = useMemo(
@@ -4114,6 +4293,8 @@ window.__ModuleLoader__.load({
           const map = {}
           for (const row of rows || []) map[row.chapter] = row
           setProgress(map)
+          setRecords(words || [])
+          setMastered(readMastered())
           const [day] = lastDays(chapters, 1)
           setToday(day && day.words > 0 ? day : null)
           setWrongRows(collectWrongWords(words, 200))
@@ -4139,6 +4320,13 @@ window.__ModuleLoader__.load({
         return picked.map((entry) => (typeof entry === 'string' ? entry : entry.w))
       }, [all, chapter, round])
 
+      // 词表抽屉的行：状态优先级 current > mastered > wrong > done > idle
+      const wordRows = useMemo(
+        () => wordListRows({ words: chapterWords, index: activeIndex, records, mastered, dictId }),
+        [activeIndex, chapterWords, dictId, mastered, records],
+      )
+      const handleIndex = useCallback((value) => setActiveIndex(value), [])
+
       const choose = (id) => {
         if (!id) return
         setDictId(id)
@@ -4148,12 +4336,18 @@ window.__ModuleLoader__.load({
         setPicker(false)
         setQuery('')
         setCategory('')
+        setJump(null)
+        setListOpen(false)
       }
       const chooseChapter = (index) => {
         setChapter(index)
         setRound(0)
+        setJump(null)
       }
-      const again = () => setRound((value) => value + 1)
+      const again = () => {
+        setJump(null)
+        setRound((value) => value + 1)
+      }
 
       // 打完一章自动接下一章：开着 autoNext 就不用每次点「下一章」
       const nextTimer = useRef(null)
@@ -4161,6 +4355,7 @@ window.__ModuleLoader__.load({
         if (nextTimer.current !== null) clearTimeout(nextTimer.current)
       }, [])
       const finishChapter = useCallback(() => {
+        setJump(null)
         refreshStats()
         if (!settings.autoNext) return
         if (nextTimer.current !== null) clearTimeout(nextTimer.current)
@@ -4196,6 +4391,19 @@ window.__ModuleLoader__.load({
           }, meta.name, h(Icon, { name: 'caret', size: 12 })),
           h('span', { className: 'qat-panel-sub' }, `${meta.category} · ${meta.length} 词 · ${chapterTotal} 章`),
           h('span', { className: 'qat-grow' }),
+          h('button', {
+            type: 'button',
+            className: 'qat-iconbtn',
+            title: t('wordListOpen'),
+            'aria-label': t('wordListOpen'),
+            'data-act': 'wordlist',
+            'data-on': listOpen ? 'true' : 'false',
+            onClick: () => {
+              setView('practice')
+              setReview(null)
+              setListOpen((value) => !value)
+            },
+          }, h(Icon, { name: 'list', size: 15 })),
           h('button', {
             type: 'button',
             className: 'qat-iconbtn',
@@ -4249,6 +4457,18 @@ window.__ModuleLoader__.load({
               t('todayStats', { words: today.words, accuracy: today.accuracy, wpm: today.wpm }))
             : null,
         ),
+        listOpen
+          ? h(WordListPanel, {
+            t,
+            rows: wordRows,
+            hint: t('wordListHint'),
+            onPick: (row) => {
+              setJump({ index: row.index })
+              setListOpen(false)
+            },
+            onClose: () => setListOpen(false),
+          })
+          : null,
         error ? h('div', { className: 'qat-note' }, error) : null,
         review
           ? h(Trainer, {
@@ -4341,6 +4561,8 @@ window.__ModuleLoader__.load({
               dictId,
               chapter: round === 0 ? chapter : null,
               chapterTotal,
+              jump,
+              onIndex: handleIndex,
               onFinish: finishChapter,
               onReview: (words) => {
                 setReview(words)
@@ -4375,8 +4597,9 @@ window.__ModuleLoader__.load({
         dictSourceList, DICT_PIN, activeMs, resolveHotkey, calcWpm, calcAccuracy, shouldStartOnTab, saveSession, readSession, clearSession, sameSession,
         setOpen, getOpen, readDictId, writeDictId, releaseStuckComposer, ACCENTS, resolveAccent, shouldBlockSend, isSendTrigger, shouldClearDraft,
         ICONS, GLYPH, Icon,
-        components: { Trainer, ResultScreen, PracticePanel, PanelGlyph, ComposerTrainer, SidebarButton, DictPicker, WrongBookPanel, StatsPanel, SettingsSection, SettingRow },
+        components: { Trainer, ResultScreen, PracticePanel, PanelGlyph, ComposerTrainer, SidebarButton, DictPicker, WrongBookPanel, StatsPanel, SettingsSection, SettingRow, WordListPanel },
         collectWrongWords, heatmapWeeks, heatLevel, filterWrongWords, DICT,
+        wordListRows, WORDLIST_LIMIT, WORDLIST_STATES, WORDLIST_STATE_LABEL,
         serializeBackup, parseBackup, BACKUP_VERSION, BACKUP_LIMITS, playClick, pressable,
         topWrongLetters, readMastered, writeMastered, toggleMastered, masteredKey, MASTERED_KEY,
         readCustomDicts, writeCustomDicts, parseCustomWords, saveCustomDict, removeCustomDict,

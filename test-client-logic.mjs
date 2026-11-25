@@ -1019,7 +1019,7 @@ check('面板卡片是 panel 变体', findPanelCard(panel), true)
 // —— 面板排版：头部一行、工具行一行、按钮用迁移过来的图标 ——
 check('面板头部存在', panelClasses.includes('qat-panel-head'), true)
 check('面板有工具行', panelClasses.includes('qat-tools'), true)
-check('错词/统计/重来都是图标按钮', (panelClasses.match(/qat-iconbtn/g) || []).length, 3)
+check('词表/错词/统计/重来都是图标按钮', (panelClasses.match(/qat-iconbtn/g) || []).length, 4)
 check('图标按钮都带 aria-label', (function walk(node, out = []) {
   if (!node || typeof node !== 'object') return out
   if (Array.isArray(node)) { node.forEach((item) => walk(item, out)); return out }
@@ -1557,6 +1557,110 @@ check('键位有分档', (function keys(node, out = []) {
   keys(node.props?.children, out)
   return out
 })(statsCase).includes('4'), true)
+
+// —— 词表抽屉（G3）：本章 20 词、状态优先级、点一行跳过去 ——
+/** 按 className 抓节点 props（词表行要看 data-* 属性） */
+function nodesByClass(node, className, out = []) {
+  if (node === null || node === undefined || typeof node !== 'object') return out
+  if (typeof node.type === 'function') {
+    nodesByClass(node.type(node.props ?? {}), className, out)
+    return out
+  }
+  if (node.props?.className === className) out.push(node.props)
+  for (const child of node.children ?? []) nodesByClass(child, className, out)
+  if (node.props?.children !== undefined) nodesByClass(node.props.children, className, out)
+  return out
+}
+
+const wlWords = ['cancel', 'govern', 'alpha']
+const wlState = (extra) => (renderTest.wordListRows({
+  words: wlWords, index: 0, records: [], mastered: [], ...extra,
+})[Number(extra?.at ?? 0)] || {}).state
+
+check('词表一次最多 20 行', renderTest.WORDLIST_LIMIT, 20)
+check('词表状态优先级固定', renderTest.WORDLIST_STATES.join('>'), 'current>mastered>wrong>done>idle')
+check('空词表 → 没有行', renderTest.wordListRows({ words: [] }), [])
+check('词表行结构固定', Object.keys(renderTest.wordListRows({ words: ['cancel'] })[0]), ['index', 'word', 'ipa', 'zh', 'state'])
+check('没碰过的词是 idle', wlState({ words: wlWords, index: 1 }), 'idle')
+check('当前词压过 mastered 与 wrong', wlState({
+  words: wlWords,
+  index: 0,
+  dictId: 'cet4',
+  records: [{ word: 'cancel', dictId: 'cet4', wrongCount: 3 }],
+  mastered: ['cet4:cancel'],
+}), 'current')
+check('mastered 覆盖 wrong', wlState({
+  words: wlWords,
+  at: 1,
+  index: 2,
+  dictId: 'cet4',
+  records: [{ word: 'govern', dictId: 'cet4', wrongCount: 2 }],
+  mastered: ['cet4:govern'],
+}), 'mastered')
+check('打错过是 wrong', wlState({
+  words: wlWords,
+  at: 1,
+  index: 2,
+  dictId: 'cet4',
+  records: [{ word: 'govern', dictId: 'cet4', wrongCount: 1 }],
+}), 'wrong')
+check('打过（没错过）是 done', wlState({
+  words: wlWords,
+  index: 2,
+  dictId: 'cet4',
+  records: [{ word: 'cancel', dictId: 'cet4', wrongCount: 0 }],
+}), 'done')
+check('别的词库的记录不算本章', wlState({
+  words: wlWords,
+  index: 2,
+  dictId: 'cet4',
+  records: [{ word: 'cancel', dictId: 'cet6', wrongCount: 2 }],
+}), 'idle')
+check('词条对象自带音标中文就照抄', (() => {
+  const [row] = renderTest.wordListRows({ words: [{ w: 'cancel', ipa: '/ˈkænsl/', zh: '取消' }] })
+  return [row.ipa, row.zh]
+})(), ['/ˈkænsl/', '取消'])
+check('本章 30 个词只出 20 行', renderTest.wordListRows({
+  words: Array.from({ length: 30 }, (_, i) => `w${i + 1}`),
+}).length, 20)
+
+const wlDrawer = render('渲染：词表抽屉', () => renderTest.components.WordListPanel({
+  t: (key, vars) => (vars && vars.n !== undefined ? `${key}:${vars.n}` : key),
+  rows: renderTest.wordListRows({
+    words: Array.from({ length: 30 }, (_, i) => `w${i + 1}`),
+    index: 2,
+    records: [{ word: 'w1', dictId: '', wrongCount: 1 }],
+  }),
+  hint: 'wordListHint',
+  onPick: () => {},
+  onClose: () => {},
+}))
+check('抽屉最多画出 20 行', nodesByClass(wlDrawer, 'qat-wordlist-row').length, 20)
+check('抽屉序号从 1 开始', nodesByClass(wlDrawer, 'qat-wordlist-row').map((props) => props['data-no']).slice(0, 3), ['1', '2', '3'])
+check('抽屉当前词高亮', nodesByClass(wlDrawer, 'qat-wordlist-row').map((props) => props['data-state']), [
+  'wrong', 'idle', 'current',
+  ...Array.from({ length: 17 }, () => 'idle'),
+])
+check('抽屉显示状态名', gatherText(wlDrawer).includes('wordStateCurrent'), true)
+check('抽屉标题带词数', gatherText(wlDrawer).includes('wordListTitle:20'), true)
+
+const wlEmpty = render('渲染：空词表抽屉', () => renderTest.components.WordListPanel({
+  t: (key, vars) => (vars && vars.n !== undefined ? `${key}:${vars.n}` : key),
+  rows: [], onPick: () => {}, onClose: () => {},
+}))
+check('空词表给提示', gatherText(wlEmpty).includes('wordListEmpty'), true)
+check('空词表不画行', nodesByClass(wlEmpty, 'qat-wordlist-row').length, 0)
+check('空词表标题写 0 个', gatherText(wlEmpty).includes('wordListTitle:0'), true)
+
+// —— 面板头部多了词表入口（同一排图标按钮） ——
+check('面板头部有词表按钮', (function walk(node, out = []) {
+  if (!node || typeof node !== 'object') return out
+  if (Array.isArray(node)) { node.forEach((item) => walk(item, out)); return out }
+  if (node.props?.['data-act'] === 'wordlist') out.push(node.props.className)
+  walk(node.children, out); walk(node.props?.children, out)
+  return out
+})(panel), ['qat-iconbtn'])
+check('词表按钮用 list 图标', collectClasses(panel).filter((name) => name.includes('qat-svg-list')).length, 1)
 
 await recordFlow
 
