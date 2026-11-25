@@ -3,6 +3,7 @@
  * 覆盖"打中 → 通过进下一个词"和"打错 → 标红清空重打"这两条判定。
  */
 import fs from 'node:fs'
+import { judgeSize, SIZE_LIMITS } from './scripts/check-size.mjs'
 import path from 'node:path'
 import vm from 'node:vm'
 // 审计脚本的纯函数部分（不碰文件系统）：统计口径也要有断言
@@ -461,9 +462,11 @@ check('空词库不落存档', saveSession({ dictId: 'cet4', chapter: 0, words: 
 clearSession()
 check('清空后读不到', readSession(), null)
 
-// —— 体积守门（§7.4 预算：client.js ≤ 400KB） ——
+// —— 体积守门（§7.4：纪律线 480KB，470KB 报警；口径与 npm run size 同源） ——
 const clientBytes = fs.statSync(file).size
-check('client.js 体积在 400KB 预算内', clientBytes < 400 * 1024, true)
+check('client.js 体积在纪律线内（judgeSize 与 scripts/check-size.mjs 同源）', judgeSize(clientBytes), 'ok')
+check('体积纪律线是 480,000 字节（不是 400KB 的旧口径）', SIZE_LIMITS.fail, 480_000)
+check('体积提醒线是 470,000 字节', SIZE_LIMITS.warn, 470_000)
 
 // —— 记录聚合（纯函数） ——
 const at = (y, m, d, h = 12) => new Date(y, m - 1, d, h).getTime()

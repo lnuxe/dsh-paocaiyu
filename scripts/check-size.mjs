@@ -21,6 +21,9 @@ import { fileURLToPath } from 'node:url'
 const WARN_DEFAULT = 470_000
 const FAIL_DEFAULT = 480_000
 
+/** 对外暴露的现行限制（测试与闸门共用同一份，避免两处口径漂移）。 */
+export const SIZE_LIMITS = Object.freeze({ warn: WARN_DEFAULT, fail: FAIL_DEFAULT })
+
 export function parseSizeArgs(argv = []) {
   const out = { warn: WARN_DEFAULT, fail: FAIL_DEFAULT, help: false }
   for (let i = 0; i < argv.length; i += 1) {
