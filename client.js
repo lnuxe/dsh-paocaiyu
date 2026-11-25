@@ -1469,6 +1469,10 @@ window.__ModuleLoader__.load({
         doneTitle: '这一轮打完了',
         doneBody: '完成 {total}/{total}，用时 {sec}s，命中 {hits}，重打 {retries}',
         again: '再来一轮',
+        resultWrongTitle: '本轮打错 {n} 个',
+        resultRetryWrong: '重练这些词',
+        resultNextChapter: '下一章',
+        resultNextChapterLast: '回到第 1 章',
         empty: '没有单词；用空格分隔即可，例如：/qwerty-autotype cancel govern',
         sideLabel: '跟打',
         sideTitle: '开 / 关 Qwerty 跟打卡片',
@@ -1581,6 +1585,10 @@ window.__ModuleLoader__.load({
         doneTitle: 'Round complete',
         doneBody: '{total}/{total} done in {sec}s — {hits} hits, {retries} retries',
         again: 'Go again',
+        resultWrongTitle: 'Mistyped {n} this round',
+        resultRetryWrong: 'Retry these',
+        resultNextChapter: 'Next chapter',
+        resultNextChapterLast: 'Back to chapter 1',
         searchDict: 'Search dictionaries',
         allCategories: 'All',
         recent: 'Recent',
@@ -1770,8 +1778,12 @@ window.__ModuleLoader__.load({
 .qat-databtns{display:flex;gap:8px;flex-wrap:wrap}
 .qat-switch{display:inline-flex;align-items:center;justify-content:center;min-width:40px;padding:3px 10px;border-radius:999px;font-size:12px;cursor:pointer;user-select:none;border:1px solid var(--dsw-alias-border-l2);color:var(--dsw-alias-label-secondary)}
 .qat-switch[data-on="true"]{background:var(--dsw-alias-brand-primary);border-color:transparent;color:#fff}
-.qat-mistakes{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:12px;color:var(--dsw-alias-label-secondary)}
-.qat-mistakes-list{color:var(--dsw-alias-state-error-primary);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.qat-mistakes{display:flex;flex-direction:column;align-items:flex-start;gap:5px;font-size:12px;color:var(--dsw-alias-label-secondary);margin-top:2px}
+.qat-mistakes-title{color:var(--dsw-alias-label-secondary)}
+.qat-mistakes-list{display:flex;flex-wrap:wrap;align-items:center;gap:6px;color:var(--dsw-alias-state-error-primary);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.qat-mistake{display:inline-flex;align-items:baseline;gap:5px;padding:1px 7px;border-radius:6px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-state-error-primary);line-height:1.5}
+.qat-mistake[data-wrong="1"]{color:var(--dsw-alias-label-primary)}
+.qat-mistake-zh{font-family:inherit;font-size:11px;color:var(--dsw-alias-label-tertiary);font-weight:400;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .qat-done-metrics{display:flex;gap:14px;font-size:13px;color:var(--dsw-alias-label-secondary);margin-top:6px}
 .qat-speak{display:inline-flex;align-items:center;margin-left:8px;cursor:pointer;font-size:13px;opacity:.65;user-select:none}
 .qat-speak:hover{opacity:1}
@@ -1824,6 +1836,9 @@ window.__ModuleLoader__.load({
 .qat-hint{font-size:12px;color:var(--dsw-alias-label-secondary);line-height:1.5}
 .qat-done{display:flex;flex-direction:column;gap:8px}
 .qat-done-title{color:var(--dsw-alias-state-success-primary);font-weight:600;font-size:13px}
+.qat-done-acts{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.qat-btn-retry{border-color:var(--dsw-alias-state-error-primary);color:var(--dsw-alias-state-error-primary)}
+.qat-btn-next{border-color:var(--dsw-alias-brand-primary);color:var(--dsw-alias-brand-primary)}
 .qat-side{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:28px;min-width:28px;padding:0 8px;border-radius:8px;border:1px solid transparent;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;font:inherit;font-size:12px;line-height:1;white-space:nowrap}
 .qat-side:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}
 .qat-side[data-active="true"]{border-color:var(--dsw-alias-brand-primary);color:var(--dsw-alias-brand-primary)}
@@ -2305,6 +2320,72 @@ window.__ModuleLoader__.load({
     /* --------------------------------------------------------------- trainer */
 
     /**
+     * 结算页：成绩 + 本轮错词清单 + 三条出路（再来一轮 / 重练错词 / 下一章）。
+     * 单独抽成组件：不依赖训练态就能直接渲染断言，也给面板各入口复用。
+     * @param props.mistakes - 本轮打错过的词（{ word, wrongCount } 或纯字符串）
+     * @param props.nextIsLast - 当前是否是末章（末章按钮改成「回到第 1 章」）
+     */
+    function ResultScreen({
+      t, total, elapsed, hits, retries, mistakes, words,
+      nextIsLast = false, onRestart, onRetryWrong, onNextChapter,
+    }) {
+      // 清单只来自本轮 mistakes；全打对就是空数组，整块不渲染
+      const rows = wordsOfRound(mistakes, words)
+      const retry = () => onRetryWrong?.(rows.map((row) => row.word))
+      return h('div', { className: 'qat-done' },
+        h('div', { className: 'qat-done-title' }, t('doneTitle')),
+        h('div', { className: 'qat-hint' }, t('doneBody', { total, sec: elapsed, hits, retries })),
+        h('div', { className: 'qat-done-metrics' },
+          h('span', null, `WPM ${calcWpm(total, elapsed)}`),
+          h('span', null, t('accuracyShort', { n: calcAccuracy(total, retries) })),
+          h('span', null, t('elapsedShort', { sec: elapsed })),
+        ),
+        rows.length
+          ? h('div', { className: 'qat-mistakes' },
+            h('span', { className: 'qat-mistakes-title' }, t('resultWrongTitle', { n: rows.length })),
+            h('div', { className: 'qat-mistakes-list' },
+              rows.map((row) => {
+                const zh = lookup(row.word)?.zh ?? ''
+                return h('span', {
+                  key: row.word,
+                  className: 'qat-mistake',
+                  'data-wrong': String(row.wrongCount),
+                  title: zh ? `${row.word} ${zh}` : row.word,
+                },
+                  h('span', null, `${row.word} ×${row.wrongCount}`),
+                  zh ? h('span', { className: 'qat-mistake-zh' }, zh) : null,
+                )
+              }),
+            ),
+          )
+          : null,
+        h('div', { className: 'qat-row qat-done-acts' },
+          onRestart
+            ? h('span', {
+              ...pressable(onRestart),
+              className: 'qat-btn',
+              'data-act': 'again',
+            }, t('again'))
+            : null,
+          rows.length && onRetryWrong
+            ? h('span', {
+              ...pressable(retry),
+              className: 'qat-btn qat-btn-retry',
+              'data-act': 'retry-wrong',
+            }, t('resultRetryWrong'))
+            : null,
+          onNextChapter
+            ? h('span', {
+              ...pressable(onNextChapter),
+              className: 'qat-btn qat-btn-next',
+              'data-act': 'next-chapter',
+            }, t(nextIsLast ? 'resultNextChapterLast' : 'resultNextChapter'))
+            : null,
+        ),
+      )
+    }
+
+    /**
      * 跟打卡片本体。三种入口共用，判定/计数/自动打全都在这。
      * @param props.words - 本轮单词
      * @param props.variant - 'dock' | 'command'（只影响宽度与是否显示收起按钮）
@@ -2312,7 +2393,7 @@ window.__ModuleLoader__.load({
      */
     function Trainer({
       words, variant, onClose, showMeta = false, options, dictation = 'none',
-      dictId = '', chapter = null, onFinish, onReview, onNextChapter, ctx,
+      dictId = '', chapter = null, chapterTotal = 0, onFinish, onReview, onRetryWrong, onNextChapter, ctx,
     }) {
       const t = useT(ctx)
       const [state, setState] = useState({
@@ -2546,7 +2627,12 @@ window.__ModuleLoader__.load({
         if (expect && expect !== ' ') {
           lettersRef.current[expect] = (lettersRef.current[expect] || 0) + 1
         }
-        setMistakes((list) => (list.includes(target) ? list : [...list, target]))
+        // 记「打错次数」而不是去重词表：结算页要显示每个词错了几次
+        setMistakes((list) => {
+          const hit = list.find((item) => item.word === target)
+          if (hit) return list.map((item) => (item.word === target ? { ...item, wrongCount: item.wrongCount + 1 } : item))
+          return [...list, { word: target, wrongCount: 1 }]
+        })
         live.current.locked = true
         setTyped(value)
         setState((prev) => ({ ...prev, flash: true }))
@@ -2667,21 +2753,20 @@ window.__ModuleLoader__.load({
           )
           : null,
         done
-          ? h('div', { className: 'qat-done' },
-            h('div', { className: 'qat-done-title' }, t('doneTitle')),
-            h('div', { className: 'qat-hint' }, t('doneBody', { total, sec: elapsed, hits: state.hits, retries: state.retries })),
-            h('div', { className: 'qat-done-metrics' },
-              h('span', null, `WPM ${calcWpm(total, elapsed)}`),
-              h('span', null, t('accuracyShort', { n: calcAccuracy(total, state.retries) })),
-              h('span', null, t('elapsedShort', { sec: elapsed })),
-            ),
-            h('div', { className: 'qat-row' },
-              h('span', {
-                ...pressable(restart),
-                className: 'qat-btn',
-              }, t('again')),
-            ),
-          )
+          ? h(ResultScreen, {
+            t,
+            total,
+            elapsed,
+            hits: state.hits,
+            retries: state.retries,
+            mistakes,
+            words,
+            // 章号从面板传进来才知道是不是末章；命令卡（chapter = null）永远当非末章
+            nextIsLast: Number.isInteger(chapter) && chapterTotal > 0 && chapter + 1 >= chapterTotal,
+            onRestart: restart,
+            onRetryWrong,
+            onNextChapter,
+          })
           : h('div', null,
             h('div', { className: 'qat-word', 'data-flash': state.flash ? 'true' : 'false' },
               chars.map((ch, i) => {
@@ -2877,6 +2962,58 @@ window.__ModuleLoader__.load({
     /** 一轮是否打完：面板打完要停，跟打条永远不停（走 stepIndex） */
     function isRoundDone(index, total) {
       return Number(total) > 0 && Number(index) >= Number(total)
+    }
+
+    /**
+     * 本轮错词清单：把 mistakes（这一轮打错过的词）映射成「词 + 打错次数」。
+     * - 元素既支持字符串（早期只存词）也支持 { word, wrongCount }
+     * - 顺序优先跟本轮词表一致（words 里的先后），词表里没有的按出现顺序补在后面
+     * - 空 mistakes / 全打对 → 空数组，结算页据此决定要不要出错词清单
+     */
+    function wordsOfRound(mistakes, words) {
+      const counts = new Map()
+      for (const item of mistakes || []) {
+        const word = String(typeof item === 'string' ? item : (item?.word ?? ''))
+        if (!word) continue
+        const key = word.toLowerCase()
+        const prev = counts.get(key)
+        const times = typeof item === 'object' && item !== null ? Number(item.wrongCount) : 1
+        const add = Number.isFinite(times) && times > 0 ? times : 1
+        counts.set(key, {
+          word: prev?.word ?? word,
+          wrongCount: (prev?.wrongCount ?? 0) + add,
+        })
+      }
+      if (!counts.size) return []
+      const rows = []
+      const seen = new Set()
+      const order = (words || [])
+        .map((entry) => (typeof entry === 'string' ? entry : (entry?.w ?? entry?.word ?? '')))
+        .filter(Boolean)
+      for (const word of order) {
+        const key = String(word).toLowerCase()
+        const hit = counts.get(key)
+        if (!hit || seen.has(key)) continue
+        seen.add(key)
+        rows.push(hit)
+      }
+      for (const [key, hit] of counts) {
+        if (seen.has(key)) continue
+        seen.add(key)
+        rows.push(hit)
+      }
+      return rows
+    }
+
+    /**
+     * 下一章序号（0-based）：末章绕回第 1 章；章数非法时回到 0，越界也收敛到合法范围。
+     * 面板的「下一章」按钮和上游 autoNext 用同一套绕回语义。
+     */
+    function nextChapterIndex(current, total) {
+      const size = Math.floor(Number(total) || 0)
+      if (size <= 0) return 0
+      const now = Math.floor(Number(current) || 0)
+      return ((now + 1) % size + size) % size
     }
 
     /** 在整本词库里前后挪：到头绕回，负数也绕（跟打条靠它一直往下打） */
@@ -3922,6 +4059,8 @@ window.__ModuleLoader__.load({
       const [mastered, setMastered] = useState([])
       const [stats, setStats] = useState({ days: [], weeks: [], letters: [], summary: summarize([]) })
       const [review, setReview] = useState(null)
+      /** 重练的「第几遍」：错词清单重练时词可能和上一遍完全一样，靠它把 Trainer 重新挂起来 */
+      const [reviewNonce, setReviewNonce] = useState(0)
 
       const settings = useSyncExternalStore(subscribeSettings, getSettings, getSettings)
       const judgeOptions = useMemo(
@@ -4099,7 +4238,7 @@ window.__ModuleLoader__.load({
         error ? h('div', { className: 'qat-note' }, error) : null,
         review
           ? h(Trainer, {
-            key: `review:${review.join(',')}`,
+            key: `review:${reviewNonce}:${review.join(',')}`,
             words: review,
             variant: 'panel',
             showMeta: true,
@@ -4109,6 +4248,10 @@ window.__ModuleLoader__.load({
             chapter: null,
             onFinish: refreshStats,
             onReview: (words) => setReview(words),
+            onRetryWrong: (words) => {
+              setReview(words)
+              setReviewNonce((value) => value + 1)
+            },
             ctx,
           })
           : loading
@@ -4183,14 +4326,21 @@ window.__ModuleLoader__.load({
               dictation: settings.dictation,
               dictId,
               chapter: round === 0 ? chapter : null,
+              chapterTotal,
               onFinish: finishChapter,
               onReview: (words) => {
                 setReview(words)
                 setChapter(0)
               },
-              onNextChapter: chapter + 1 < chapterTotal
-                ? () => setChapter((value) => Math.min(value + 1, chapterTotal - 1))
-                : null,
+              // 本轮打错的词：原样丢给 review 通道，用这些词起一轮新的
+              onRetryWrong: (words) => {
+                if (!words?.length) return
+                setReview(words)
+                setReviewNonce((value) => value + 1)
+              },
+              // 走 chooseChapter：跟下拉选章同一条路（章内词表 + 进度才对得上）；
+              // 末章由 nextChapterIndex 绕回第 1 章，不再置灰
+              onNextChapter: () => chooseChapter(nextChapterIndex(chapter, chapterTotal)),
               ctx,
             }),
       )
@@ -4211,7 +4361,7 @@ window.__ModuleLoader__.load({
         dictSourceList, DICT_PIN, activeMs, resolveHotkey, calcWpm, calcAccuracy, shouldStartOnTab, saveSession, readSession, clearSession, sameSession,
         setOpen, getOpen, readDictId, writeDictId, releaseStuckComposer, ACCENTS, resolveAccent, shouldBlockSend, isSendTrigger, shouldClearDraft,
         ICONS, GLYPH, Icon,
-        components: { Trainer, PracticePanel, PanelGlyph, ComposerTrainer, SidebarButton, DictPicker, WrongBookPanel, StatsPanel, SettingsSection, SettingRow },
+        components: { Trainer, ResultScreen, PracticePanel, PanelGlyph, ComposerTrainer, SidebarButton, DictPicker, WrongBookPanel, StatsPanel, SettingsSection, SettingRow },
         collectWrongWords, heatmapWeeks, heatLevel, filterWrongWords, DICT,
         serializeBackup, parseBackup, BACKUP_VERSION, BACKUP_LIMITS, playClick, pressable,
         topWrongLetters, readMastered, writeMastered, toggleMastered, masteredKey, MASTERED_KEY,
@@ -4220,7 +4370,7 @@ window.__ModuleLoader__.load({
         exportBackup, importData, clearData, readMirror, writeMirror, MIRROR_KEY,
         keyboardHeat, KEY_ROWS, cacheStats, clearDictCache,
         parseCustomFile, serializeCustomDict, splitCsvLine, toCustomWord, downloadText, withSlashes,
-        stepIndex, toWordList, isRoundDone, pronunciationSrc, pronunciationType, speakWithTts,
+        stepIndex, toWordList, isRoundDone, wordsOfRound, nextChapterIndex, pronunciationSrc, pronunciationType, speakWithTts,
         speak,
       },
       inject: ['slots', 'locale'],
