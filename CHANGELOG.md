@@ -73,6 +73,10 @@
 
 ### 测试
 
+- 新增 `npm run smoke`（`scripts/smoke-apply.mjs`）：把 `client.js` 过一遍 `__ModuleLoader__`、
+  用 React 桩调 `apply(ctx)`，核对**注册的 5 个 slot**、2 份 i18n、`locale/change` 监听，
+  并要求每个 slot 都能渲染出非空节点。纯逻辑测试抓不到「apply 里少写一个 slot」这种问题
+  —— 它在浏览器里的表现是「按钮不见了」，在测试里却全绿
 - **655 → 840 条**（+185）。重点新增：177/200/201 长度边界、假名入库与副行渲染、
   `phoneticOf` 六种情形与面板按 `accent` 切换的端到端渲染、`dictBadge` 对 371 个真实库的全量覆盖、
   `wrapWord` 断行还原 / 硬断 / 中英混排、`fitWordStyle` 字号单调与窄条不丢字、字母跨行索引连续
