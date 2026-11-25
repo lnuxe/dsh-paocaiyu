@@ -289,7 +289,8 @@ check('空词库也有一章', chapterCount({ length: 0 }), 1)
 // —— 词条归一化 ——
 // 形状变了：`ipa` 之外还多了 `us` / `uk`（音标按口音分开存），ipa 是「默认展示」那一支
 check('归一化 en', normalizeWord({ name: 'cancel', trans: ['取消， 撤销； 删去'], ukphone: "'kænsl", usphone: "'kænsl" }, 'en'),
-  { w: 'cancel', ipa: '/ˈkænsl/', us: '/ˈkænsl/', uk: '/ˈkænsl/', zh: '取消，撤销；删去' })
+  // en: true = 这份词库有英/美口音之分（日语罗马字 / 拼音不加 AmE 前缀）
+  { w: 'cancel', ipa: '/ˈkænsl/', us: '/ˈkænsl/', uk: '/ˈkænsl/', zh: '取消，撤销；删去', en: true })
 check('ipa 取默认口音（us）那一支', normalizeWord({ name: 'go', trans: ['去'], ukphone: 'gəu', usphone: 'goʊ' }, 'en').ipa, '/goʊ/')
 check('代码词库不生成音标', normalizeWord({ name: 'SELECT', trans: ['查询'], usphone: 'silekt' }, 'code').ipa, '')
 check('日语词条保留假名', normalizeWord({ name: 'たべる', trans: ['吃'], ukphone: 'taberu' }, 'ja').w, 'たべる')
@@ -2295,6 +2296,7 @@ check('清空自定义词表目录里就没了', renderTest.catalog().some((item
 // 单独解构：上面那一大段是多个子任务共用的，能不动就不动
 const {
   inspectWord, phoneticOf, MAX_WORD_LENGTH, LONG_WORD_CHARS, DROP_REASONS,
+  cleanPhone, bracketPhone,
 } = plugin.__test
 
 // 上游全库最长的一条 name 是 177 字符（雅思口语句子），所以边界定在 200
@@ -2356,11 +2358,12 @@ check('代码词库三支音标都为空', (function (w) { return [w.us, w.uk, w
   ['', '', ''])
 
 // —— phoneticOf：按口音挑显示哪一支 ——
-check('accent=us 显示 AmE', phoneticOf({ us: '/goʊ/', uk: '/gəu/' }, 'us'), { text: 'AmE: /goʊ/', label: 'AmE' })
-check('accent=uk 显示 BrE', phoneticOf({ us: '/goʊ/', uk: '/gəu/' }, 'uk'), { text: 'BrE: /gəu/', label: 'BrE' })
-check('accent=us 但缺美音 → 退回英音', phoneticOf({ uk: '/gəu/' }, 'us'), { text: 'BrE: /gəu/', label: 'BrE' })
-check('accent=uk 但缺英音 → 退回美音', phoneticOf({ us: '/goʊ/' }, 'uk'), { text: 'AmE: /goʊ/', label: 'AmE' })
-check('两支都没有 → 退回老缓存的 ipa（不编口音）', phoneticOf({ ipa: '/ˈkænsl/' }, 'uk'), { text: '/ˈkænsl/', label: '' })
+// text 只放音标体（已洗净、已套方括号），前缀走 label 让 UI 分开画
+check('accent=us 显示 AmE', phoneticOf({ us: '/goʊ/', uk: '/gəu/' }, 'us'), { text: '[goʊ]', label: 'AmE' })
+check('accent=uk 显示 BrE', phoneticOf({ us: '/goʊ/', uk: '/gəu/' }, 'uk'), { text: '[gəu]', label: 'BrE' })
+check('accent=us 但缺美音 → 退回英音', phoneticOf({ uk: '/gəu/' }, 'us'), { text: '[gəu]', label: 'BrE' })
+check('accent=uk 但缺英音 → 退回美音', phoneticOf({ us: '/goʊ/' }, 'uk'), { text: '[goʊ]', label: 'AmE' })
+check('两支都没有 → 退回老缓存的 ipa（不编口音）', phoneticOf({ ipa: '/ˈkænsl/' }, 'uk'), { text: '[ˈkænsl]', label: '' })
 check('什么都没有 → 空文本，UI 不渲染', phoneticOf({}, 'us'), { text: '', label: '' })
 check('undefined 也不炸', phoneticOf(undefined, 'us'), { text: '', label: '' })
 check('不会显示空括号', phoneticOf({ us: '/goʊ/' }, 'us').text.includes('[]'), false)
@@ -2369,12 +2372,12 @@ check('日文/无口音词条不走 AmE 前缀', phoneticOf(normalizeWord({ name
 
 // —— 老缓存兼容：只有 ipa 的老结构照样能显示 ——
 const legacyCacheWord = { w: 'cancel', ipa: '/ˈkænsl/', zh: '取消' }
-check('老缓存只有 ipa 时 phoneticOf 能显示', phoneticOf(legacyCacheWord, 'us').text, '/ˈkænsl/')
-check('老缓存只有 ipa 时换口音也不炸', phoneticOf(legacyCacheWord, 'uk').text, '/ˈkænsl/')
+check('老缓存只有 ipa 时 phoneticOf 能显示', phoneticOf(legacyCacheWord, 'us').text, '[ˈkænsl]')
+check('老缓存只有 ipa 时换口音也不炸', phoneticOf(legacyCacheWord, 'uk').text, '[ˈkænsl]')
 check('lookup 把 us / uk / notation 带出去', (function (hit) {
   return [hit.word, hit.ipa, typeof hit.us, typeof hit.notation]
 })(lookup('cancel')), ['cancel', '/ˈkænsl/', 'undefined', 'undefined'])
-check('内置词条只有 ipa 时面板显示原样音标', phoneticOf(lookup('cancel'), 'us').text, '/ˈkænsl/')
+check('内置词条只有 ipa 时面板显示原样音标', phoneticOf(lookup('cancel'), 'us').text, '[ˈkænsl]')
 
 // —— 长句子的排版标记（卡片 / 跟打条缩字号）——
 function findNodeWithClass(node, className) {
@@ -2424,8 +2427,8 @@ function panelIpaText(accent) {
   )
   return node ? gatherText(node) : ''
 }
-check('面板按 accent=us 显示 AmE', panelIpaText('us'), 'AmE: /goʊ/')
-check('面板按 accent=uk 显示 BrE', panelIpaText('uk'), 'BrE: /gəu/')
+check('面板按 accent=us 显示 AmE', panelIpaText('us'), 'AmE: [goʊ]')
+check('面板按 accent=uk 显示 BrE', panelIpaText('uk'), 'BrE: [gəu]')
 renderTest.removeCustomDict('accent-probe')
 
 // —— 审计脚本：统计纯函数 ——
@@ -2469,6 +2472,90 @@ check('参数默认 top=0（全打）', parseArgs(['node', 'x']).top, 0)
 check('参数能改上游目录', parseArgs(['node', 'x', '--upstream', '/tmp/u']).upstream, '/tmp/u')
 check('清单里 /dicts/x.json 映射到本地文件', dictFilePath('/up', '/dicts/x.json'), path.join('/up', 'x.json'))
 check('清单里 ./dicts/x.json 也认', dictFilePath('/up', './dicts/x.json'), path.join('/up', 'x.json'))
+
+// —— cleanPhone：真实词库里的脏音标（扫描口径见下，脚本 scripts/scan-phone-shapes.mjs）——
+check('剥斜杠外壳', cleanPhone('/ˈæpl/'), 'ˈæpl')
+check('剥方括号外壳', cleanPhone('[ˈæpl]'), 'ˈæpl')
+check('方括号套斜杠也剥干净', cleanPhone('/[ˈæpl]/'), 'ˈæpl')
+check('前后空格压掉', cleanPhone('  goʊ  '), 'goʊ')
+check('中间连续空格压成一个', cleanPhone('ˈæp(ə)l  ok'), 'ˈæp(ə)l ok')
+check('全角斜杠转半角并剥壳', cleanPhone('／ruːt／'), 'ruːt')
+check('全角空格压掉', cleanPhone('\u3000goʊ\u3000'), 'goʊ')
+check('空串 → 空', cleanPhone(''), '')
+check('占位符 - → 空', cleanPhone('-'), '')
+check('null → 空', cleanPhone(null), '')
+check('undefined → 空', cleanPhone(undefined), '')
+check('纯斜杠 → 空', cleanPhone('/'), '')
+check('一个字段两支口音：内部斜杠保留（不替词库猜口音）', cleanPhone('bɑ:θ/bæθ'), 'bɑ:θ/bæθ')
+check('bracketPhone 套一层方括号', bracketPhone('ˈæpl'), '[ˈæpl]')
+check('bracketPhone 洗过再套，不会套第二层', bracketPhone('[/ˈæpl/]'), '[ˈæpl]')
+check('bracketPhone 占位值不套空括号', bracketPhone('-'), '')
+
+// —— phoneticOf：label 只在真的取到该口音字段时出现 ——
+check('label：两支都在，跟 accent 走（us）', phoneticOf({ us: '/goʊ/', uk: '/gəu/', en: true }, 'us').label, 'AmE')
+check('label：只有 uk → BrE（并按 uk 显示）', phoneticOf({ uk: '  [gəu] ', en: true }, 'us'), { text: '[gəu]', label: 'BrE' })
+check('label：两支都缺退回 ipa → label 为空（route 这种实际英音不标 AmE）',
+  phoneticOf({ ipa: '/ruːt/', en: true }, 'us'), { text: '[ruːt]', label: '' })
+check('label：只有 notation（无 phone）→ text / label 都空',
+  phoneticOf({ notation: 'あいうえお', en: true }, 'us'), { text: '', label: '' })
+check('label：非英文词库不加前缀', phoneticOf({ us: '/taberu/', en: false }, 'us'), { text: '[taberu]', label: '' })
+check('脏 phone 进来也只有一层方括号', phoneticOf({ us: '[/goʊ/]', en: true }, 'us').text, '[goʊ]')
+// 一个字段塞两支口音（4000_Essential_English_Words-meaning.json 的 bath）：原样保留、不猜顺序、只套一层括号
+check('一个字段两支口音：原样保留且只套一层方括号', phoneticOf({ us: 'bɑ:θ/bæθ', en: true }, 'us').text, '[bɑ:θ/bæθ]')
+
+// —— 面板渲染：前缀随 accent 变、无音标不画空行、方括号不重复 ——
+function panelTree(word, extra = {}) {
+  return renderTest.components.Trainer({ words: [word], variant: 'panel', showMeta: true, ctx: ctxStub, ...extra })
+}
+function panelLabelText(word, accent) {
+  const node = findNodeWithClass(panelTree(word, accent ? { options: { accent } } : {}), 'qat-ipa-label')
+  return node ? gatherText(node).trim() : ''
+}
+renderTest.saveCustomDict('phonetic-probe', [
+  { name: 'go', trans: ['去'], usphone: 'goʊ', ukphone: 'gəu' },
+  { name: 'route', trans: ['路线'], ipa: 'ruːt' },
+  { name: 'zed', trans: ['zeta 字母'] },
+])
+await renderTest.loadDictWords(`${CUSTOM_PREFIX}phonetic-probe`)
+check('面板 us → 前缀 AmE', panelLabelText('go', 'us'), 'AmE:')
+check('面板 uk → 前缀 BrE', panelLabelText('go', 'uk'), 'BrE:')
+check('切到 uk 后音标体跟着换', (function () {
+  const node = findNodeWithClass(panelTree('go', { options: { accent: 'uk' } }), 'qat-gloss-ipa')
+  return node ? gatherText(node).trim() : ''
+})(), 'BrE: [gəu]')
+// 设置里切 accent：不传 options.accent，面板直接读 settings（渲染时立刻反映，不等下一轮）
+renderTest.setSetting('accent', 'uk')
+check('设置切到 uk，面板前缀变 BrE（无需重新开一轮）', panelLabelText('go'), 'BrE:')
+renderTest.setSetting('accent', 'us')
+check('设置切回 us，面板前缀变 AmE', panelLabelText('go'), 'AmE:')
+check('方括号只套一层：面板音标里只有一个 [ 和一个 ]', (function () {
+  const text = gatherText(findNodeWithClass(panelTree('go', { options: { accent: 'us' } }), 'qat-gloss-ipa')).trim()
+  return [(text.match(/\[/g) || []).length, (text.match(/\]/g) || []).length]
+})(), [1, 1])
+check('退回 ipa 的词不标前缀', panelLabelText('route', 'us'), '')
+check('退回 ipa 的词音标体照常显示', (function () {
+  const node = findNodeWithClass(panelTree('route', { options: { accent: 'us' } }), 'qat-gloss-ipa')
+  return node ? gatherText(node).trim() : ''
+})(), '[ruːt]')
+check('完全没有音标的词条不画音标行', findNodeWithClass(panelTree('zed'), 'qat-gloss-ipa'), null)
+check('没有音标也留着发音按钮（发音不依赖音标）', findNodeWithClass(panelTree('zed'), 'qat-speak') !== null, true)
+check('没有音标、也没有释义时不画空 gloss 块', findNodeWithClass(
+  renderTest.components.Trainer({ words: ['zed'], variant: 'panel', showMeta: true, ctx: ctxStub }),
+  'qat-gloss',
+) !== null, true)
+renderTest.removeCustomDict('phonetic-probe')
+// 假名词条：notation 走自己那行，音标行不出现（同一串不画两遍）
+renderTest.saveCustomDict('kana-probe2', [{ name: 'aiueo', trans: [], notation: 'あいうえお' }])
+await renderTest.loadDictWords(`${CUSTOM_PREFIX}kana-probe2`)
+check('假名词条不出现音标行', findNodeWithClass(panelTree('aiueo'), 'qat-gloss-ipa'), null)
+check('假名词条 notation 只画一次', (function () {
+  const text = gatherText(panelTree('aiueo'))
+  return text.split('あいうえお').length - 1
+})(), 1)
+renderTest.removeCustomDict('kana-probe2')
+check('跟打条里的假名有自己的 class（不进 .qat-ipa）', /\.qat-bar-notation\{/.test(source), true)
+check('口音前缀有独立样式类', /\.qat-ipa-label\{/.test(source), true)
+
 
 await recordFlow
 
