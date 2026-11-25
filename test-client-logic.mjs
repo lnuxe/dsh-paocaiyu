@@ -989,6 +989,8 @@ const ctxStub = { locale: { bind: () => (key) => key, register: () => {}, subscr
 
 /** 收集渲染树里内联注入的样式文本（Styles 组件走 dangerouslySetInnerHTML） */
 function collectCss(node, out = []) {
+  // v0.6.1 起样式表只往 document.head 塞一份，树里没有 <style> 了，统一从导出的 CSS 取
+  if (out.length === 0 && typeof node !== 'string' && typeof renderTest?.CSS === 'string') return [renderTest.CSS]
   if (node === null || typeof node !== 'object') return out
   if (Array.isArray(node)) {
     node.forEach((item) => collectCss(item, out))
@@ -1136,24 +1138,7 @@ check('跟打条不重复显示中文释义', barClasses.includes('qat-bar-gloss
 check('跟打条显示整本进度', barClasses.includes('qat-bar-count'), true)
 check('跟打条显示实时速度', barClasses.includes('qat-bar-speed'), true)
 check('跟打条中间块单独一层（好居中）', barClasses.includes('qat-bar-center'), true)
-check('进度和关闭绝对定位在两侧', (function styles(node, out = []) {
-  if (!node || typeof node !== 'object') return out
-  if (Array.isArray(node)) {
-    node.forEach((item) => styles(item, out))
-    return out
-  }
-  if (typeof node.type === 'function') {
-    styles(node.type(node.props ?? {}), out)
-    return out
-  }
-  if (node.type === 'style') {
-    const kids = Array.isArray(node.children) && node.children.length ? node.children : (node.props?.children ?? [])
-    out.push(Array.isArray(kids) ? kids.join('') : String(kids ?? ''))
-  }
-  styles(node.children, out)
-  styles(node.props?.children, out)
-  return out
-})(bar).join('').includes('.qat-bar{position:relative'), true)
+check('进度和关闭绝对定位在两侧', renderTest.CSS.includes('.qat-bar{position:relative'), true)
 // 条上只留一个按钮（×），其余操作走快捷键
 check('跟打条只有一个关闭按钮', collectClasses(bar).filter((name) => name.includes('qat-icon')).length, 1)
 check('跟打条不再有图标工具条', barClasses.includes('qat-acts'), false)
@@ -1998,6 +1983,56 @@ const resumedWord = (function pick(node) {
 check('条上首帧就是存档那个词', resumedWord, barWords[2])
 renderTest.setOpen(false)
 renderTest.writeBarProgress('cet4', 0)
+
+// —— 样式表只进 head 一份 ——
+const fakeDoc = (() => {
+  const nodes = []
+  const head = { appendChild: (node) => { nodes.push(node); node.parent = head } }
+  const doc = {
+    head,
+    documentElement: head,
+    nodes,
+    createElement: () => ({ setAttribute() {}, textContent: '', parent: null }),
+    querySelector: (sel) => nodes.find((node) => sel.includes('data-qwerty-autotype')) ?? null,
+  }
+  return doc
+})()
+check('样式表注入一次', renderTest.ensureStyles(fakeDoc), true)
+check('head 里就一份 style', fakeDoc.nodes.length, 1)
+check('重复注入不再加', renderTest.ensureStyles(fakeDoc), false)
+check('head 里还是一份', fakeDoc.nodes.length, 1)
+check('注入的 CSS 就是导出那份', fakeDoc.nodes[0].textContent.length, renderTest.CSS.length)
+check('Styles 组件不再渲染 style 节点', renderTest.Styles(), null)
+check('lookup 索引与缓存可清空', typeof renderTest.clearLookupCache, 'function')
+
+// —— lookup：WeakMap 索引 + 结果缓存 ——
+const indexSample = [{ w: 'dup', zh: '第一条', ipa: '/1/' }, { w: 'dup', zh: '第二条', ipa: '/2/' }]
+check('索引同词只留第一条', renderTest.wordIndex(indexSample).get('dup').zh, '第一条')
+check('同一数组重复建索引走缓存', renderTest.wordIndex(indexSample), renderTest.wordIndex(indexSample))
+check('非数组给 null', renderTest.wordIndex('nope'), null)
+const builtinFirst = renderTest.wordsSync('cet4')[0].w
+check('内置词库查得到', Boolean(renderTest.lookup(builtinFirst)?.zh), true)
+check('同一个词第二次拿到同一对象（命中缓存）',
+  renderTest.lookup(builtinFirst), renderTest.lookup(builtinFirst))
+renderTest.clearLookupCache()
+check('清缓存后重新查还是同样结果', renderTest.lookup(builtinFirst)?.zh, renderTest.lookupOnce(builtinFirst)?.zh)
+check('查不到的词给 undefined', renderTest.lookup('zzz-not-a-word-zzz'), undefined)
+check('空词给 undefined', renderTest.lookup(''), undefined)
+
+// —— 自定义词表 / 目录缓存：写进去立刻能读到，别读到旧 JSON ——
+renderTest.writeCustomDicts({ 测试词表: [{ name: 'alpha', trans: ['甲'] }, { name: 'beta', trans: ['乙'] }] })
+check('写完立刻读到新词表', Object.keys(renderTest.readCustomDicts()), ['测试词表'])
+check('自定义词表进目录', renderTest.catalog().some((item) => item.id.includes('测试词表')), true)
+const beforeSame = renderTest.catalog()
+check('目录第二次走缓存（同一数组）', renderTest.catalog(), beforeSame)
+renderTest.writeCustomDicts({ 测试词表: [{ name: 'alpha', trans: ['甲'] }] })
+check('改词表后目录换新数组', renderTest.catalog() === beforeSame, false)
+check('改词表后词数跟着变',
+  renderTest.catalog().find((item) => item.id.includes('测试词表')).length, 1)
+renderTest.clearCustomCache()
+check('清缓存后重新解析出同样内容', Object.keys(renderTest.readCustomDicts()), ['测试词表'])
+renderTest.writeCustomDicts({})
+check('清空自定义词表目录里就没了', renderTest.catalog().some((item) => item.id.includes('测试词表')), false)
 
 await recordFlow
 
