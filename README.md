@@ -28,6 +28,10 @@ Qwerty 跟打的**对话界面**（Client 半边）。Host 半边在 `../qwerty-
 
 **练习记录**：`wordRecords` / `chapterRecords` / `progress` 三个 IndexedDB store（库名 `qwerty-autotype`），全部本地；章节完成会打 ✓，面板显示「今日 N 词 · 正确率 · WPM」。
 
+## 图标
+
+侧栏那一笔水墨是设计稿原作：原图抠掉纸底存成透明 PNG（`assets/panel-icon.png`），base64 内联进包，用 CSS `mask-image` 以 `currentColor` 上色，深浅主题都不用另出图；`icon.svg` 是同一张（插件卡片用）。其余控制图标是一套自绘的 24 格线性 SVG（`ICON_PATHS`），不依赖 emoji 字体。
+
 **自定义词表**：词库选择器底部「＋ 导入自定义词表」，可以粘贴 `word 中文` 一行一个（也支持 `word,中文,/音标/`），也可以选 `.txt` / `.csv` / `.json` 文件导入；保存后出现在「自定义」分类里，行尾 `⤓` 导出为 `.txt`，整体随备份一起导出导入。
 
 **键盘热力图**：统计浮层把易错字母铺成 QWERTY 三行色阶（0–4 档），一眼看出哪几个键在拖后腿。
@@ -91,7 +95,7 @@ dsh plugin install <本仓库目录>
 
 ## 版本与仓库
 
-- 包名 `@local/qwerty-autotype-ui`，当前 `0.4.2`，许可证 **GPL-3.0-only**（见 [NOTICE](./NOTICE)：词库数据派生自同样以 GPL-3.0 发布的 qwerty-learner）。
+- 包名 `@local/qwerty-autotype-ui`，当前 `0.4.3`，许可证 **GPL-3.0-only**（见 [NOTICE](./NOTICE)：词库数据派生自同样以 GPL-3.0 发布的 qwerty-learner）。
 - 变更记录见 [CHANGELOG.md](./CHANGELOG.md)（Keep a Changelog 格式）。
 
 ### 语义化版本约定

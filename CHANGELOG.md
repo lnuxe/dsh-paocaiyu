@@ -9,6 +9,21 @@
 
 无
 
+## [0.4.3] - 2026-11-25
+
+### Fixed · 输入框打不进字了（v0.4.1 的输入法改动导致）
+
+- 根因：给 `[data-composer-input]` 加了 `inputmode="latin"`。contenteditable 一旦被标成 latin 模式，
+  Chromium 会直接把中文输入法关掉，输入框就「打不进字」；还原时还会 `setAttribute('style', 旧值)`，
+  把编辑器自己的内联样式一起盖掉
+- 处理：**彻底不再改 composer 的任何属性**（`inputmode` / `lang` / `spellcheck` / `style` / `ime-mode` 全删），
+  改为只拦事件——捕获阶段 `beforeinput` + `compositionend`，拼音和候选字落不进输入框，但输入法本身照常工作
+- 另加一道门禁：新增 `liveBarRef`，**只有跟打条真的渲染出来了才接管键盘**。之前只要 `open` 为真、
+  哪怕条因为没词没画出来，捕获阶段的 `preventDefault` 依然会吞掉所有按键，看起来就是「输入框死了」；
+  现在 `open && 词为空` 会自己关掉，且非 live 状态一律不 `preventDefault`
+- 测试：390 → **407 条**，新增源码级回归断言（禁止再出现 `setAttribute('inputmode'` / `style.imeMode` / `data-qat-ime`，
+  必须有 `liveBarRef.current` 与 `beforeinput` 拦截）；测试脚本现在输出总条数
+
 ## [0.4.2] - 2026-11-25
 
 ### Fixed · 中文输入法上屏的拼音留在输入框里
@@ -176,7 +191,8 @@
 - 隐藏焦点守卫：练习期间输入框区域的回车 / 制表符 / `Cmd+Enter` 与发送按钮点击全部被吃掉，草稿发不出去
 - 45 条测试（`test-client-logic.mjs`）：判定 / `pushChar` / 词库 / 渲染冒烟（一次性 React 桩真的调一遍组件），不需要浏览器
 
-[Unreleased]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.2...HEAD
+[Unreleased]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.3...HEAD
+[0.4.3]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.3.0...v0.4.0

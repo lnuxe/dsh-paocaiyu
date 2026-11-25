@@ -189,12 +189,14 @@ const {
 } = plugin.__test
 
 let failures = 0
+let passed = 0
 function check(label, actual, expected) {
   const ok = JSON.stringify(actual) === JSON.stringify(expected)
   if (!ok) {
     failures += 1
     console.log(`FAIL ${label}\n  actual   ${JSON.stringify(actual)}\n  expected ${JSON.stringify(expected)}`)
   } else {
+    passed += 1
     console.log(`ok   ${label} → ${JSON.stringify(actual)}`)
   }
 }
@@ -551,6 +553,14 @@ check('没有 Audio 时退回 TTS', (function () {
   return ok === true && spoken === 'govern'
 })(), true)
 
+// —— 回归：绝不再改 composer 的属性（上次 inputmode=latin 直接把输入法搞哑） ——
+const CLIENT_SRC = source
+check('不再给 composer 设 inputmode', CLIENT_SRC.includes("setAttribute('inputmode'"), false)
+check('不再给 composer 设 ime-mode', CLIENT_SRC.includes('style.imeMode'), false)
+check('不再写 data-qat-ime', CLIENT_SRC.includes('qatIme'), false)
+check('键盘接管有 liveBarRef 门禁', CLIENT_SRC.includes('liveBarRef.current'), true)
+check('上屏拦截用 beforeinput', CLIENT_SRC.includes("addEventListener('beforeinput'"), true)
+
 // —— 键盘热力图 ——
 check('键盘三行', KEY_ROWS.join('|'), 'qwertyuiop|asdfghjkl|zxcvbnm')
 const heat = keyboardHeat([{ letter: 'e', count: 8 }, { letter: 'a', count: 4 }, { letter: 'q', count: 1 }])
@@ -901,8 +911,34 @@ function render(label, fn) {
   }
 }
 
+// —— 图标：水墨侧栏图 + 线性图标集 ——
+check('水墨图标内联进包', /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(
+  (function () {
+    const node = render('取 mask', () => renderTest.components.PanelGlyph({ size: 18 }))
+    const url = String(node?.props?.style?.['--qat-ink'] ?? '')
+    const match = url.match(/^url\("(.+)"\)$/)
+    return match ? match[1] : ''
+  })(),
+), true)
+check('图标集覆盖所有控制项', Object.keys(renderTest.ICON_PATHS).sort().join(','),
+  'again,caret,check,close,download,help,loop,next,pause,play,prev,speak')
+check('每个图标都有路径', Object.values(renderTest.ICON_PATHS).every((d) => typeof d === 'string' && d.length > 4), true)
+check('play 用实心', (() => {
+  const node = renderTest.Icon({ name: 'play' })
+  return node.props.fill === 'currentColor' && node.props.stroke === 'none'
+})(), true)
+check('描边图标用 currentColor', (() => {
+  const node = renderTest.Icon({ name: 'check' })
+  return node.props.stroke === 'currentColor' && node.props.fill === 'none'
+})(), true)
+check('图标尺寸可调', renderTest.Icon({ name: 'close', size: 13 }).props.width, 13)
+check('未知图标返回空', renderTest.Icon({ name: 'nope' }), null)
+check('图标默认 24 格', renderTest.Icon({ name: 'loop' }).props.viewBox, '0 0 24 24')
+
 const glyph = render('渲染：侧栏图标', () => renderTest.components.PanelGlyph({ size: 16, active: true }))
-check('侧栏图标内容', glyph?.children?.[0], '⌨')
+check('侧栏图标用水墨图', glyph?.props?.className, 'qat-glyph')
+check('侧栏图标挂上 mask 变量', String(glyph?.props?.style?.['--qat-ink'] ?? '').startsWith('url("data:image/png;base64,'), true)
+check('侧栏图标不再用 emoji 键盘', gatherText(glyph).includes('⌨'), false)
 
 const panel = render('渲染：跟打面板', () => renderTest.components.PracticePanel({ ctx: ctxStub }))
 const panelClasses = collectClasses(panel).join(' ')
@@ -971,7 +1007,14 @@ const dictBtn = (function find(node) {
   }
   return find(node.props?.children)
 })(panel)
-check('词库按钮显示当前词库名', dictBtn?.children?.[0], 'CET-4 ▾')
+check('词库按钮显示当前词库名', dictBtn?.children?.[0], 'CET-4')
+check('词库按钮的下拉箭头是图标不是字符', (function find(node) {
+  if (!node || typeof node !== 'object') return false
+  if (Array.isArray(node)) return node.some(find)
+  if (typeof node.type === 'function') return find(node.type(node.props ?? {}))
+  if (node.type === 'svg' && node.props?.className === 'qat-svg qat-svg-caret') return true
+  return find(node.children) || find(node.props?.children)
+})(dictBtn), true)
 
 const picker = render('渲染：词库选择器', () => renderTest.components.DictPicker({
   t: (key) => key,
@@ -1226,7 +1269,7 @@ check('错词本列出条目', countTag(wrongCase, 'div').n > 0 && collectClasse
 check('错词本每词一行', (gatherText(wrongCase).match(/×/g) || []).length, 2)
 check('错词本显示次数', gatherText(wrongCase).includes('×3'), true)
 check('错词本有重练按钮', gatherText(wrongCase).includes('reviewTop'), true)
-check('错词本每词有掌握勾', (gatherText(wrongCase).match(/✓/g) || []).length, 2)
+check('错词本每词有掌握勾', (collectClasses(wrongCase).filter((name) => name.includes('qat-svg-check')).length), 2)
 
 const emptyWrong = render('渲染：空错词本', () => renderTest.components.WrongBookPanel({
   t: (key) => key, rows: [], onReview: () => {}, onClear: () => {}, onClose: () => {},
@@ -1274,4 +1317,4 @@ if (failures > 0) {
   console.log(`\n${failures} FAILED`)
   process.exit(1)
 }
-console.log('\nALL PASS')
+console.log(`\nALL PASS — ${passed} 条`)
