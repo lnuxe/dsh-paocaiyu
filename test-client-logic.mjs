@@ -182,6 +182,8 @@ const {
   serializeBackup, parseBackup, BACKUP_VERSION, BACKUP_LIMITS, pressable, playClick,
   readCustomDicts, writeCustomDicts, parseCustomWords, saveCustomDict, removeCustomDict,
   keyboardHeat, KEY_ROWS, cacheStats, clearDictCache,
+  fingerOf, keyHighlight, keyPosition, keyGeom, fingerKeyboardNode,
+  FINGER_MAP, FINGER_IDS, FINGER_LABELS, FINGER_COLORS, FINGER_KEY,
   customWords, isCustomId, CUSTOM_PREFIX, dictionaryById,
   parseCustomFile, serializeCustomDict, splitCsvLine, toCustomWord, downloadText, withSlashes,
   stepIndex, toWordList, isRoundDone, wordsOfRound, nextChapterIndex, pronunciationSrc, pronunciationType,
@@ -648,6 +650,40 @@ check('没打错的键计数为 0', heat[0].find((cell) => cell.key === 'w').cou
 check('大写输入也能归位', keyboardHeat([{ letter: 'E', count: 5 }])[0].find((cell) => cell.key === 'e').count, 5)
 check('接受对象形式的 wrongLetters', keyboardHeat({ s: 6, d: 3 })[1].find((cell) => cell.key === 's').level, 4)
 check('空输入全是 0 档', keyboardHeat([]).flat().every((cell) => cell.level === 0), true)
+
+// —— 指法图示：字母 → 手指（标准指法，f / j 是基准键） ——
+check('左小/无名/中/食：a s d f',
+  ['a', 's', 'd', 'f'].map(fingerOf).join(','),
+  'leftPinky,leftRing,leftMiddle,leftIndex')
+check('右食/中/无名/小：j k l ;',
+  ['j', 'k', 'l', ';'].map(fingerOf).join(','),
+  'rightIndex,rightMiddle,rightRing,rightPinky')
+check('最外两列归小指', [fingerOf('q'), fingerOf('p')].join(','), 'leftPinky,rightPinky')
+check('中间两列归中指', [fingerOf('e'), fingerOf('i')].join(','), 'leftMiddle,rightMiddle')
+check('食指负责 f / j 基准键列', [fingerOf('f'), fingerOf('j')].join(','), 'leftIndex,rightIndex')
+check('大写字母也认', fingerOf('F'), 'leftIndex')
+check('空格没有手指', fingerOf(' '), null)
+check('连字符没有手指', fingerOf('-'), null)
+check('空值没有手指', [fingerOf(''), fingerOf(null)].join(','), ',')
+check('八根手指顺序从左到右', FINGER_IDS.join(','),
+  'leftPinky,leftRing,leftMiddle,leftIndex,rightIndex,rightMiddle,rightRing,rightPinky')
+check('八根手指都有名字与配色',
+  FINGER_IDS.every((id) => Boolean(FINGER_LABELS[id]) && Boolean(FINGER_COLORS[id])), true)
+
+// —— 指法图示：下一个待打键 ——
+check('词首高亮第一个字母', keyHighlight({ word: 'cancel', typed: '' }),
+  { letter: 'c', finger: 'leftMiddle', row: 2, col: 2 })
+check('中途高亮下一个待打字母', keyHighlight({ word: 'cancel', typed: 'ca' }),
+  { letter: 'n', finger: 'rightIndex', row: 2, col: 5 })
+check('全部打完返回 null', keyHighlight({ word: 'cancel', typed: 'cancel' }), null)
+check('typed 超出词长返回 null', keyHighlight({ word: 'go', typed: 'govern' }), null)
+check('空词返回 null', keyHighlight({ word: '', typed: '' }), null)
+check('没传参数返回 null', keyHighlight(), null)
+check('标点不画高亮', keyHighlight({ word: 'it-s', typed: 'it' }), null)
+check('大写单词照常归位', keyHighlight({ word: 'Cancel', typed: 'c' }).letter, 'a')
+check('行号列号与三行布局一致',
+  [keyHighlight({ word: 'top', typed: 't' }).row, keyHighlight({ word: 'top', typed: 'to' }).col].join(','),
+  '0,9')
 
 // —— 自定义词表 ——
 check('custom: 前缀识别', isCustomId('custom:我的词'), true)
@@ -1294,7 +1330,7 @@ check('样式里有读屏隐藏类', collectCss(cardA11y).join('').includes('.qa
 
 // —— 渲染冒烟：设置页 ——
 const settingsCase = render('渲染：设置页', () => renderTest.components.SettingsSection({}))
-check('设置页有九个设置行（含口音、译义朗读与词库缓存）', collectClasses(settingsCase).filter((name) => name === 'qat-setrow').length, 9)
+check('设置页有十个设置行（含口音、译义朗读、指法提示与词库缓存）', collectClasses(settingsCase).filter((name) => name === 'qat-setrow').length, 10)
 check('设置页含大小写开关', (function find(node) {
   if (!node || typeof node !== 'object') return false
   if (Array.isArray(node)) return node.some(find)
@@ -1333,6 +1369,74 @@ check('设置页含默写下拉', (function find(node) {
   if (node.type === 'select') return true
   return find(node.children) || find(node.props?.children)
 })(settingsCase), true)
+
+// —— 指法图示：纯 SVG 键盘（26 键，320×110 内，不内联位图） ——
+function collectVnodes(node, type, out = []) {
+  if (node === null || node === undefined || typeof node !== 'object') return out
+  if (Array.isArray(node)) {
+    node.forEach((item) => collectVnodes(item, type, out))
+    return out
+  }
+  if (node.type === type) out.push(node)
+  for (const child of node.children ?? []) collectVnodes(child, type, out)
+  if (node.props?.children !== undefined) collectVnodes(node.props.children, type, out)
+  return out
+}
+
+const kbd = renderTest.fingerKeyboardNode({ active: 'f', label: '指法：左食指 按 F' })
+check('指法键盘是 svg', kbd?.type, 'svg')
+check('键帽数量 = 26', collectVnodes(kbd, 'rect').length, 26)
+check('字母数量 = 26', collectVnodes(kbd, 'text').length, 26)
+check('键盘宽度不超过 320', kbd?.props?.width <= 320, true)
+check('键盘高度不超过 110', kbd?.props?.height <= 110, true)
+check('键盘只有三行键', new Set(collectVnodes(kbd, 'rect').map((rect) => rect.props.y)).size, 3)
+check('键帽不越界', collectVnodes(kbd, 'rect').every((rect) => rect.props.width + rect.props.x <= 320), true)
+const litKeys = (kbd?.children ?? []).filter((node) => node?.props?.['data-on'] === 'true')
+check('只点亮一个键', litKeys.length, 1)
+check('点亮的是 f', litKeys[0]?.props?.['data-finger'], 'leftIndex')
+check('点亮键用该手指的色块', litKeys[0]?.children?.[0]?.props?.style?.fill, renderTest.FINGER_COLORS.leftIndex)
+check('没点亮的键不带内联色块',
+  (kbd?.children ?? []).filter((node) => node?.props?.['data-on'] === 'false')
+    .every((node) => node.children[0].props.style === undefined), true)
+check('f / j 基准键有小点', collectVnodes(kbd, 'circle').length, 2)
+check('不传 active 时不点亮任何键',
+  (renderTest.fingerKeyboardNode({}).children ?? []).filter((node) => node?.props?.['data-on'] === 'true').length, 0)
+check('键盘不再用位图（不内联 png）', /data:image\/png;base64,/.test(source), false)
+
+const ctxZh = { locale: { bind: () => (key) => DICT.zh[key] ?? key, register: () => {}, subscribe: () => () => {} } }
+const fingerHint = renderTest.components.FingerHint({ word: 'cancel', typed: '', ctx: ctxZh })
+check('提示条画了键盘', collectVnodes(fingerHint, 'rect').length, 26)
+const fingerHintText = gatherText(fingerHint)
+check('提示条写明该用哪根手指', fingerHintText.includes('左中指'), true)
+check('提示条写「用 …」', fingerHintText.includes('用 左中指'), true)
+check('提示条色块用该手指配色',
+  (function find(node) {
+    if (!node || typeof node !== 'object') return undefined
+    if (Array.isArray(node)) return node.map(find).find((hit) => hit !== undefined)
+    if (node.type === 'function') return find(node.type(node.props ?? {}))
+    if (node.props?.className === 'qat-fingerdot') return node.props.style?.background
+    return find(node.children) || find(node.props?.children)
+  })(fingerHint), renderTest.FINGER_COLORS.leftMiddle)
+const idleHint = renderTest.components.FingerHint({ word: 'cancel', typed: 'cancel', ctx: ctxZh })
+check('词打完时提示条不点亮键',
+  collectVnodes(idleHint, 'rect').length === 26
+  && (idleHint.children ?? []).every((node) => node?.props?.['data-on'] !== 'true'), true)
+
+check('showFinger 默认关闭', renderTest.SETTING_DEFAULTS.showFinger, false)
+check('默认渲染不显示指法图示', collectClasses(renderTest.components.Trainer({
+  words: ['cancel'], variant: 'panel', showMeta: true, ctx: ctxStub,
+})).includes('qat-finger'), false)
+renderTest.setSetting('showFinger', true)
+check('打开设置后面板显示指法图示', collectClasses(renderTest.components.Trainer({
+  words: ['cancel'], variant: 'panel', showMeta: true, ctx: ctxStub,
+})).includes('qat-finger'), true)
+check('跟打条（非 panel）不显示指法图示', collectClasses(renderTest.components.Trainer({
+  words: ['cancel'], variant: 'dock', showMeta: true, ctx: ctxStub,
+})).includes('qat-finger'), false)
+check('样式表里有指法键盘样式', collectCss(renderTest.components.Trainer({
+  words: ['cancel'], variant: 'panel', showMeta: true, ctx: ctxStub,
+})).join('').includes('.qat-fingerkbd'), true)
+renderTest.setSetting('showFinger', false)
 
 // —— 渲染冒烟：结果页（错词清单 / 下一章） ——
 renderTest.saveSession({
