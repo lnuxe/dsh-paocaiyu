@@ -2408,7 +2408,7 @@ window.__ModuleLoader__.load({
     hotkeysTitle: '快捷键',
     announceWrong: '打错了，请整词重打 {word}',
     announceDone: '本轮完成，共 {n} 个词',
-    hotkeysList: 'Esc 关闭 · Ctrl/⌘+← 上一个 · Ctrl/⌘+→ 跳过 · Ctrl/⌘+J 循环 · Ctrl/⌘+P 暂停 · 在输入框里按 Tab 开始',
+    hotkeysList: 'Esc 关闭 · 回车 开始/暂停 · Ctrl/⌘+← 上一个 · Ctrl/⌘+→ 跳过 · Ctrl/⌘+Shift+←/→ 跳词 · Ctrl/⌘+V 默写 · Ctrl/⌘+Shift+V 换档 · Ctrl/⌘+J 循环 · Ctrl/⌘+P 暂停 · 按住 Tab 偷看 · 在输入框里按 Tab 开始',
     lettersTitle: '易错字母',
     kbdLegend: '颜色越深打错越多',
     kbdFingerLegend: '浅底色是手指分区',
@@ -2466,6 +2466,8 @@ window.__ModuleLoader__.load({
     settingTextSelectableHint: '开启后单词与释义可以用鼠标拖选复制（打字时更容易误选）',
     settingShuffle: '章内乱序',
     settingShuffleHint: '开启后，每次练习章节中单词会随机排序。下一章节生效',
+    settingNeighbors: '上一个/下一个词',
+    settingNeighborsHint: '练习时展示上一个/下一个单词',
     dictationAuto: '默写本章节',
     reviewMistakes: '重练这些词',
     nextChapter: '下一章',
@@ -2578,7 +2580,7 @@ window.__ModuleLoader__.load({
     hotkeysTitle: 'Shortcuts',
     announceWrong: 'Mistyped — retype the whole word {word}',
     announceDone: 'Round finished, {n} words',
-    hotkeysList: 'Esc close · Ctrl/⌘+← prev · Ctrl/⌘+→ skip · Ctrl/⌘+J loop · Ctrl/⌘+P pause · Tab in the composer starts',
+    hotkeysList: 'Esc close · Enter start/pause · Ctrl/⌘+← prev · Ctrl/⌘+→ skip · Ctrl/⌘+Shift+←/→ jump word · Ctrl/⌘+V dictation · Ctrl/⌘+Shift+V next mode · Ctrl/⌘+J loop · Ctrl/⌘+P pause · hold Tab to peek · Tab in the composer starts',
     lettersTitle: 'Tricky letters',
     kbdLegend: 'Darker means more misses',
     kbdFingerLegend: 'Pale tint shows finger zones',
@@ -2636,6 +2638,8 @@ window.__ModuleLoader__.load({
     settingTextSelectableHint: 'Drag-select and copy the word and its meaning (easier to mis-select while typing)',
     settingShuffle: 'Shuffle in chapter',
     settingShuffleHint: 'When on, the words in each practice chapter are randomly ordered. Takes effect from the next chapter',
+    settingNeighbors: 'Previous / next word',
+    settingNeighborsHint: 'Show the previous and next words while practising',
     dictationAuto: 'Dictate this chapter',
     reviewMistakes: 'Review them',
     nextChapter: 'Next chapter',
@@ -2872,6 +2876,9 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
 .qat-ruby{font-size:inherit;font-family:inherit;line-height:inherit;ruby-position:over}
 .qat-ruby-rt{font-size:.72em;line-height:1;letter-spacing:0;color:var(--dsw-alias-label-tertiary)}
 .qat-gloss{display:flex;flex-direction:column;align-items:center;gap:4px;margin:6px 0 16px;text-align:center}
+/* 上一个 / 下一个词预览（上游 isShowPrevAndNextWordAtom）：灰色小字，只读不可点 */
+.qat-neighbors{font-size:12px;line-height:1.3;color:var(--dsw-alias-label-tertiary);opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;user-select:none;pointer-events:none}
+.qat-card[data-variant="panel"] .qat-neighbors{font-size:13px;margin-bottom:2px}
 .qat-gloss-ipa{font-size:15px;line-height:1.4;color:var(--dsw-alias-label-tertiary);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 /* 口音前缀（AmE / BrE）：比音标更淡的小字，只在真的取到该口音那一支时出现 */
 .qat-ipa-label{font-size:.8em;letter-spacing:0;opacity:.7;user-select:none}
@@ -3266,20 +3273,62 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
 
     /**
      * 快捷键裁决（只在焦点位于 composer 时问它）：
-     * 返回 'prev' | 'skip' | 'loop' | 'pause' | 'close' | ''，
+     * 返回 'prev' | 'skip' | 'prev-word' | 'next-word' | 'loop' | 'pause'
+     *   | 'toggle' | 'dictate' | 'dictate-mode' | 'peek' | 'close' | ''，
      * 空字符串表示不是我们管的键，交给宿主。
+     *
+     * 对齐上游：Enter 开始/暂停（StartButton）、Ctrl+V 开关默写
+     * （WordDictationSwitcher）、Ctrl+Shift+←/→ 跳词（WordPanel）。
+     * composing = 输入法正在组合（event.isComposing）：这时的回车是在选词，绝不拦。
      */
     function resolveHotkey(input) {
-      const { key, meta, ctrl, alt, shift } = input || {}
+      const { key, meta, ctrl, alt, shift, composing } = input || {}
       if (!key) return ''
       const mod = !!(meta || ctrl)
       if (alt) return ''
       if (key === 'Escape') return mod ? '' : 'close'
-      if (key === 'ArrowLeft' && mod && !shift) return 'prev'
-      if (key === 'ArrowRight' && mod && !shift) return 'skip'
+      // 带 shift 才是「跳词」（上游 WordPanel）；不带 shift 还是本地的上一个 / 跳过
+      if (key === 'ArrowLeft' && mod) return shift ? 'prev-word' : 'prev'
+      if (key === 'ArrowRight' && mod) return shift ? 'next-word' : 'skip'
       if ((key === 'j' || key === 'J') && mod && !shift) return 'loop'
       if ((key === 'p' || key === 'P') && mod && !shift) return 'pause'
+      // Ctrl+V 开关默写，Ctrl+Shift+V 换下一档（上游 WordDictationSwitcher）
+      if ((key === 'v' || key === 'V') && mod) return shift ? 'dictate-mode' : 'dictate'
+      // Tab 按住偷看：keydown / keyup 两个通道都走 peekKey，这里只认「按下了」。
+      // Ctrl/Cmd+Tab 是系统切窗，绝不接管
+      if (key === 'Tab' && !mod) return 'peek'
+      if (key === 'Enter' && !mod && !shift) return composing === true ? '' : 'toggle'
       return ''
+    }
+
+    /** 按住 Tab 偷看：keydown → 开，keyup → 关（上游 Word + WordPanel 双绑） */
+    function peekKey(phase) {
+      if (phase === 'down') return 'peek-on'
+      if (phase === 'up') return 'peek-off'
+      return ''
+    }
+
+    /**
+     * 新动作归一到已有动作：跳词（prev-word / next-word）只是同一套实现的第二个入口，
+     * 行为一个字都不另写，两个组件都先过这里再分发。
+     */
+    function hotkeyAction(action) {
+      if (action === 'prev-word') return 'prev'
+      if (action === 'next-word') return 'skip'
+      return action
+    }
+
+    /**
+     * 上一个 / 下一个词（上游 isShowPrevAndNextWordAtom 的预览）：
+     * 边界给空串，非数组 / 越界一律给两个空串，渲染层就不用再判边界。
+     */
+    function neighborWords(words, index) {
+      const empty = { prev: '', next: '' }
+      if (!Array.isArray(words) || !words.length) return empty
+      const at = Number(index)
+      if (!Number.isInteger(at) || at < 0 || at >= words.length) return empty
+      const pick = (value) => (typeof value === 'string' ? value : '')
+      return { prev: pick(words[at - 1]), next: pick(words[at + 1]) }
     }
 
     /** WPM：词数 / 秒 → 每分钟词数（四舍五入，和上游同口径） */
@@ -3465,6 +3514,18 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       return { dictation: action.value, openBy: action.type }
     }
 
+    /** Ctrl+V：开关默写。没默写 → 全遮；已经在默写 → 关掉（回 none） */
+    function toggleDictationMode(mode) {
+      // 只认合法档位：脏值当「没默写」，别把一次按键变成关不掉的空动作
+      return DICTATION_MODES.includes(mode) && mode !== 'none' ? 'none' : 'hideAll'
+    }
+
+    /** Ctrl+Shift+V：在 DICTATION_MODES 里换下一档，末尾回到 none */
+    function nextDictationMode(mode) {
+      const at = DICTATION_MODES.indexOf(mode)
+      return DICTATION_MODES[(at + 1) % DICTATION_MODES.length]
+    }
+
     /**
      * 每个字母是否要遮住（true = 默写时打码，打对后自动现身）
      * randomHide 用 (seed, i) 的确定性伪随机，同一个词每次遮的位置一致
@@ -3488,9 +3549,11 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     /**
      * 现在这一屏的答案要不要整体放开（对齐上游 Word/index.tsx:140 的
      * `isShowAnswerOnHover && isHoveringWord` 那一支）
+     * 按住 Tab 偷看（peeking）优先级最高：上游 keydown 就把整词放开。
      * 不默写（dictation === 'none'）本来就全显示，所以恒 true
      */
-    function answersRevealed({ dictation, answerOnHover, hovering }) {
+    function answersRevealed({ dictation, answerOnHover, hovering, peeking }) {
+      if (peeking === true) return true
       if (!dictation || dictation === 'none') return true
       return answerOnHover === true && hovering === true
     }
@@ -4046,6 +4109,8 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       dictationOpenBy: 'user',
       // 章内单词随机排序（对齐上游 randomConfig.isOpen），下一章节生效
       shuffle: false,
+      // 练习时展示上一个 / 下一个单词（对齐上游 isShowPrevAndNextWordAtom，默认关）
+      showNeighbors: false,
     }
     const SETTING_PREFIX = 'qwerty-autotype:setting:'
 
@@ -4225,7 +4290,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       words, variant, onClose, showMeta = false, options, dictation = 'none',
       dictId = '', chapter = null, chapterTotal = 0, onFinish, onReview, onRetryWrong, onNextChapter, ctx,
       jump = null, onIndex, onLiveWpm, headTag = '', hovering: hoverStart = false, restartNonce = 0,
-      onExitReview,
+      onExitReview, peeking: peekStart = false,
     }) {
       const t = useT(ctx)
       const [state, setState] = useState({
@@ -4254,6 +4319,39 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const hoveringNow = hovering || hoverStart === true
       const hoverIn = useCallback(() => setHovering(true), [])
       const hoverOut = useCallback(() => setHovering(false), [])
+      /** 按住 Tab 偷看（N18）：keydown 全显、keyup 复原，blur 也复位 */
+      const [peeking, setPeeking] = useState(peekStart === true)
+      const peekNow = peeking || peekStart === true
+
+      // 捕获阶段拦 Tab：不 preventDefault 焦点就跳到下一个控件去了。
+      // 只改显示，不碰计数 / 计时 / 打错判定；焦点不在我们的打字框里就不抢
+      // （卡片里的按钮还要能 Tab 走位）。
+      useEffect(() => {
+    const onKey = (event) => {
+      if (event.key !== 'Tab') return
+      const act = peekKey(event.type === 'keydown' ? 'down' : 'up')
+      const el = inputRef.current
+      const owned = el && (event.target === el
+        || (event.target instanceof Node && el.contains?.(event.target) === true))
+      if (act === 'peek-on' && !owned) return
+      if (act === 'peek-on') {
+        if (event.metaKey || event.ctrlKey || event.altKey) return
+        event.preventDefault()
+        setPeeking(true)
+        return
+      }
+      if (act === 'peek-off') setPeeking(false)
+    }
+    const off = () => setPeeking(false)
+    window.addEventListener('keydown', onKey, true)
+    window.addEventListener('keyup', onKey, true)
+    window.addEventListener('blur', off)
+    return () => {
+      window.removeEventListener('keydown', onKey, true)
+      window.removeEventListener('keyup', onKey, true)
+      window.removeEventListener('blur', off)
+    }
+      }, [])
       /** 读屏播报：只在状态变化时更新，避免每敲一键都朗读 */
       const [announce, setAnnounce] = useState('')
       const settingsNow = useSyncExternalStore(subscribeSettings, getSettings, getSettings) || {}
@@ -4440,11 +4538,12 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       }, [words, state.index, voiceOn, dictation])
       // 判定用的目标串（忽略标点 / 大小写）与展示用的遮罩
       const target = effectiveTarget(current, options)
-      // 悬停在词上且开了开关：整词放开（对齐上游 getLetterVisible 的第一支）
+      // 悬停在词上且开了开关：整词放开（对齐上游 getLetterVisible 的第一支）；按住 Tab 也放开
       const maskRevealed = answersRevealed({
     dictation,
     answerOnHover: settingsNow.answerOnHover,
     hovering: hoveringNow,
+    peeking: peekNow,
       })
       const masked = maskLetters(target, dictation, state.index, maskRevealed)
       const meta = lookup(current)
@@ -4469,6 +4568,10 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       : t('panelHeadReview', { n: total })))
     : t('title')
       const longWord = target.length > LONG_WORD_CHARS
+      // 上一个 / 下一个词预览（N4）：设置开着才有数据，边界由 neighborWords 给空串
+      const neighbors = settingsNow.showNeighbors === true ? neighborWords(words, state.index) : null
+      // 释义要不要露中文：关掉「中文释义」就不画，但按住 Tab 偷看时上游照样给看
+      const zhVisible = settingsNow.showZh !== false || peekNow
       // 打错提示：3 / 4 / 5 次逐档揭示，打对（advance）归零
       const tip = tipState({ wrongCount: state.wordWrong, word: target, typed: state.typed })
 
@@ -4786,6 +4889,13 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         variant === 'panel' ? h('div', { className: 'qat-progress', 'data-phase': String(prog.phase) },
           h('div', { className: 'qat-progress-fill', style: { width: `${prog.pct}%` } })) : null,
         notation ? h('div', { className: 'qat-gloss-notation' }, notationNodes(notation)) : null,
+        // 上一个 / 下一个词：灰色小字，纯预览不可点
+        neighbors && (neighbors.prev || neighbors.next)
+          ? h('div', { className: 'qat-neighbors' }, [
+            neighbors.prev ? `< ${neighbors.prev}` : '',
+            neighbors.next ? `${neighbors.next} >` : '',
+          ].filter(Boolean).join('   /   '))
+          : null,
         h(WordLetters, {
           text: target,
           typed: state.typed,
@@ -4811,7 +4921,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
             // 面板卡片：一条释义一行（词性单独淡色小字），超过三条收成 +N；
             // 跟打条把释义拼成一行；没释义时不画空容器
             variant === 'panel'
-              ? (sensesShown.length
+              ? (sensesShown.length && zhVisible
                 ? h('div', { className: 'qat-gloss-zh' },
                   sensesShown.map((sense, index) => h('div', {
                     key: index,
@@ -4823,7 +4933,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
                   sensesRest > 0 ? h('div', { className: 'qat-sense-more' }, `+${sensesRest}`) : null,
                 )
                 : null)
-              : (gloss ? h('div', { className: 'qat-gloss-zh' }, gloss) : null),
+              : (gloss && zhVisible ? h('div', { className: 'qat-gloss-zh' }, gloss) : null),
             current && voiceOn
               ? h('span', {
                 ...pressable(() => {
@@ -4859,26 +4969,34 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
           spellCheck: false,
           onChange: (event) => accept(event.target.value),
           onKeyDown: (event) => {
-            // 回车/制表符就地吞掉；空格留给带空格的词，只阻止冒泡
-            if (event.key === 'Enter' || event.key === 'Tab') event.preventDefault()
+            // 回车是开始/暂停（输入法组合中的回车留给人选词），Tab 交给偷看，都不许冒泡
+            if (event.key === 'Tab') event.preventDefault()
+            if (event.key === 'Enter' && event.isComposing !== true) event.preventDefault()
             if (event.key === 'Escape' && onClose) onClose()
             event.stopPropagation()
-            const action = resolveHotkey({
+            const action = hotkeyAction(resolveHotkey({
               key: event.key,
               meta: event.metaKey,
               ctrl: event.ctrlKey,
               alt: event.altKey,
               shift: event.shiftKey,
-            })
+              composing: event.isComposing === true,
+            }))
             if (!action) return
             event.preventDefault()
             if (action === 'prev') goPrev()
             else if (action === 'skip') goSkip()
             else if (action === 'loop') goLoop()
-            else if (action === 'pause') applyPaused(!pausedRef.current)
+            else if (action === 'pause' || action === 'toggle') applyPaused(!pausedRef.current)
+            else if (action === 'dictate') applyDictation({ type: 'user', value: toggleDictationMode(dictation) })
+            else if (action === 'dictate-mode') applyDictation({ type: 'user', value: nextDictationMode(dictation) })
+            else if (action === 'peek') setPeeking(true)
             else if (action === 'close' && onClose) onClose()
           },
-          onKeyUp: (event) => event.stopPropagation(),
+          onKeyUp: (event) => {
+            if (event.key === 'Tab') setPeeking(false)
+            event.stopPropagation()
+          },
         }),
         h('div', { className: 'qat-row' },
           h('span', {
@@ -5206,7 +5324,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       return (list || []).map((entry) => (typeof entry === 'string' ? entry : entry?.w)).filter(Boolean)
     }
 
-    function ComposerTrainer({ useInput, inputActions, ctx, hovering: hoverStart = false }) {
+    function ComposerTrainer({ useInput, inputActions, ctx, hovering: hoverStart = false, peeking: peekStart = false }) {
       const t = useT(ctx)
       const isOpen = useSyncExternalStore(subscribeOpen, getOpen, getOpen)
       const draft = useInput((snapshot) => snapshot?.draft ?? '')
@@ -5231,6 +5349,9 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const hoveringNow = hovering || hoverStart === true
       const hoverIn = useCallback(() => setHovering(true), [])
       const hoverOut = useCallback(() => setHovering(false), [])
+      /** 按住 Tab 偷看（N18）：keydown 全显、keyup 复原，blur 也复位 */
+      const [peeking, setPeeking] = useState(peekStart === true)
+      const peekNow = peeking || peekStart === true
       const stateRef = useRef(state)
       const wordsRef = useRef(words)
       const lockRef = useRef({ locked: false, timer: null })
@@ -5336,7 +5457,10 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     dictation: settings.dictation,
     answerOnHover: settings.answerOnHover,
     hovering: hoveringNow,
+    peeking: peekNow,
       }))
+      // 上一个 / 下一个词预览（N4）：条窄，只给两个词、不带箭头
+      const neighbors = settings.showNeighbors === true ? neighborWords(words, state.index) : null
       const entry = lookup(current)
       // 音标按口音显示（前缀 AmE / BrE 随 accent 设置实时变）；
       // 假名词条没音标：notation 走自己的位（不进音标行）
@@ -5648,10 +5772,25 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         && (target.isContentEditable
           || target.closest(COMPOSER_EDITOR) !== null
           || target.closest('[contenteditable="true"]') !== null)
-      // 回车/制表符落在输入框就吞掉，防 Cmd+Enter 把中文发出去
+      // 回车 / 制表符落在输入框：一律吞掉（Cmd+Enter 不许把中文发出去），
+      // 回车另外是开始/暂停，Tab 另外是按住偷看
       if ((event.key === 'Enter' || event.key === 'Tab') && (inComposer || (region && region.contains(target)))) {
         event.preventDefault()
         event.stopPropagation()
+        if (event.key === 'Tab') {
+          setPeeking(true)
+          return
+        }
+        // 输入法组合中的回车属于输入法（选词），动作一个都不做
+        if (event.isComposing) return
+        const act = hotkeyAction(resolveHotkey({
+          key: event.key,
+          meta: event.metaKey,
+          ctrl: event.ctrlKey,
+          alt: event.altKey,
+          shift: event.shiftKey,
+        }))
+        if (act === 'toggle') applyPaused(!pausedRef.current)
         return
       }
       if (event.key === 'Escape' && (inComposer || (region && region.contains(target)))) {
@@ -5660,20 +5799,23 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         return
       }
       if (!inComposer) return
-      const action = resolveHotkey({
+      const action = hotkeyAction(resolveHotkey({
         key: event.key,
         meta: event.metaKey,
         ctrl: event.ctrlKey,
         alt: event.altKey,
         shift: event.shiftKey,
-      })
+      }))
       if (action) {
         event.preventDefault()
         event.stopPropagation()
         if (action === 'prev') goPrev()
         else if (action === 'skip') goSkip()
         else if (action === 'loop') goLoop()
-        else if (action === 'pause') applyPaused(!pausedRef.current)
+        else if (action === 'pause' || action === 'toggle') applyPaused(!pausedRef.current)
+        else if (action === 'dictate') applyDictation({ type: 'user', value: toggleDictationMode(settings.dictation) })
+        else if (action === 'dictate-mode') applyDictation({ type: 'user', value: nextDictationMode(settings.dictation) })
+        else if (action === 'peek') setPeeking(true)
         else if (action === 'close') {
           if (typeof onClose === 'function') onClose()
           else setOpen(false)
@@ -5705,11 +5847,22 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       event.preventDefault()
       event.stopPropagation()
     }
+    // 按住 Tab 偷看：keyup 复原；切窗（blur）也复位，别回来还卡在全显态
+    const onKeyUp = (event) => {
+      if (event.key !== 'Tab') return
+      if (peekKey('up') !== 'peek-off') return
+      setPeeking(false)
+    }
+    const onBlur = () => setPeeking(false)
     window.addEventListener('keydown', onKeyDown, true)
+    window.addEventListener('keyup', onKeyUp, true)
     window.addEventListener('pointerdown', onPointerDown, true)
+    window.addEventListener('blur', onBlur)
     return () => {
       window.removeEventListener('keydown', onKeyDown, true)
+      window.removeEventListener('keyup', onKeyUp, true)
       window.removeEventListener('pointerdown', onPointerDown, true)
+      window.removeEventListener('blur', onBlur)
     }
       }, [feed, isOpen])
 
@@ -5799,6 +5952,13 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     }, h(Icon, { name: 'prev', size: 12 })),
     h('span', { className: 'qat-bar-center' },
       h('span', { className: 'qat-wordblock', ...selectStyle(settings.textSelectable === true) },
+        // 上一个 / 下一个词：窄条只放两个词，箭头字符省略（词本身已经说清方向）
+        neighbors && (neighbors.prev || neighbors.next)
+          ? h('span', { className: 'qat-neighbors' }, [
+            neighbors.prev,
+            neighbors.next,
+          ].filter(Boolean).join(' · '))
+          : null,
       h(WordLetters, {
         text: target,
         typed: state.typed,
@@ -6188,6 +6348,12 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       label: t('settingTextSelectable'),
       hint: t('settingTextSelectableHint'),
       control: toggle('textSelectable'),
+    }),
+    h(SettingRow, {
+      t,
+      label: t('settingNeighbors'),
+      hint: t('settingNeighborsHint'),
+      control: toggle('showNeighbors'),
     }),
     h('div', { className: 'qat-settings-title qat-datablock' }, t('hotkeysTitle')),
     h('div', { className: 'qat-sethint qat-hotkeys' }, t('hotkeysList')),
@@ -6937,12 +7103,12 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     splitSense, splitSenses, sensesOf, SENSE_LIMIT,
     searchCatalog, readRecent, catalogSize: () => catalog().length, wordsSync, loadDictWords,
     effectiveTarget, stripPunct, maskLetters, answersRevealed, selectStyle,
-    DICTATION_MODES, DICTATION_OPEN_BY, nextDictation, applyDictation,
+    DICTATION_MODES, DICTATION_OPEN_BY, nextDictation, applyDictation, toggleDictationMode, nextDictationMode,
     readSettings, getSettings, setSetting,
     subscribeSettings, SETTING_DEFAULTS, DICT, heatLevel,
     dayKey, aggregateDaily, summarize, lastDays, readProgress, readChapterRecords, readWordRecords,
     recordWord, recordChapter, saveProgress,
-    dictSourceList, DICT_PIN, activeMs, clockText, clockVisible, progressOf, shouldWarnConflict, resolveHotkey, calcWpm, calcAccuracy, shouldStartOnTab, saveSession, readSession, clearSession, sameSession,
+    dictSourceList, DICT_PIN, activeMs, clockText, clockVisible, progressOf, shouldWarnConflict, resolveHotkey, peekKey, hotkeyAction, neighborWords, calcWpm, calcAccuracy, shouldStartOnTab, saveSession, readSession, clearSession, sameSession,
     calcLiveWpm, windowedWpm, pushSpeedSample, LIVE_WINDOW_MS, LIVE_HEARTBEAT_MS, LIVE_WPM_CAP, CHARS_PER_WORD,
     setOpen, getOpen, readDictId, writeDictId, releaseStuckComposer, ACCENTS, resolveAccent, shouldBlockSend, isSendTrigger, shouldClearDraft,
     ICONS, GLYPH, Icon, ensureStyles, Styles, CSS, lookup, lookupOnce, clearLookupCache, wordIndex, clearCatalogCache, buildCatalog,
