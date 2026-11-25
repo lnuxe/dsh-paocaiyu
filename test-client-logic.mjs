@@ -184,6 +184,7 @@ const {
   keyboardHeat, KEY_ROWS, cacheStats, clearDictCache,
   customWords, isCustomId, CUSTOM_PREFIX, dictionaryById,
   parseCustomFile, serializeCustomDict, splitCsvLine, toCustomWord, downloadText, withSlashes,
+  stepIndex, toWordList, isRoundDone, pronunciationSrc, pronunciationType,
   topWrongLetters, readMastered, writeMastered, toggleMastered, masteredKey,
 } = plugin.__test
 
@@ -508,6 +509,48 @@ check('空词表导出为空串', serializeCustomDict('custom:不存在', 'txt')
 check('删除测试词表', removeCustomDict(exportId), true)
 writeCustomDicts({})
 
+// —— 跟打条连续往下打 ——
+check('中间前进一格', stepIndex(0, 10), 1)
+check('到末尾绕回开头', stepIndex(9, 10), 0)
+check('倒退到开头', stepIndex(0, 10, -1), 9)
+check('倒退一格', stepIndex(5, 10, -1), 4)
+check('空词库不炸', stepIndex(3, 0), 0)
+check('大步跨也能绕', stepIndex(8, 10, 5), 3)
+check('整本 CET-4 能走完一圈', stepIndex(2606, 2607), 0)
+check('词条转字符串', toWordList([{ w: 'cancel' }, 'govern', { w: '' }, null]).join(','), 'cancel,govern')
+
+// —— 发音：有道教音频 + TTS 兜底 ——
+check('美音地址', pronunciationSrc('cancel', 'us'), 'https://dict.youdao.com/dictvoice?audio=cancel&type=2')
+check('英音地址', pronunciationSrc('cancel', 'uk'), 'https://dict.youdao.com/dictvoice?audio=cancel&type=1')
+check('日语走 le=jap', pronunciationSrc('りんご', 'ja'), 'https://dict.youdao.com/dictvoice?audio=%E3%82%8A%E3%82%93%E3%81%94&le=jap')
+check('空词没有地址', pronunciationSrc('  ', 'us'), '')
+check('英文按美音', pronunciationType('cancel'), 'us')
+check('假名按日语', pronunciationType('りんご'), 'ja')
+check('汉字按中文', pronunciationType('苹果'), 'zh')
+check('有 Audio 时用有道教音频', (function () {
+  const calls = []
+  sandbox.window.Audio = function (src) {
+    calls.push(src)
+    return { play: () => Promise.resolve(), pause() {}, volume: 1, playbackRate: 1 }
+  }
+  const ok = plugin.__test.speak('cancel')
+  const used = calls[calls.length - 1] ?? ''
+  delete sandbox.window.Audio
+  return ok === true && used.includes('dict.youdao.com/dictvoice?audio=cancel')
+})(), true)
+check('没有 Audio 时退回 TTS', (function () {
+  let spoken = ''
+  sandbox.window.speechSynthesis = {
+    cancel() {},
+    speak(u) { spoken = u.text },
+  }
+  sandbox.window.SpeechSynthesisUtterance = function (text) { this.text = text }
+  const ok = plugin.__test.speak('govern')
+  delete sandbox.window.speechSynthesis
+  delete sandbox.window.SpeechSynthesisUtterance
+  return ok === true && spoken === 'govern'
+})(), true)
+
 // —— 键盘热力图 ——
 check('键盘三行', KEY_ROWS.join('|'), 'qwertyuiop|asdfghjkl|zxcvbnm')
 const heat = keyboardHeat([{ letter: 'e', count: 8 }, { letter: 'a', count: 4 }, { letter: 'q', count: 1 }])
@@ -792,6 +835,9 @@ const requireForRender = (name) => {
 }
 const renderPlugin = factory(requireForRender)
 const renderTest = renderPlugin.__test
+renderTest.saveSession = renderPlugin.__test.saveSession
+renderTest.clearSession = renderPlugin.__test.clearSession
+renderTest.readSession = renderPlugin.__test.readSession
 const ctxStub = { locale: { bind: () => (key) => key, register: () => {}, subscribe: () => () => {} } }
 
 /** 收集渲染树里内联注入的样式文本（Styles 组件走 dangerouslySetInnerHTML） */
@@ -872,9 +918,34 @@ check('卡片含中文行', trainerClasses.includes('qat-gloss-zh'), true)
 renderTest.setOpen(true)
 const bar = render('渲染：输入框上方跟打条', () => renderTest.components.ComposerTrainer({ useInput: () => '', inputActions: {}, ctx: ctxStub }))
 const barClasses = collectClasses(bar).join(' ')
-check('跟打条含词库下拉', barClasses.includes('qat-select'), true)
 check('跟打条含单词', barClasses.includes('qat-word'), true)
 check('跟打条含音标', barClasses.includes('qat-ipa'), true)
+// 中文释义在 composer 输入框里，条上不再重复一遍
+check('跟打条不重复显示中文释义', barClasses.includes('qat-bar-gloss'), false)
+check('跟打条显示整本进度', barClasses.includes('qat-bar-count'), true)
+check('跟打条中间块单独一层（好居中）', barClasses.includes('qat-bar-center'), true)
+check('进度和关闭绝对定位在两侧', (function styles(node, out = []) {
+  if (!node || typeof node !== 'object') return out
+  if (Array.isArray(node)) {
+    node.forEach((item) => styles(item, out))
+    return out
+  }
+  if (typeof node.type === 'function') {
+    styles(node.type(node.props ?? {}), out)
+    return out
+  }
+  if (node.type === 'style') {
+    const kids = Array.isArray(node.children) && node.children.length ? node.children : (node.props?.children ?? [])
+    out.push(Array.isArray(kids) ? kids.join('') : String(kids ?? ''))
+  }
+  styles(node.children, out)
+  styles(node.props?.children, out)
+  return out
+})(bar).join('').includes('.qat-bar{position:relative'), true)
+// 条上只留一个按钮（×），其余操作走快捷键
+check('跟打条只有一个关闭按钮', collectClasses(bar).filter((name) => name.includes('qat-icon')).length, 1)
+check('跟打条不再有图标工具条', barClasses.includes('qat-acts'), false)
+check('跟打条不再有词库下拉', barClasses.includes('qat-select'), false)
 renderTest.setOpen(false)
 
 // —— 面板：章节下拉 & 词库选择器 ——
@@ -1011,7 +1082,7 @@ check('样式里有读屏隐藏类', collectCss(cardA11y).join('').includes('.qa
 
 // —— 渲染冒烟：设置页 ——
 const settingsCase = render('渲染：设置页', () => renderTest.components.SettingsSection({}))
-check('设置页有六个设置行（含词库缓存）', collectClasses(settingsCase).filter((name) => name === 'qat-setrow').length, 6)
+check('设置页有七个设置行（含自动继续与词库缓存）', collectClasses(settingsCase).filter((name) => name === 'qat-setrow').length, 7)
 check('设置页含大小写开关', (function find(node) {
   if (!node || typeof node !== 'object') return false
   if (Array.isArray(node)) return node.some(find)
@@ -1045,6 +1116,16 @@ check('设置页含默写下拉', (function find(node) {
 })(settingsCase), true)
 
 // —— 渲染冒烟：结果页（错词清单 / 下一章） ——
+renderTest.saveSession({
+  dictId: 'cet4',
+  chapter: 0,
+  words: ['cancel'],
+  index: 1,
+  hits: 1,
+  retries: 0,
+  startedAt: Date.now() - 5000,
+  activeMs: 5000,
+})
 const doneCase = render('渲染：结果页', () => renderTest.components.Trainer({
   words: ['cancel'],
   variant: 'panel',
@@ -1056,6 +1137,12 @@ const doneCase = render('渲染：结果页', () => renderTest.components.Traine
   ctx: ctxStub,
 }))
 check('结果页有控制区', collectClasses(doneCase).includes('qat-card'), true)
+// 面板的「打完」语义抽成纯函数守门（跟打条走 stepIndex，两者不能混）
+check('0/1 没打完', isRoundDone(0, 1), false)
+check('1/1 打完了', isRoundDone(1, 1), true)
+check('0/0 不算打完', isRoundDone(0, 0), false)
+check('20/20 打完', isRoundDone(20, 20), true)
+check('跟打条绕回后不算打完', isRoundDone(0, 2607), false)
 
 // —— 渲染冒烟：词库选择器里的自定义导入 ——
 const pickerCase = render('渲染：词库选择器', () => renderTest.components.DictPicker({

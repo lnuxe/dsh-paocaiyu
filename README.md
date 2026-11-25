@@ -91,7 +91,7 @@ dsh plugin install <本仓库目录>
 
 ## 版本与仓库
 
-- 包名 `@local/qwerty-autotype-ui`，当前 `0.4.0`，许可证 **GPL-3.0-only**（见 [NOTICE](./NOTICE)：词库数据派生自同样以 GPL-3.0 发布的 qwerty-learner）。
+- 包名 `@local/qwerty-autotype-ui`，当前 `0.4.1`，许可证 **GPL-3.0-only**（见 [NOTICE](./NOTICE)：词库数据派生自同样以 GPL-3.0 发布的 qwerty-learner）。
 - 变更记录见 [CHANGELOG.md](./CHANGELOG.md)（Keep a Changelog 格式）。
 
 ### 语义化版本约定

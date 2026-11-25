@@ -9,6 +9,41 @@
 
 无
 
+## [0.4.1] - 2026-11-25
+
+跟打条从「抽 20 个词重开」改成「一本词库一直往下打」，条上控件砍到只剩一个 ×；
+补齐居中测量、发音和输入法提示。自动化测试 **390 条全绿**。
+
+### Added · 自动发音（对齐上游 usePronunciation）
+
+- 换词自动读一遍：优先 **有道词典音频**（`dict.youdao.com/dictvoice?audio=WORD&type=2`，跟上游 `generateWordSoundSrc` 一致），按词自动选型（假名→`le=jap`、汉字→`le=zh`、其余美音）
+- 音频拉不到时退回浏览器 `speechSynthesis`
+- 上一轮把条上的 🔊 摘掉后就没声了，所以改成「自动发音」；设置页那一项文案同步改成「自动发音」
+
+### Added · 打开跟打时把输入法调成英文
+
+- `setComposerIme(on)`：给 `[data-composer-input]` 加 `inputmode=latin` / `lang=en` / `autocapitalize=off` / `spellcheck=false` 与 `ime-mode:inactive`，关闭时按保存的旧值还原
+- 浏览器无法强制切换操作系统输入法（系统级设置），`inputmode=latin` 是可行范围内最接近的效果
+
+### Fixed · 跟打条不居中
+
+- `setBarWidth` 从来没被调用（宽度一直是 `null`），条既没对齐 composer 也没居中。补上测量：读 `[data-composer-input]` 的实测宽度、`ResizeObserver` 跟随窗口与输入框变化，落成 `width + marginInline:auto`
+- 结构改成「中间一层真正居中」：`.qat-bar` 自身 `position:relative` + `justify-content:center`，单词/音标/释义放进 `.qat-bar-center`，进度与 × 用 `position:absolute` 贴两侧，不参与居中计算
+- 顺手修掉一个连带问题：上一轮把「打完就停」的语义误改到了面板 `Trainer` 上，导致侧栏练完 20 个不出结果页、不写章节记录。现在拆成两个纯函数——面板用 `isRoundDone(index,total)`，跟打条用 `stepIndex`（绕圈），互不影响
+
+### Fixed · 条上重复的中文 / Esc 后草稿残留
+
+- 中文释义由 composer 输入框承担，条上那份 `.qat-bar-gloss` 撤掉（同一句话不显示两遍）
+- Esc / 点 × 收起后，输入框里那句自己写进去的中文会清掉：`wroteDraftRef` 记住写过什么，只撤自己写的、用户改过就不动（原来的判断靠 `LEXICON` 反查，词库词命不中就一直留着）
+
+### Changed · 跟打条改成「一本词库一直往下打」+ 条上去掉按钮
+
+- **不再抽 20 个词**：跟打条加载整本词库（CET-4 就是 2,607 个），顺序往下走，打完最后一个绕回开头接着打，没有「结束 → 重开」这一环
+- **进度按整本算**：左侧 `1/2607` 淡色小字，替代原来的 `0/20 · ✓3 · ↻1` 三段指标
+- **条上只剩一个 ×**：删掉词库下拉、🔊、⏮、⏭、🔁、↻、▶ 共 8 个控件；中文释义以淡色小字跟在单词右边；上一词/跳过/循环/暂停/关闭全部走快捷键（←/→/J/P/Esc），快捷键表在设置页与卡片内 `?`
+- **面板打完自动接下一章**：新增设置「自动继续」（默认开），20 个打完 1.2 秒后自动进下一章，到最后一章绕回第一章；关掉就还是停在结果页
+- 逻辑抽成纯函数 `stepIndex(index, length, delta)`（到头绕回、倒退也绕），有测试兜底
+
 ## [0.4.0] - 2026-11-24
 
 自定义词表从「粘贴文本」扩展到「文件进出」，并修掉两个会让导入静默失效的解析限制。
@@ -134,7 +169,8 @@
 - 隐藏焦点守卫：练习期间输入框区域的回车 / 制表符 / `Cmd+Enter` 与发送按钮点击全部被吃掉，草稿发不出去
 - 45 条测试（`test-client-logic.mjs`）：判定 / `pushChar` / 词库 / 渲染冒烟（一次性 React 桩真的调一遍组件），不需要浏览器
 
-[Unreleased]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.1.0...v0.2.0

@@ -1434,6 +1434,8 @@ window.__ModuleLoader__.load({
         settingsTitle: '跟打',
         settingSound: '键音',
         settingSoundHint: '打对/打错时给一声轻提示',
+        settingAutoNext: '自动继续',
+        settingAutoNextHint: '打完 20 个自动接下一章，不用手动点',
         hotkeysTitle: '快捷键',
         announceWrong: '打错了，请整词重打 {word}',
         announceDone: '本轮完成，共 {n} 个词',
@@ -1469,8 +1471,8 @@ window.__ModuleLoader__.load({
         settingCaseSensitiveHint: '关：Cancel 打 cancel 也算对（代码词库建议开）',
         settingIgnorePunct: '忽略标点',
         settingIgnorePunctHint: '开：append() 只需要打 append',
-        settingVoice: '发音按钮',
-        settingVoiceHint: '关掉后卡片上不显示 🔊',
+        settingVoice: '自动发音',
+        settingVoiceHint: '换词时自动读一遍（有道音频，离线退回系统语音）',
         settingDictation: '默写形态',
         settingDictationHint: '默认遮住哪些字母，练习时仍可临时切换',
         reviewMistakes: '重练这些词',
@@ -1536,6 +1538,8 @@ window.__ModuleLoader__.load({
         settingsTitle: 'Typing drill',
         settingSound: 'Key sound',
         settingSoundHint: 'A soft click on hit or miss',
+        settingAutoNext: 'Auto-continue',
+        settingAutoNextHint: 'Roll into the next chapter instead of stopping at 20',
         hotkeysTitle: 'Shortcuts',
         announceWrong: 'Mistyped — retype the whole word {word}',
         announceDone: 'Round finished, {n} words',
@@ -1571,8 +1575,8 @@ window.__ModuleLoader__.load({
         settingCaseSensitiveHint: 'Off: typing "cancel" passes for "Cancel"',
         settingIgnorePunct: 'Ignore punctuation',
         settingIgnorePunctHint: 'On: "append()" only needs "append"',
-        settingVoice: 'Speak button',
-        settingVoiceHint: 'Hide the 🔊 on the card',
+        settingVoice: 'Auto pronounce',
+        settingVoiceHint: 'Read each new word aloud (Youdao audio, TTS fallback)',
         settingDictation: 'Dictation',
         settingDictationHint: 'Which letters stay hidden by default',
         reviewMistakes: 'Review them',
@@ -1603,8 +1607,13 @@ window.__ModuleLoader__.load({
     }
 
     const CSS = `
-.qat-bar{display:flex;align-items:center;gap:10px;padding:0 0 6px;background:transparent;border:0;box-sizing:border-box;font-size:12px;color:var(--dsw-alias-label-secondary)}
+.qat-bar{position:relative;display:flex;align-items:center;justify-content:center;padding:0 0 5px;background:transparent;border:0;box-sizing:border-box;font-size:12px;color:var(--dsw-alias-label-secondary);min-height:52px}
 .qat-bar .qat-word{font-size:34px;min-height:40px;gap:1px;letter-spacing:.01em}
+.qat-bar-center{display:flex;align-items:center;justify-content:center;min-width:0;width:100%}
+.qat-bar-count{position:absolute;left:0;top:50%;transform:translateY(-50%);font-size:11px;color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums}
+.qat-bar-gloss{font-size:12px;color:var(--dsw-alias-label-tertiary);max-width:34%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qat-bar-close{position:absolute;right:0;top:50%;transform:translateY(-50%);opacity:.45;font-size:13px}
+.qat-bar-close:hover{opacity:.9}
 .qat-wordblock{display:inline-flex;flex-direction:column;align-items:center;gap:1px;line-height:1.15}
 .qat-ipa{font-size:13px;line-height:1.25;color:var(--dsw-alias-label-secondary);opacity:.7;letter-spacing:0;user-select:none}
 .qat-bar-done{font-size:13px;color:var(--dsw-alias-state-success-primary)}
@@ -2066,15 +2075,70 @@ window.__ModuleLoader__.load({
       }
     }
 
-    function speak(word) {
+    /* ---------------- 发音（对齐上游 usePronunciation：有道词典音频） ---------------- */
+
+    const PRON_API = 'https://dict.youdao.com/dictvoice?audio='
+
+    /** 上游 generateWordSoundSrc：us → type=2、uk → type=1、日/中走 le= */
+    function pronunciationSrc(word, type = 'us') {
+      const text = String(word ?? '').trim()
+      if (!text) return ''
+      const q = encodeURIComponent(text)
+      if (type === 'uk') return `${PRON_API}${q}&type=1`
+      if (type === 'ja') return `${PRON_API}${q}&le=jap`
+      if (type === 'zh') return `${PRON_API}${q}&le=zh`
+      return `${PRON_API}${q}&type=2`
+    }
+
+    /** 按单词自动挑发音类型：假名 → 日语、汉字 → 中文、其余按美音 */
+    function pronunciationType(word) {
+      const text = String(word ?? '')
+      if (/[\u3040-\u30ff]/.test(text)) return 'ja'
+      if (/[\u4e00-\u9fff]/.test(text)) return 'zh'
+      return 'us'
+    }
+
+    let AUDIO_NODE = null
+
+    /** 有道教 MP3 优先（上游就是这么放的），失败退回浏览器 TTS */
+    function speak(word, options) {
       const text = String(word ?? '').trim()
       if (!text) return false
+      const type = options?.type ?? pronunciationType(text)
+      const src = pronunciationSrc(text, type)
+      try {
+        if (AUDIO_NODE) {
+          AUDIO_NODE.pause()
+          AUDIO_NODE = null
+        }
+        if (src && typeof window.Audio === 'function') {
+          const audio = new window.Audio(src)
+          audio.volume = Math.min(1, Math.max(0, Number(options?.volume ?? 1)))
+          audio.playbackRate = Math.min(2, Math.max(0.5, Number(options?.rate ?? 1)))
+          const played = audio.play()
+          AUDIO_NODE = audio
+          if (played && typeof played.catch === 'function') {
+            played.catch(() => {
+              if (AUDIO_NODE === audio) AUDIO_NODE = null
+              speakWithTts(text, type)
+            })
+          }
+          return true
+        }
+      } catch {
+        /* 落到 TTS */
+      }
+      return speakWithTts(text, type)
+    }
+
+    /** 兜底：浏览器自带 TTS */
+    function speakWithTts(text, type) {
       try {
         const synth = window.speechSynthesis
         if (!synth || typeof window.SpeechSynthesisUtterance !== 'function') return false
         synth.cancel()
         const utterance = new window.SpeechSynthesisUtterance(text)
-        utterance.lang = /^[\x20-\x7F]+$/.test(text) ? 'en-US' : 'ja-JP'
+        utterance.lang = type === 'ja' ? 'ja-JP' : type === 'zh' ? 'zh-CN' : 'en-US'
         utterance.rate = 0.95
         synth.speak(utterance)
         return true
@@ -2091,6 +2155,7 @@ window.__ModuleLoader__.load({
       showIpa: true,
       voice: true,
       sound: true,
+      autoNext: true,
     }
     const SETTING_PREFIX = 'qwerty-autotype:setting:'
 
@@ -2250,7 +2315,7 @@ window.__ModuleLoader__.load({
 
       /** 上一个 / 跳过 / 循环 三个动作（快捷键和点击共用） */
       const goPrev = useCallback(() => {
-        const prev = Math.max(0, stateRef.current.index - 1)
+        const prev = stepIndex(stateRef.current.index, wordsRef.current.length, -1)
         live.current.typed = ''
         setState((prevState) => ({ ...prevState, index: prev, typed: '', flash: false, finishedAt: null }))
       }, [])
@@ -2274,8 +2339,10 @@ window.__ModuleLoader__.load({
         if (element && event?.target !== element) element.focus()
       }, [])
 
+
       const total = words.length
-      const done = total > 0 && state.index >= total
+      // 跟打条是流水线：没有「完成」态，索引绕圈
+      const done = isRoundDone(state.index, total)
       const current = done ? '' : (words[state.index] ?? '')
       // 判定用的目标串（忽略标点 / 大小写）与展示用的遮罩
       const target = effectiveTarget(current, options)
@@ -2635,6 +2702,44 @@ window.__ModuleLoader__.load({
     }
 
     /**
+     * 打开跟打时把 composer 调成英文输入：inputmode / lang / 关掉输入法联想。
+     * 浏览器没法强制切 OS 输入法（这是系统级设置），但 inputmode=latin 在
+     * Windows / Linux 的 Chromium 上会把输入法提示成英文，配合 CSS ime-mode 兼容老浏览器。
+     */
+    const IME_ATTRS = ['inputmode', 'lang', 'autocapitalize', 'autocorrect', 'spellcheck', 'style']
+
+    function setComposerIme(on) {
+      const node = findComposerEditor()
+      if (!node) return
+      try {
+        if (on) {
+          if (!node.dataset.qatIme) {
+            const saved = {}
+            for (const name of IME_ATTRS) saved[name] = node.getAttribute(name)
+            node.dataset.qatIme = JSON.stringify(saved)
+          }
+          node.setAttribute('inputmode', 'latin')
+          node.setAttribute('lang', 'en')
+          node.setAttribute('autocapitalize', 'off')
+          node.setAttribute('autocorrect', 'off')
+          node.setAttribute('spellcheck', 'false')
+          node.style.imeMode = 'inactive'
+          return
+        }
+        const saved = node.dataset.qatIme ? JSON.parse(node.dataset.qatIme) : null
+        delete node.dataset.qatIme
+        if (!saved) return
+        for (const name of IME_ATTRS) {
+          if (saved[name] === null || saved[name] === undefined) node.removeAttribute(name)
+          else node.setAttribute(name, saved[name])
+        }
+        node.style.imeMode = ''
+      } catch {
+        /* 忽略：属性设不上去也不影响打字 */
+      }
+    }
+
+    /**
      * 跟打条：单词显示在输入框正上方，**打字就打在真正的 composer 输入框里**。
      *
      * 做法：打开期间在捕获阶段监听 keydown，只处理落在 composer 编辑器里的按键——
@@ -2642,18 +2747,38 @@ window.__ModuleLoader__.load({
      * 退格删一个字母，回车/制表符直接吞掉，Esc 收起。这样既能用真输入框打字，
      * 又不可能出现"打了一半被回车发出去"。
      */
+    /** 一轮是否打完：面板打完要停，跟打条永远不停（走 stepIndex） */
+    function isRoundDone(index, total) {
+      return Number(total) > 0 && Number(index) >= Number(total)
+    }
+
+    /** 在整本词库里前后挪：到头绕回，负数也绕（跟打条靠它一直往下打） */
+    function stepIndex(index, length, delta = 1) {
+      if (!length) return 0
+      const next = (index + delta) % length
+      return next < 0 ? next + length : next
+    }
+
+    /** 词条（{w,ipa,zh} 或字符串）→ 纯单词字符串数组 */
+    function toWordList(list) {
+      return (list || []).map((entry) => (typeof entry === 'string' ? entry : entry?.w)).filter(Boolean)
+    }
+
     function ComposerTrainer({ useInput, inputActions, ctx }) {
       const t = useT(ctx)
       const isOpen = useSyncExternalStore(subscribeOpen, getOpen, getOpen)
       const draft = useInput((snapshot) => snapshot?.draft ?? '')
       const [dictId, setDictId] = useState(readDictId)
       const [round, setRound] = useState(0)
-      const [words, setWords] = useState(() => sampleWords(dictId, 20))
+      // 跟打条是「一本词库顺着往下打」，不是抽 20 个就结束
+      const [words, setWords] = useState(() => toWordList(wordsSync(dictId)))
       const [state, setState] = useState({
         index: 0, typed: '', flash: false, hits: 0, retries: 0, finishedAt: null,
       })
       const [auto, setAuto] = useState(false)
       const [barWidth, setBarWidth] = useState(null)
+      /** 我们自己写进 composer 的那句中文（关闭时要原样撤掉） */
+      const wroteDraftRef = useRef('')
       const settings = useSyncExternalStore(subscribeSettings, getSettings, getSettings)
       const [loopOn, setLoopOn] = useState(false)
       const stateRef = useRef(state)
@@ -2662,15 +2787,18 @@ window.__ModuleLoader__.load({
       const draftRef = useRef('')
       const startedAt = useRef(Date.now())
 
-      // 词库词条按需加载：加载好后重新抽 20 个，失败保留内置兜底
+      // 词库词条按需加载：整本拿到，顺序往下打；失败退回内置兜底
       useEffect(() => {
         let cancelled = false
         loadDictWords(dictId)
           .then((all) => {
-            if (!cancelled && all?.length) setWords(sampleFromWords(all, 20))
+            if (!cancelled && all?.length) {
+              setWords(toWordList(all))
+              setState({ index: 0, typed: '', flash: false, hits: 0, retries: 0, finishedAt: null })
+            }
           })
           .catch((err) => {
-            if (!cancelled) setWords(sampleFromWords(err?.fallbackWords ?? wordsSync(dictId), 20))
+            if (!cancelled) setWords(toWordList(err?.fallbackWords ?? wordsSync(dictId)))
           })
         return () => {
           cancelled = true
@@ -2684,9 +2812,42 @@ window.__ModuleLoader__.load({
         if (lockRef.current.timer !== null) clearTimeout(lockRef.current.timer)
       }, [])
 
+      // 宽度对齐 composer 正文：之前 setBarWidth 从没被调用过，整条所以不居中
+      useEffect(() => {
+        if (!isOpen) return undefined
+        const measure = () => {
+          const node = document.querySelector('[data-composer-input]')
+          const width = node?.getBoundingClientRect?.().width ?? 0
+          setBarWidth((prev) => {
+            const next = width > 40 ? Math.round(width) : null
+            return prev === next ? prev : next
+          })
+        }
+        measure()
+        const target = document.querySelector('[data-composer-input]')
+        const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : null
+        if (observer && target) observer.observe(target)
+        window.addEventListener('resize', measure)
+        return () => {
+          observer?.disconnect?.()
+          window.removeEventListener('resize', measure)
+        }
+      }, [isOpen])
+
       const total = words.length
-      const done = total > 0 && state.index >= total
-      const current = done ? '' : (words[state.index] ?? '')
+      // 跟打条是流水线：没有「完成」态，索引绕圈
+      const current = words[state.index % (total || 1)] ?? ''
+
+      // 换词自动发音：跟打条也读，原来只有按钮能点，摘掉按钮就没声了
+      const spokenRef = useRef({ word: '', index: -1 })
+      useEffect(() => {
+        if (!settings.voice) return
+        if (!current) return
+        if (spokenRef.current.word === current && spokenRef.current.index === state.index) return
+        spokenRef.current = { word: current, index: state.index }
+        speak(current)
+      }, [current, settings.voice, state.index])
+      const done = false
       const judgeOptions = useMemo(
         () => ({ caseSensitive: settings.caseSensitive, ignorePunct: settings.ignorePunct }),
         [settings.caseSensitive, settings.ignorePunct],
@@ -2703,14 +2864,15 @@ window.__ModuleLoader__.load({
           setState((prev) => ({ ...prev, typed: '', flash: false, hits: prev.hits + 1 }))
           return
         }
-        const next = stateRef.current.index + 1
+        // 打完最后一个就绕回开头接着打，跟原版一样一直往下
+        const next = stepIndex(stateRef.current.index, wordsRef.current.length, 1)
         setState((prev) => ({
           ...prev,
           typed: '',
           flash: false,
           hits: prev.hits + 1,
           index: next,
-          finishedAt: next >= wordsRef.current.length ? Date.now() : null,
+          finishedAt: null,
         }))
       }, [])
 
@@ -2728,13 +2890,12 @@ window.__ModuleLoader__.load({
       }, [])
 
       const goSkip = useCallback(() => {
-        const next = Math.min(wordsRef.current.length, stateRef.current.index + 1)
         setState((state) => ({
           ...state,
-          index: next,
+          index: stepIndex(state.index, wordsRef.current.length, 1),
           typed: '',
           flash: false,
-          finishedAt: next >= wordsRef.current.length ? Date.now() : null,
+          finishedAt: null,
         }))
       }, [])
 
@@ -2807,11 +2968,19 @@ window.__ModuleLoader__.load({
         }
       }, [isOpen])
 
-      // 收起时把留在输入框里的中文撤掉（只撤我们自己写进去的那句）
+      // 打开时把 composer 切成英文输入，收起时还原
+      useEffect(() => {
+        setComposerIme(isOpen)
+        return () => setComposerIme(false)
+      }, [isOpen])
+
+      // 收起时把留在输入框里的中文撤掉：只撤我们自己写进去的那一句
       useEffect(() => {
         if (isOpen) return
+        const wrote = wroteDraftRef.current
+        wroteDraftRef.current = ''
         if (!draft) return
-        if (!LEXICON.some((entry) => entry.zh === draft)) return
+        if (wrote && draft !== wrote) return   // 用户自己改过，不动
         try {
           inputActions?.setDraft?.('')
         } catch {
@@ -2925,6 +3094,7 @@ window.__ModuleLoader__.load({
         if (!inputActions || typeof inputActions.setDraft !== 'function') return
         const desired = !done && meaning ? meaning : ''
         if (draft === desired) return
+        wroteDraftRef.current = desired
         try {
           inputActions.setDraft(desired)
         } catch {
@@ -2965,14 +3135,9 @@ window.__ModuleLoader__.load({
 
       if (!isOpen || total === 0) return null
 
-      const elapsed = Math.max(1, Math.round(((done ? state.finishedAt : Date.now()) - startedAt.current) / 1000))
-      const icon = (glyph, title, onClick, active) => h('span', {
-        ...pressable(onClick),
-        className: 'qat-icon',
-        title,
-        'aria-label': title,
-        'data-active': active ? 'true' : 'false',
-      }, glyph)
+      // 位置按整本词库算：1 / 2607
+      const position = (state.index % total) + 1
+      const chars = target.split('')
 
       return h('div', {
         className: 'qat-bar',
@@ -2981,55 +3146,33 @@ window.__ModuleLoader__.load({
         style: barWidth === null ? undefined : { width: `${barWidth}px`, marginInline: 'auto' },
       },
         h(Styles),
-        h('select', {
-          className: 'qat-select',
-          value: dictId,
-          title: t('dictTitle'),
-          onChange: (event) => chooseDict(event.target.value),
-          onKeyDown: (event) => event.stopPropagation(),
-        },
-          readRecent().length
-            ? h('optgroup', { label: t('recent') },
-              readRecent().map((id) => {
-                const item = catalog().find((entry) => entry.id === id)
-                return item ? h('option', { key: `recent-${item.id}`, value: item.id }, item.name) : null
-              }),
-            )
-            : null,
-          groupByCategory(catalog()).map((group) => h('optgroup', { key: group.category, label: group.category },
-            group.dicts.map((dict) => h('option', { key: dict.id, value: dict.id }, dict.name)),
-          )),
-        ),
-        h('span', { className: 'qat-grow' }),
-        done
-          ? h('span', { className: 'qat-bar-done' }, t('doneShort', { total, sec: elapsed }))
-          : h('span', { className: 'qat-wordblock' },
-            h('span', { className: 'qat-word', 'data-flash': state.flash ? 'true' : 'false' },
-              target.split('').map((ch, i) => {
-                const typedChar = state.typed[i]
-                const letterState = typedChar === undefined ? 'idle' : typedChar === ch ? 'ok' : 'bad'
-                const hidden = typedChar === undefined && masked[i]
-                return h('span', {
-                  key: `${i}-${ch}`,
-                  className: 'qat-letter',
-                  'data-state': letterState,
-                  'data-mask': hidden ? 'true' : 'false',
-                }, hidden ? '·' : (ch === ' ' ? '␣' : ch))
-              }),
-            ),
+        // 进度与关闭都绝对定位在两侧，中间那块才是真正居中的
+        h('span', { className: 'qat-bar-count', title: t('dictTitle') }, `${position}/${total}`),
+        h('span', { className: 'qat-bar-center' },
+          h('span', { className: 'qat-wordblock' },
+          h('span', { className: 'qat-word', 'data-flash': state.flash ? 'true' : 'false' },
+            chars.map((ch, i) => {
+              const typedChar = state.typed[i]
+              const letterState = typedChar === undefined ? 'idle' : typedChar === ch ? 'ok' : 'bad'
+              const hidden = typedChar === undefined && masked[i]
+              return h('span', {
+                key: `${i}-${ch}`,
+                className: 'qat-letter',
+                'data-state': letterState,
+                'data-mask': hidden ? 'true' : 'false',
+              }, hidden ? '·' : (ch === ' ' ? '␣' : ch))
+            }),
+          ),
             ipa ? h('span', { className: 'qat-ipa' }, ipa) : null,
           ),
-        h('span', { className: 'qat-grow' }),
-        h('span', { className: 'qat-meta' }, `${Math.min(state.index, total)}/${total}`, h('span', { className: 'qat-meta-sep' }, '·'), `✓${state.hits}`, h('span', { className: 'qat-meta-sep' }, '·'), `↻${state.retries}`),
-        h('span', { className: 'qat-acts' },
-          settings.voice && !done ? icon('🔊', t('speak'), () => speak(current), false) : null,
-          done ? null : icon('⏮', t('prevTip'), goPrev, false),
-          done ? null : icon('⏭', t('skipTip'), goSkip, false),
-          icon('🔁', t('loopTip'), goLoop, loopOn),
-          done ? icon('↻', t('again'), restart, false) : null,
-          icon(auto ? '⏸' : '▶', auto ? t('autoStop') : t('auto'), () => setAuto((value) => !value), auto),
-          icon('×', t('close'), () => setOpen(false), false),
         ),
+        h('span', {
+          ...pressable(() => setOpen(false)),
+          className: 'qat-icon qat-bar-close',
+          'data-act': 'close',
+          title: t('close'),
+          'aria-label': t('close'),
+        }, '×'),
       )
     }
 
@@ -3286,6 +3429,12 @@ window.__ModuleLoader__.load({
           label: t('settingSound'),
           hint: t('settingSoundHint'),
           control: toggle('sound'),
+        }),
+        h(SettingRow, {
+          t,
+          label: t('settingAutoNext'),
+          hint: t('settingAutoNextHint'),
+          control: toggle('autoNext'),
         }),
         h(SettingRow, {
           t,
@@ -3594,6 +3743,22 @@ window.__ModuleLoader__.load({
       }
       const again = () => setRound((value) => value + 1)
 
+      // 打完一章自动接下一章：开着 autoNext 就不用每次点「下一章」
+      const nextTimer = useRef(null)
+      useEffect(() => () => {
+        if (nextTimer.current !== null) clearTimeout(nextTimer.current)
+      }, [])
+      const finishChapter = useCallback(() => {
+        refreshStats()
+        if (!settings.autoNext) return
+        if (nextTimer.current !== null) clearTimeout(nextTimer.current)
+        nextTimer.current = setTimeout(() => {
+          nextTimer.current = null
+          setChapter((value) => (value + 1) % chapterTotal)
+          setRound((value) => value + 1)
+        }, 1200)
+      }, [chapterTotal, refreshStats, settings.autoNext])
+
       const recent = readRecent()
         .map((id) => catalog().find((item) => item.id === id))
         .filter(Boolean)
@@ -3744,7 +3909,7 @@ window.__ModuleLoader__.load({
               dictation: settings.dictation,
               dictId,
               chapter: round === 0 ? chapter : null,
-              onFinish: refreshStats,
+              onFinish: finishChapter,
               onReview: (words) => {
                 setReview(words)
                 setChapter(0)
@@ -3780,6 +3945,8 @@ window.__ModuleLoader__.load({
         exportBackup, importData, clearData, readMirror, writeMirror, MIRROR_KEY,
         keyboardHeat, KEY_ROWS, cacheStats, clearDictCache,
         parseCustomFile, serializeCustomDict, splitCsvLine, toCustomWord, downloadText, withSlashes,
+        stepIndex, toWordList, isRoundDone, pronunciationSrc, pronunciationType, speakWithTts,
+        setComposerIme, speak,
       },
       inject: ['slots', 'locale'],
       apply(ctx) {
