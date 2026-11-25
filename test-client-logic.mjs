@@ -184,7 +184,7 @@ const {
   keyboardHeat, KEY_ROWS, cacheStats, clearDictCache,
   customWords, isCustomId, CUSTOM_PREFIX, dictionaryById,
   parseCustomFile, serializeCustomDict, splitCsvLine, toCustomWord, downloadText, withSlashes,
-  stepIndex, toWordList, isRoundDone, pronunciationSrc, pronunciationType,
+  stepIndex, toWordList, isRoundDone, wordsOfRound, nextChapterIndex, pronunciationSrc, pronunciationType,
   writeDictId, releaseStuckComposer, shouldBlockSend, shouldClearDraft,
   topWrongLetters, readMastered, writeMastered, toggleMastered, masteredKey,
 } = plugin.__test
@@ -945,6 +945,26 @@ function findPanelCard(node) {
     || findPanelCard(node.props?.children)
 }
 
+/** className 里是否含某个 class（一个节点可能挂多个，如 "qat-btn qat-btn-next"） */
+function hasClass(classes, name) {
+  return classes.some((item) => String(item).split(/\s+/).includes(name))
+}
+
+/** 展开函数组件后按 data-act 找那个节点（点按钮断言用） */
+function findByAct(node, act) {
+  if (node === null || node === undefined || typeof node !== 'object') return null
+  if (Array.isArray(node)) {
+    for (const item of node) {
+      const hit = findByAct(item, act)
+      if (hit) return hit
+    }
+    return null
+  }
+  if (typeof node.type === 'function') return findByAct(node.type(node.props ?? {}), act)
+  if (node.props?.['data-act'] === act) return node
+  return findByAct(node.children, act) ?? findByAct(node.props?.children, act)
+}
+
 function render(label, fn) {
   try {
     const tree = fn()
@@ -1309,6 +1329,110 @@ check('1/1 打完了', isRoundDone(1, 1), true)
 check('0/0 不算打完', isRoundDone(0, 0), false)
 check('20/20 打完', isRoundDone(20, 20), true)
 check('跟打条绕回后不算打完', isRoundDone(0, 2607), false)
+
+// —— 结算页的两个纯函数：本轮错词清单 + 下一章（末章绕回第 1 章） ——
+check('错词清单给出「词 + 打错次数」，顺序跟本轮词表一致', wordsOfRound(
+  [{ word: 'govern', wrongCount: 1 }, { word: 'cancel', wrongCount: 2 }, { word: 'cancel', wrongCount: 1 }],
+  ['cancel', 'govern', 'arrow'],
+), [{ word: 'cancel', wrongCount: 3 }, { word: 'govern', wrongCount: 1 }])
+check('错词清单接受纯字符串（早期只存词）', wordsOfRound(['cancel'], ['cancel']), [{ word: 'cancel', wrongCount: 1 }])
+check('错词清单能对上词条对象（{w, zh}）', wordsOfRound(
+  [{ word: 'cancel', wrongCount: 2 }],
+  [{ w: 'cancel', zh: '取消' }],
+), [{ word: 'cancel', wrongCount: 2 }])
+check('没打错就不出清单', wordsOfRound([], ['cancel', 'govern']), [])
+check('没有 mistakes 也不炸', wordsOfRound(), [])
+check('词表外的错词按出现顺序补在后面', wordsOfRound(
+  [{ word: 'arrow', wrongCount: 1 }, { word: 'cancel', wrongCount: 2 }],
+  ['cancel'],
+), [{ word: 'cancel', wrongCount: 2 }, { word: 'arrow', wrongCount: 1 }])
+
+check('下一章：往后挪一章', nextChapterIndex(0, 3), 1)
+check('下一章：末章绕回第 1 章', nextChapterIndex(2, 3), 0)
+check('下一章：只有一章时原地', nextChapterIndex(0, 1), 0)
+check('下一章：章数为 0 时回到第 1 章', nextChapterIndex(4, 0), 0)
+check('下一章：越界也收敛到合法章', nextChapterIndex(7, 3), 2)
+
+// —— 结算页本体：错词清单 + 重练这些词 + 下一章三条出路都在 ——
+const retriedWords = []
+const resultScreen = render('渲染：结算页（含错词清单）', () => renderTest.components.ResultScreen({
+  t: (key, vars) => (vars && vars.n !== undefined ? `${key}:${vars.n}` : key),
+  total: 20,
+  elapsed: 42,
+  hits: 20,
+  retries: 3,
+  mistakes: [{ word: 'cancel', wrongCount: 2 }, { word: 'govern', wrongCount: 1 }],
+  words: ['cancel', 'govern', 'arrow'],
+  onRestart: () => {},
+  onRetryWrong: (words) => retriedWords.push(words),
+  onNextChapter: () => {},
+}))
+const resultClasses = collectClasses(resultScreen)
+check('错词清单每个词一条', resultClasses.filter((name) => name === 'qat-mistake').length, 2)
+check('错词带打错次数', gatherText(resultScreen).includes('cancel ×2'), true)
+check('错词带中文释义', resultClasses.includes('qat-mistake-zh'), true)
+check('结算页保留「再来一轮」', gatherText(resultScreen).includes('again'), true)
+check('结算页有「重练这些词」按钮', hasClass(resultClasses, 'qat-btn-retry'), true)
+check('结算页有「下一章」按钮', hasClass(resultClasses, 'qat-btn-next'), true)
+check('重练按钮把这批错词交回上层', (function () {
+  const node = findByAct(resultScreen, 'retry-wrong')
+  node?.props?.onClick?.()
+  return retriedWords
+})(), [['cancel', 'govern']])
+
+const cleanScreen = render('渲染：结算页（全打对）', () => renderTest.components.ResultScreen({
+  t: (key, vars) => (vars && vars.n !== undefined ? `${key}:${vars.n}` : key),
+  total: 20,
+  elapsed: 30,
+  hits: 20,
+  retries: 0,
+  mistakes: [],
+  words: ['cancel'],
+  onRestart: () => {},
+  onRetryWrong: () => {},
+  onNextChapter: () => {},
+}))
+const cleanClasses = collectClasses(cleanScreen)
+check('全打对：不出错词清单', hasClass(cleanClasses, 'qat-mistakes'), false)
+check('全打对：不出重练按钮', hasClass(cleanClasses, 'qat-btn-retry'), false)
+check('全打对：仍有下一章', hasClass(cleanClasses, 'qat-btn-next'), true)
+
+// 结算页真的接在 Trainer 的 done 分支上：桩里 useEffect 不跑、存档恢复不会发生，
+// 所以把 useState 的初值改写成「已经打完」，逼它渲染结算页
+const doneReact = {
+  ...reactForRender,
+  useState: (value) => {
+    const initial = typeof value === 'function' ? value() : value
+    if (initial && typeof initial === 'object' && 'index' in initial) {
+      return [{ ...initial, index: 99, hits: 20 }, () => {}]
+    }
+    return [initial, () => {}]
+  },
+}
+const donePlugin = factory((name) => {
+  if (name === 'react') return doneReact
+  throw new Error(`unexpected require: ${name}`)
+})
+const finished = render('渲染：打完一章的结算页', () => donePlugin.__test.components.Trainer({
+  words: ['cancel', 'govern'],
+  variant: 'panel',
+  showMeta: true,
+  dictId: 'cet4',
+  chapter: 0,
+  chapterTotal: 1,
+  onReview: () => {},
+  onRetryWrong: () => {},
+  onNextChapter: () => {},
+  ctx: ctxStub,
+}))
+const finishedClasses = collectClasses(finished)
+check('打完一章 → 进结算页', hasClass(finishedClasses, 'qat-done'), true)
+check('结算页接上「下一章」按钮', hasClass(finishedClasses, 'qat-btn-next'), true)
+check('末章按钮文案改成回到第 1 章', gatherText(finished).includes('resultNextChapterLast'), true)
+check('没有错词就不出错词清单', hasClass(finishedClasses, 'qat-mistakes'), false)
+// 样式表里得真有这几条规则，不然新按钮是裸的
+check('新按钮与新词条在样式表里有规则',
+  ['\\.qat-btn-next\\{', '\\.qat-btn-retry\\{', '\\.qat-mistake\\{', '\\.qat-mistake-zh\\{'].every((re) => new RegExp(re).test(source)), true)
 
 // —— 渲染冒烟：词库选择器里的自定义导入 ——
 const pickerCase = render('渲染：词库选择器', () => renderTest.components.DictPicker({
