@@ -3174,11 +3174,12 @@ window.__ModuleLoader__.load({
 
       /** 上一个 / 跳过 / 循环 三个动作（快捷键和点击共用） */
       const goPrev = useCallback(() => {
-        const prev = stepIndex(stateRef.current.index, wordsRef.current.length, -1)
+        // wordsRef 只存在于跟打条；卡片这里直接读 props，否则「上一个」会 ReferenceError
+        const prev = stepIndex(stateRef.current.index, words.length, -1)
         live.current.typed = ''
         wrongRef.current = 0
         setState((prevState) => ({ ...prevState, index: prev, typed: '', flash: false, wordWrong: 0, finishedAt: null }))
-      }, [])
+      }, [words])
 
       const goSkip = useCallback(() => {
         const next = Math.min(words.length, stateRef.current.index + 1)

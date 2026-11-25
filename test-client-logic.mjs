@@ -1930,6 +1930,9 @@ check('两份字典都有提示文案', ['tipFirstLetter', 'tipTwoLetters', 'tip
 check('三种提示文案都带 pattern 占位', ['tipFirstLetter', 'tipTwoLetters', 'tipReveal'].every((key) => DICT.zh[key].includes('{pattern}') && DICT.en[key].includes('{pattern}')), true)
 
 // —— 进度存档：Esc 关掉跟打条再打开，接着打上次那个词 ——
+// —— 回归：卡片里的「上一个」曾引用只存在于跟打条的 wordsRef，点了必崩 ——
+check('卡片里没有游离的 wordsRef 引用', /const prev = stepIndex\(stateRef\.current\.index, wordsRef/.test(source), false)
+
 const barStore = (() => {
   const map = new Map()
   return {
