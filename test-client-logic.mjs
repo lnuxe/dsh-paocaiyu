@@ -348,6 +348,31 @@ check('未知设置键被忽略', setSetting('nope', 1).nope, undefined)
 check('重新读到已存的设置', readSettings().dictation, 'hideVowel')
 setSetting('dictation', 'none')
 
+// —— 新增三项（字号 / 发音倍速 / 按键音音量）：老存档缺 key 时回落默认，且不弄丢别的项 ——
+check('设置键总数 14（原 11 项 + 字号/倍速/音量）', Object.keys(SETTING_DEFAULTS).length, 14)
+check('新设置项默认值',
+  [SETTING_DEFAULTS.wordScale, SETTING_DEFAULTS.voiceRate, SETTING_DEFAULTS.clickVolume], ['auto', 1, 100])
+check('老存档没有新 key 时回落默认', (function () {
+  store['qwerty-autotype:setting:showZh'] = 'false'
+  delete store['qwerty-autotype:setting:wordScale']
+  delete store['qwerty-autotype:setting:voiceRate']
+  delete store['qwerty-autotype:setting:clickVolume']
+  const merged = readSettings()
+  const out = [merged.wordScale, merged.voiceRate, merged.clickVolume, merged.showZh]
+  store['qwerty-autotype:setting:showZh'] = 'true'
+  return out
+})(), ['auto', 1, 100, false])
+check('脏存档收敛回合法档', (function () {
+  store['qwerty-autotype:setting:wordScale'] = '"giant"'
+  store['qwerty-autotype:setting:voiceRate'] = '"fast"'
+  store['qwerty-autotype:setting:clickVolume'] = '777'
+  const merged = readSettings()
+  delete store['qwerty-autotype:setting:wordScale']
+  delete store['qwerty-autotype:setting:voiceRate']
+  delete store['qwerty-autotype:setting:clickVolume']
+  return [merged.wordScale, merged.voiceRate, merged.clickVolume]
+})(), ['auto', 1, 100])
+
 // —— 译义朗读：开关默认关、只在刚打完时读、同一个词不重复读 ——
 check('译义朗读默认关闭', SETTING_DEFAULTS.readMeaning, false)
 check('刚打完 + 开着 + 有释义才读',
@@ -1404,7 +1429,50 @@ check('样式里有读屏隐藏类', collectCss(cardA11y).join('').includes('.qa
 
 // —— 渲染冒烟：设置页 ——
 const settingsCase = render('渲染：设置页', () => renderTest.components.SettingsSection({}))
-check('设置页有十个设置行（含口音、译义朗读、指法提示与词库缓存）', collectClasses(settingsCase).filter((name) => name === 'qat-setrow').length, 10)
+check('设置页有十三个设置行（新增字号、发音倍速、按键音音量）', collectClasses(settingsCase).filter((name) => name === 'qat-setrow').length, 13)
+check('设置页有字号/倍速/音量三个新控件', ['wordScale', 'voiceRate', 'clickVolume'].map((key) => {
+  const hit = (function find(node) {
+    if (!node || typeof node !== 'object') return null
+    if (Array.isArray(node)) {
+      for (const item of node) {
+        const found = find(item)
+        if (found) return found
+      }
+      return null
+    }
+    if (typeof node.type === 'function') return find(node.type(node.props ?? {}))
+    if (node.props?.['data-setting'] === key) return node
+    return find(node.children) ?? find(node.props?.children)
+  })(settingsCase)
+  return hit ? hit.type : null
+}).join(','), 'select,select,select')
+const settingNode = (key) => (function find(node) {
+  if (!node || typeof node !== 'object') return null
+  if (Array.isArray(node)) {
+    for (const item of node) {
+      const found = find(item)
+      if (found) return found
+    }
+    return null
+  }
+  if (typeof node.type === 'function') return find(node.type(node.props ?? {}))
+  if (node.props?.['data-setting'] === key) return node
+  return find(node.children) ?? find(node.props?.children)
+})(settingsCase)
+const optionValues = (key) => {
+  const node = settingNode(key)
+  const kids = node?.children ?? node?.props?.children ?? []
+  return kids.map((option) => option.props.value).join(',')
+}
+check('字号下拉四档', optionValues('wordScale'), 'auto,small,medium,large')
+check('发音倍速下拉五档', optionValues('voiceRate'), '0.6,0.8,1,1.2,1.5')
+check('按键音音量下拉五档', optionValues('clickVolume'), '0,40,60,80,100')
+check('中英都有新设置文案',
+  ['settingWordScale', 'settingVoiceRate', 'settingClickVolume', 'wordScale_auto', 'wordScale_small', 'wordScale_medium', 'wordScale_large']
+    .every((key) => DICT.zh[key] && DICT.en[key]), true)
+check('中英都有新设置文案',
+  ['settingWordScale', 'settingVoiceRate', 'settingClickVolume', 'wordScale_auto', 'wordScale_small', 'wordScale_medium', 'wordScale_large']
+    .every((key) => DICT.zh[key] && DICT.en[key]), true)
 check('设置页含大小写开关', (function find(node) {
   if (!node || typeof node !== 'object') return false
   if (Array.isArray(node)) return node.some(find)
@@ -2089,6 +2157,53 @@ check('词库还没算好 → 第 0 章', resumeChapterSmart({}, { dictId: 'cet4
   check('也没有残留的自动打定时器', /自动打：/.test(source), false)
 }
 
+// —— 音量 / 倍速（N14）：只调档与增益，不加音频文件、不引依赖 ——
+check('倍速档位表', renderTest.VOICE_RATES.join(','), '0.6,0.8,1,1.2,1.5')
+check('合法倍速原样返回', [0.6, 1, 1.5].map(renderTest.clampVoiceRate), [0.6, 1, 1.5])
+check('倍速字符串数字也认', [renderTest.clampVoiceRate('1.2'), renderTest.clampVoiceRate('0.8')], [1.2, 0.8])
+check('倍速越界/非法回落默认 1', [0, 9, 'x', null].map(renderTest.clampVoiceRate), [1, 1, 1, 1])
+check('音量档位表', renderTest.CLICK_VOLUMES.join(','), '0,40,60,80,100')
+check('合法音量原样返回', [0, 100].map(renderTest.clampClickVolume), [0, 100])
+check('音量越界/非数字回落默认 100', [-5, 999, 'abc'].map(renderTest.clampClickVolume), [100, 100, 100])
+check('音量吸附最近一档', [55, 98, 12].map(renderTest.clampClickVolume), [60, 100, 0])
+check('发音倍速接到 audio.playbackRate', (function () {
+  let got = null
+  sandbox.window.Audio = function () {
+    return {
+      play: () => Promise.resolve(), pause() {}, volume: 1,
+      get playbackRate() { return got },
+      set playbackRate(value) { got = value },
+    }
+  }
+  renderTest.setSetting('voiceRate', 1.5)
+  renderTest.speak('cancel')
+  renderTest.setSetting('voiceRate', 1)
+  delete sandbox.window.Audio
+  return got
+})(), 1.5)
+check('按键音音量接到合成音增益', (function () {
+  let peak = null
+  sandbox.window.AudioContext = function () {
+    return {
+      state: 'running',
+      currentTime: 0,
+      destination: {},
+      createOscillator: () => ({ frequency: {}, connect() {}, start() {}, stop() {} }),
+      createGain: () => ({
+        gain: { setValueAtTime: (value) => { peak = value }, exponentialRampToValueAtTime() {} },
+        connect() {},
+      }),
+    }
+  }
+  renderTest.setSetting('clickVolume', 0)
+  const quiet = (renderTest.playClick('hit'), peak)
+  const full = renderTest.CLICK_TONES.hit.peak
+  renderTest.setSetting('clickVolume', 100)
+  const loud = (renderTest.playClick('hit'), peak)
+  delete sandbox.window.AudioContext
+  return [quiet, loud === full]
+})(), [0, true])
+
 // —— 长句排版：雅思整句要缩字号 + 断行，不能横着挤爆 ——
 const LONG = "I'm taking the IELTS test because I want to study overseas."
 check('wrapWord：空串 → 没有行', renderTest.wrapWord('', 10), [])
@@ -2112,6 +2227,33 @@ check('fitWordStyle 不截断任何字符', renderTest.fitWordStyle(LONG, 200, {
 check('极端窄条也不丢字', renderTest.fitWordStyle(LONG, 10, { maxLines: 2 }).lines.join(''), LONG)
 check('空串不炸', renderTest.fitWordStyle('', 400).lines, [])
 check('没传宽度也有字号', renderTest.fitWordStyle('cancel').size > 0, true)
+
+// —— 字号档（N13）：auto 等于不改，三档乘系数且单调，行数上限跟着档位放宽 ——
+const BASE_FIT = renderTest.fitWordStyle(LONG, 520, { maxLines: 3 })
+check('wordScale=auto 等于不改自动排版',
+  renderTest.wordStyleFor(LONG, 520, { maxLines: 3, scale: 'auto' }), BASE_FIT)
+check('不传 scale 也等于 auto', renderTest.wordStyleFor(LONG, 520, { maxLines: 3 }), BASE_FIT)
+check('medium 系数为 1，与 auto 同档',
+  renderTest.wordStyleFor(LONG, 520, { maxLines: 3, scale: 'medium' }).size, BASE_FIT.size)
+const sizeAt = (scale) => renderTest.wordStyleFor(LONG, 520, { maxLines: 3, scale }).size
+check('small < medium < large', sizeAt('small') < sizeAt('medium') && sizeAt('medium') < sizeAt('large'), true)
+check('small 比自动小、large 比自动大', [sizeAt('small') < BASE_FIT.size, sizeAt('large') > BASE_FIT.size], [true, true])
+check('large 放宽到 4 行', renderTest.wordStyleFor(LONG, 520, { maxLines: 3, scale: 'large' }).lines.length, 4)
+check('small 收到 2 行', renderTest.wordStyleFor(LONG, 520, { maxLines: 3, scale: 'small' }).lines.length, 2)
+check('缩放档也不丢字', ['small', 'medium', 'large']
+  .every((scale) => renderTest.wordStyleFor(LONG, 320, { maxLines: 3, scale }).lines.join('') === LONG), true)
+check('非法 scale 回落 auto', renderTest.clampWordScale('huge'), 'auto')
+check('scale 脏值也回落 auto', [renderTest.clampWordScale(null), renderTest.clampWordScale(42)], ['auto', 'auto'])
+check('合法 scale 原样返回、大小写不敏感',
+  [renderTest.clampWordScale('large'), renderTest.clampWordScale(' SMALL ')], ['large', 'small'])
+check('字号档顺序表', renderTest.WORD_SCALES.join(','), 'auto,small,medium,large')
+check('三档系数', [renderTest.WORD_SCALE_FACTOR.small, renderTest.WORD_SCALE_FACTOR.medium, renderTest.WORD_SCALE_FACTOR.large],
+  [0.85, 1, 1.25])
+check('阶梯缩放：auto 原样返回', renderTest.scaleWordSizes(renderTest.FIT_SIZES, 'auto'), renderTest.FIT_SIZES)
+check('阶梯缩放：large 每档都变大',
+  renderTest.scaleWordSizes(renderTest.FIT_SIZES, 'large').every((size, i) => size > renderTest.FIT_SIZES[i]), true)
+check('阶梯缩放：small 每档都变小',
+  renderTest.scaleWordSizes(renderTest.FIT_SIZES, 'small').every((size, i) => size < renderTest.FIT_SIZES[i]), true)
 {
   const lines = renderTest.wordLines(LONG, 30)
   check('wordLines 索引跨行连续', lines.map((line) => line.start),
@@ -2127,6 +2269,35 @@ check('没传宽度也有字号', renderTest.fitWordStyle('cancel').size > 0, tr
   check('长句渲染出多个 .qat-word-line', classes.filter((item) => String(item).split(/\s+/).includes('qat-word-line')).length >= 2, true)
   const letters = collectClasses(wrapped).filter((item) => String(item).split(/\s+/).includes('qat-letter')).length
   check('字母总数等于句子长度', letters, LONG.length)
+
+  // —— 字号档真的落到 inline style 上：面板与跟打条都跟着档位变 ——
+  const fontSizeOf = (variant) => {
+    let size = null
+    const walk = (node) => {
+      if (!node || typeof node !== 'object' || size !== null) return
+      if (Array.isArray(node)) return node.forEach(walk)
+      if (typeof node.type === 'function') return walk(node.type(node.props ?? {}))
+      if (String(node.props?.className ?? '').split(/\s+/).includes('qat-word')) size = node.props?.style?.fontSize
+      walk(node.children)
+      walk(node.props?.children)
+    }
+    walk(renderTest.components.Trainer({ words: [LONG], variant, showMeta: true, ctx: ctxStub }))
+    return parseFloat(size)
+  }
+  const pxAt = (scale, variant) => {
+    renderTest.setSetting('wordScale', scale)
+    const px = fontSizeOf(variant)
+    return px
+  }
+  const panelSmall = pxAt('small', 'panel')
+  const panelMedium = pxAt('medium', 'panel')
+  const panelLarge = pxAt('large', 'panel')
+  check('面板 small < medium < large 字号', [panelSmall < panelMedium, panelMedium < panelLarge], [true, true])
+  const barMedium = pxAt('medium', 'dock')
+  const barLarge = pxAt('large', 'dock')
+  check('跟打条 large 字号比 medium 大', barLarge > barMedium, true)
+  renderTest.setSetting('wordScale', 'auto')
+  check('auto 档回到自动排版字号', fontSizeOf('panel'), renderTest.fitWordStyle(LONG, 700, { maxLines: 3 }).size)
   check('样式里有多行排版的类', /\.qat-word\[data-wrap="true"\]/.test(source), true)
   check('样式里有 .qat-word-line', /\.qat-word-line\{/.test(source), true)
 }
