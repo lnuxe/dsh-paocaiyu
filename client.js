@@ -2450,6 +2450,10 @@ window.__ModuleLoader__.load({
     settingAccentHint: '英音走有道教 type=1，美音 type=2；中日文自动判断',
     accent_us: '美音',
     accent_uk: '英音',
+    accent_de: 'Deutsch',
+    accent_id: 'Indonesia',
+    accent_kk: '哈萨克语(俄音)',
+    accent_romaji: 'Romaji',
     settingVoiceHint: '换词时自动读一遍（有道音频，离线退回系统语音）',
     settingReadMeaning: '译义朗读',
     settingReadMeaningHint: '打完一个词后把释义也读一遍（先单词后释义，日语释义走 ja-JP）',
@@ -2615,6 +2619,10 @@ window.__ModuleLoader__.load({
     settingAccentHint: 'US uses type=2, UK uses type=1; Japanese/Chinese detected automatically',
     accent_us: 'US',
     accent_uk: 'UK',
+    accent_de: 'German',
+    accent_id: 'Indonesian',
+    accent_kk: 'Kazakh (Russian)',
+    accent_romaji: 'Romaji',
     settingVoiceHint: 'Read each new word aloud (Youdao audio, TTS fallback)',
     settingReadMeaning: 'Read the meaning',
     settingReadMeaningHint: 'After a word is typed, read its meaning too (word first, then meaning; Japanese glosses use ja-JP)',
@@ -2851,6 +2859,9 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
 .qat-bar .qat-word[data-long="true"],.qat-card[data-variant="panel"] .qat-word[data-long="true"]{line-height:1.3;letter-spacing:0;gap:0;text-align:center}
 /* 假名（notation）当副行时用正文字体，不然假名挤在等宽字体里很难认 */
 .qat-gloss-notation{font-size:15px;line-height:1.4;color:var(--dsw-alias-label-secondary);font-family:inherit}
+/* 逐字假名 ruby：base 与 notation 同号，读音小一号且更淡 */
+.qat-ruby{font-size:inherit;font-family:inherit;line-height:inherit;ruby-position:over}
+.qat-ruby-rt{font-size:.72em;line-height:1;letter-spacing:0;color:var(--dsw-alias-label-tertiary)}
 .qat-gloss{display:flex;flex-direction:column;align-items:center;gap:4px;margin:6px 0 16px;text-align:center}
 .qat-gloss-ipa{font-size:15px;line-height:1.4;color:var(--dsw-alias-label-tertiary);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 /* 口音前缀（AmE / BrE）：比音标更淡的小字，只在真的取到该口音那一支时出现 */
@@ -3678,20 +3689,134 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
 
     const PRON_API = 'https://dict.youdao.com/dictvoice?audio='
 
-    /** 上游 generateWordSoundSrc：us → type=2、uk → type=1、日/中走 le= */
+    /* ---------------- 假名：notation → 逐字 ruby、罗马字 → 平假名 ---------------- */
+
+    /** 汉字判定（照上游 isKanji：CJK 统一表意 + 兼容表意 + 扩展 A） */
+    function isKanji(ch) {
+      const text = String(ch ?? '')
+      return text.length === 1 && /[\u4e00-\u9fcf\uf900-\ufaff\u3400-\u4dbf]/.test(text)
+    }
+
+    /** 首个汉字的下标，没有返回 -1 */
+    function firstKanjiIndex(text) {
+      for (let i = 0; i < text.length; i += 1) if (isKanji(text[i])) return i
+      return -1
+    }
+
+    const KATAKANA = /[\u30a0-\u30ff]/
+
+    /**
+     * notation → [{ base, ruby }]（`食べる(たべる)` 这种：「汉字(假名)」逐段拆）。
+     * - 括号里是读音；汉字前的送假名单独成一段、不带 ruby，从第一个汉字起挂 ruby；
+     * - 没有汉字的段：读音与 base 重复（あい(あい)）就丢掉，片假名（コーヒー(こーひー)）保留；
+     * - 括号外的纯假名原样成段；空串 → []。
+     */
+    function notationParts(notation) {
+      const text = String(notation ?? '')
+      if (!text) return []
+      const parts = []
+      const plain = (chunk) => { if (chunk) parts.push({ base: chunk, ruby: '' }) }
+      const re = /(.+?)\(([^()]*)\)/g
+      let last = 0
+      let matched = re.exec(text)
+      while (matched) {
+        plain(text.slice(last, matched.index))
+        const word = matched[1]
+        const ruby = matched[2]
+        const at = firstKanjiIndex(word)
+        if (at > 0) {
+          parts.push({ base: word.slice(0, at), ruby: '' })
+          parts.push({ base: word.slice(at), ruby })
+        } else {
+          parts.push({ base: word, ruby: at === 0 || KATAKANA.test(word) ? ruby : '' })
+        }
+        last = matched.index + matched[0].length
+        matched = re.exec(text)
+      }
+      plain(text.slice(last))
+      return parts
+    }
+
+    /** 面板里的 notation：有 ruby 才画 <ruby>，纯假名退回纯文本 */
+    function notationNodes(notation) {
+      const parts = notationParts(notation)
+      if (!parts.length) return null
+      if (!parts.some((part) => part.ruby)) return parts.map((part) => part.base).join('')
+      return h('ruby', { className: 'qat-ruby' }, parts.flatMap((part) => (part.ruby
+        ? [part.base, h('rt', { className: 'qat-ruby-rt' }, part.ruby)]
+        : [part.base])))
+    }
+
+    /* 罗马字表：三字符（拗音 / し / ち / つ）→ 二字符（清浊半浊 / 拗音 / ん）→ 单字符元音 */
+    const ROMAJI_3 = {
+      sha: 'しゃ', shu: 'しゅ', sho: 'しょ', shi: 'し', chi: 'ち', cha: 'ちゃ', chu: 'ちゅ', cho: 'ちょ', tsu: 'つ',
+      kya: 'きゃ', kyu: 'きゅ', kyo: 'きょ', gya: 'ぎゃ', gyu: 'ぎゅ', gyo: 'ぎょ',
+      nya: 'にゃ', nyu: 'にゅ', nyo: 'にょ', hya: 'ひゃ', hyu: 'ひゅ', hyo: 'ひょ',
+      bya: 'びゃ', byu: 'びゅ', byo: 'びょ', pya: 'ぴゃ', pyu: 'ぴゅ', pyo: 'ぴょ',
+      mya: 'みゃ', myu: 'みゅ', myo: 'みょ', rya: 'りゃ', ryu: 'りゅ', ryo: 'りょ',
+    }
+    const ROMAJI_2 = {
+      ka: 'か', ki: 'き', ku: 'く', ke: 'け', ko: 'こ', ga: 'が', gi: 'ぎ', gu: 'ぐ', ge: 'げ', go: 'ご',
+      sa: 'さ', su: 'す', se: 'せ', so: 'そ', za: 'ざ', zu: 'ず', ze: 'ぜ', zo: 'ぞ',
+      ta: 'た', te: 'て', to: 'と', da: 'だ', de: 'で', do: 'ど',
+      na: 'な', ni: 'に', nu: 'ぬ', ne: 'ね', no: 'の', ha: 'は', hi: 'ひ', fu: 'ふ', he: 'へ', ho: 'ほ',
+      ba: 'ば', bi: 'び', bu: 'ぶ', be: 'べ', bo: 'ぼ', pa: 'ぱ', pi: 'ぴ', pu: 'ぷ', pe: 'ぺ', po: 'ぽ',
+      ma: 'ま', mi: 'み', mu: 'む', me: 'め', mo: 'も', ya: 'や', yu: 'ゆ', yo: 'よ',
+      ra: 'ら', ri: 'り', ru: 'る', re: 'れ', ro: 'ろ', wa: 'わ', wo: 'を', nn: 'ん',
+      ja: 'じゃ', ju: 'じゅ', jo: 'じょ', ji: 'じ', fa: 'ふぁ', fi: 'ふぃ', fe: 'ふぇ', fo: 'ふぉ',
+    }
+    const ROMAJI_1 = { a: 'あ', i: 'い', u: 'う', e: 'え', o: 'お' }
+    const ROMAJI_CONS = 'bcdfghjklmnpqrstvwxyz'
+
+    /**
+     * 罗马字 → 平假名（紧凑规则，不搬上游大表）。
+     * 促音（tc / 同辅音双写，n 除外）→ っ；n 后接非元音 → ん；其余按 3→2→1 贪心匹配，
+     * 匹配不到原样保留那个字符；`ou` 不做长音合并。
+     */
+    function romajiToHiragana(romaji) {
+      // 撇号是音节边界（`shin'ichi` 的 n 要先成 ん），不当普通字母删掉
+      const text = String(romaji ?? '').toLowerCase()
+      let out = ''
+      let i = 0
+      while (i < text.length) {
+        const c = text[i]
+        const next = text[i + 1]
+        if (c === "'") { i += 1; continue }
+        const tri = ROMAJI_3[text.slice(i, i + 3)]
+        // 促音：t 后面跟 c 只吃掉 t（`matcha` → まっちゃ）；同辅音双写（n 除外）吃掉第一个
+        if (c === 't' && next === 'c') { out += 'っ'; i += 1; continue }
+        if (c !== 'n' && ROMAJI_CONS.includes(c) && next === c) { out += 'っ'; i += 1; continue }
+        if (c === 'n' && next === "'") { out += 'ん'; i += 2; continue }
+        if (c === 'n' && next !== 'n' && !ROMAJI_1[next] && !tri) { out += 'ん'; i += 1; continue }
+        if (tri) { out += tri; i += 3; continue }
+        const duo = ROMAJI_2[text.slice(i, i + 2)]
+        if (duo) { out += duo; i += 2; continue }
+        if (ROMAJI_1[c]) { out += ROMAJI_1[c]; i += 1; continue }
+        out += c
+        i += 1
+      }
+      return out
+    }
+
+    /** 上游 generateWordSoundSrc：us → type=2、uk → type=1、日/中/德/印尼走 le=，哈萨克语用俄语兜底 */
     function pronunciationSrc(word, type = 'us') {
       const text = String(word ?? '').trim()
       if (!text) return ''
+      // 罗马字先转假名，有道才读得出来
+      if (type === 'romaji') return `${PRON_API}${encodeURIComponent(romajiToHiragana(text))}&le=jap`
       const q = encodeURIComponent(text)
       if (type === 'uk') return `${PRON_API}${q}&type=1`
       if (type === 'ja') return `${PRON_API}${q}&le=jap`
       if (type === 'zh') return `${PRON_API}${q}&le=zh`
+      if (type === 'de') return `${PRON_API}${q}&le=de`
+      if (type === 'id') return `${PRON_API}${q}&le=id`
+      if (type === 'kk') return `${PRON_API}${q}&le=ru`
       return `${PRON_API}${q}&type=2`
     }
 
     /** 按单词自动挑发音类型：假名 → 日语、汉字 → 中文、其余按美音 */
-    /** 口音可选：us（默认）/ uk，跟上游 pronunciationConfigAtom.type 一致 */
-    const ACCENTS = ['us', 'uk']
+    /** 口音可选：us（默认）/ uk / de / id / kk / romaji，跟上游 pronunciationConfigAtom.type 一致 */
+    const ACCENTS = ['us', 'uk', 'de', 'id', 'kk', 'romaji']
 
     /**
      * 实际用哪个口音：中日文按文字判定（有道教 le=jap / le=zh），英文按设置里的 accent。
@@ -4581,7 +4706,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       : h('div', null,
         variant === 'panel' ? h('div', { className: 'qat-progress', 'data-phase': String(prog.phase) },
           h('div', { className: 'qat-progress-fill', style: { width: `${prog.pct}%` } })) : null,
-        notation ? h('div', { className: 'qat-gloss-notation' }, notation) : null,
+        notation ? h('div', { className: 'qat-gloss-notation' }, notationNodes(notation)) : null,
         h(WordLetters, {
           text: target,
           typed: state.typed,
@@ -6698,6 +6823,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     VOICE_RATES, CLICK_VOLUMES, clampVoiceRate, clampClickVolume,
     readBarProgress, writeBarProgress, resumeIndex,
     readChapterPos, writeChapterPos, resumeChapter, resumeChapterSmart, BAR_KEY, CHAPTER_KEY, wordsOfRound, nextChapterIndex, pronunciationSrc, pronunciationType, speakWithTts,
+    isKanji, notationParts, notationNodes, romajiToHiragana,
     speak, speakMeaning, cancelMeaning, meaningLang, shouldReadMeaning, MEANING_DELAY_MS,
       },
       inject: ['slots', 'locale'],
