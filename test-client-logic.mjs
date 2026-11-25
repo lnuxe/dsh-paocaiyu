@@ -2863,6 +2863,87 @@ check('音标跟着口音设置走（uk → BrE 那一支）', (function () {
 check('音标样式有独立规则、不写死颜色', /\.qat-wrongipa\{[^}]*var\(--dsw-alias/.test(source), true)
 renderTest.removeCustomDict('ipa-visible')
 
+
+// —— 趋势图（R7）：最近 20 章的 WPM / 正确率双折线，纯函数 + 渲染 ——
+const { trendSeries, polylineOf } = renderTest
+const trendRecs = Array.from({ length: 25 }, (_, i) => ({ at: 1000 + i, wpm: 40 + i, accuracy: 80 + (i % 5) }))
+const trendAll = trendSeries([...trendRecs].reverse())
+check('趋势只留最后 20 章', trendAll.points.length, 20)
+check('趋势按 at 升序（乱序输入）', trendAll.points.slice(0, 2).map((p) => p.at).join(','), '1005,1006')
+check('趋势窗口是最新的 20 章', [trendAll.points[0].at, trendAll.points[19].at].join(','), '1005,1024')
+check('wpmMax 取窗口内最大值', trendAll.wpmMax, 64)
+check('两点以上才画线', trendAll.hasData, true)
+check('窗口大小可传', trendSeries(trendRecs, 3).points.map((p) => p.at).join(','), '1022,1023,1024')
+check('脏记录（wpm 非数字 / accuracy 为 null）被过滤', trendSeries([
+  { at: 1, wpm: 'x', accuracy: null },
+  { at: 2, wpm: 50, accuracy: 90 },
+]).points.length, 1)
+check('只有秒数/词数的老记录现算 wpm 与正确率', (function () {
+  const point = trendSeries([{ at: 5, seconds: 30, wordCount: 30, wrongCount: 3 }]).points[0]
+  return [point.wpm, point.accuracy].join(',')
+})(), '60,91')
+check('wpmMax 至少 1，防除 0',
+  trendSeries([{ at: 1, wpm: 0, accuracy: 0 }, { at: 2, wpm: 0, accuracy: 0 }]).wpmMax, 1)
+check('0 / 1 / 2 条的 hasData 依次 false / false / true',
+  [0, 1, 2].map((n) => trendSeries(trendRecs.slice(0, n)).hasData).join(','), 'false,false,true')
+check('没有记录时 points 是空数组', trendSeries(null).points.length, 0)
+
+const line2 = polylineOf([{ wpm: 0 }, { wpm: 10 }], 'wpm', { max: 10 })
+check('两点折线首点贴基线、末点贴顶', line2, '0,80 320,0')
+check('折线坐标组数与点数一致', line2.split(' ').length, 2)
+check('三点折线坐标取整', polylineOf([{ wpm: 5 }, { wpm: 10 }, { wpm: 0 }], 'wpm', { max: 10 }), '0,40 160,0 320,80')
+check('max 越大同一点的 y 越靠下',
+  [10, 20, 40].map((max) => Number(polylineOf([{ wpm: 5 }, { wpm: 10 }], 'wpm', { max }).split(' ')[0].split(',')[1])).join(','),
+  '40,60,70')
+check('宽高可传', polylineOf([{ wpm: 0 }, { wpm: 10 }], 'wpm', { width: 100, height: 50, max: 10 }), '0,50 100,0')
+check('正确率默认按 0-100 归一', polylineOf([{ accuracy: 0 }, { accuracy: 100 }], 'accuracy'), '0,80 320,0')
+check('1 个点画不出线', polylineOf([{ wpm: 3 }], 'wpm'), '')
+check('0 个点画不出线', polylineOf([], 'wpm'), '')
+
+const trendProps = {
+  ...statsProps,
+  records: [
+    { at: 1, wpm: 40, accuracy: 90 },
+    { at: 2, wpm: 62, accuracy: 98 },
+    { at: 3, wpm: 55, accuracy: 95 },
+  ],
+}
+const trendCase = render('渲染：统计 · 趋势', () => renderTest.components.StatsPanel(trendProps))
+const trendNode = findNodesByClass(trendCase, 'qat-trend')[0]
+check('统计里有一个趋势区块', findNodesByClass(trendCase, 'qat-trend').length, 1)
+check('趋势里正好一个 svg', findNodesByTag(trendNode, 'svg').length, 1)
+check('趋势两条 polyline', findNodesByTag(trendNode, 'polyline').length, 2)
+check('趋势每个点一个 circle', findNodesByTag(trendNode, 'circle').length, 3)
+check('圆点半径 2', findNodesByTag(trendNode, 'circle').every((node) => node.props.r === 2), true)
+check('圆点 title 给 WPM 与正确率', findNodesByTag(trendNode, 'circle')[1].props.title, 'WPM 62 · accuracyShort:98')
+check('趋势一条基线', findNodesByTag(trendNode, 'line').length, 1)
+check('Y 轴只给 wpmMax 与 0',
+  findNodesByClass(trendNode, 'qat-ty')[0].children.join('|'), '62|0')
+check('svg viewBox 来自 TREND_SIZE', findNodesByTag(trendNode, 'svg')[0].props.viewBox, '0 0 320 80')
+check('WPM 折线用最大值归一、正确率固定 0-100',
+  findNodesByTag(trendNode, 'polyline').map((node) => node.props.points.split(' ').length).join(','), '3,3')
+check('图例两个系列', findNodesByClass(trendNode, 'qat-trendlegend')[0].children.length, 2)
+check('趋势落在汇总数字之后、日柱之前',
+  findNodesByClass(trendCase, 'qat-picker')[0].children.slice(-2).map((node) => String(node.props.className)).join(','),
+  'qat-trend,qat-bars')
+const trendCss = collectCss(trendCase).join('\n')
+const trendCssSlice = trendCss.slice(trendCss.indexOf('.qat-trend{'), trendCss.indexOf('.qat-tax{'))
+check('趋势样式只用主题变量、不写死黑白',
+  [/#fff|#000|:white|:black/.test(trendCssSlice),
+    ['.qat-twpm,.qat-tacc{', '.qat-tdot{fill:var(--dsw-alias-brand-primary)}', '.qat-tacc{color:var(--dsw-alias-label-secondary)'].every((rule) => trendCssSlice.includes(rule))].join(','),
+  'false,true')
+check('正确率线是虚线', trendCssSlice.includes('stroke-dasharray'), true)
+
+const trendEmptyCase = render('渲染：统计 · 趋势空态', () => renderTest.components.StatsPanel({ ...statsProps, records: [] }))
+const trendEmptyNode = findNodesByClass(trendEmptyCase, 'qat-trend')[0]
+check('记录不足时给空态文案', gatherText(trendEmptyNode).includes('trendEmpty'), true)
+check('空态不画折线', findNodesByTag(trendEmptyNode, 'polyline').length, 0)
+check('空态连 svg 都不画', findNodesByTag(trendEmptyNode, 'svg').length, 0)
+check('只有 1 条记录同样走空态', findNodesByTag(findNodesByClass(
+  renderTest.components.StatsPanel({ ...statsProps, records: [{ at: 1, wpm: 40, accuracy: 90 }] }),
+  'qat-trend',
+)[0], 'polyline').length, 0)
+
 await recordFlow
 
 if (failures > 0) {

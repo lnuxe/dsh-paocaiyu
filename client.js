@@ -1476,6 +1476,54 @@ window.__ModuleLoader__.load({
       return columns
     }
 
+    const TREND_SIZE = { w: 320, h: 80 }
+    const TREND_LIMIT = 20
+    const px = (i, n, w = TREND_SIZE.w) => Math.round((i / Math.max(1, n - 1)) * w)
+    const py = (v, max, h = TREND_SIZE.h) => {
+      const top = max > 0 ? max : 1
+      return Math.round(h - (Math.min(top, Math.max(0, Number(v) || 0)) / top) * h)
+    }
+    const tnum = (v) => (typeof v === 'number' && Number.isFinite(v) ? Math.round(v) : null)
+
+    /** 末 limit 章（升序、脏记录丢弃），wpmMax≥1 */
+    function trendSeries(records, limit = TREND_LIMIT) {
+      const points = (records || []).map((row) => {
+        if (!row || typeof row !== 'object') return null
+        const words = Number(row.wordCount ?? row.words)
+        const wpm = tnum(row.wpm) ?? (words > 0 ? calcWpm(words, row.seconds) || null : null)
+        const acc = tnum(row.accuracy) ?? (words > 0 ? calcAccuracy(words, Number(row.wrongCount) || 0) : null)
+        return Number.isFinite(row.at) && wpm !== null && acc !== null ? { at: row.at, wpm, accuracy: acc } : null
+      }).filter(Boolean).sort((a, b) => a.at - b.at)
+      const tail = points.slice(Math.max(0, points.length - Math.max(1, limit || TREND_LIMIT)))
+      return { points: tail, wpmMax: Math.max(1, ...tail.map((p) => p.wpm)), hasData: tail.length >= 2 }
+    }
+
+    /** "x,y x,y"；<2 点给空串 */
+    function polylineOf(points, key, { width = TREND_SIZE.w, height = TREND_SIZE.h, max = 100 } = {}) {
+      const list = points || []
+      if (list.length < 2) return ''
+      return list.map((p, i) => `${px(i, list.length, width)},${py(p[key], max, height)}`).join(' ')
+    }
+
+    function TrendChart({ t, trend }) {
+      const { points, wpmMax, hasData } = trend
+      return h('div', { className: 'qat-trend' },
+        h('div', { className: 'qat-trendlegend' },
+          h('span', { className: 'qat-twpm' }, 'WPM'), h('span', { className: 'qat-tacc' }, t('trendAcc'))),
+        hasData ? h('div', { className: 'qat-tplot' },
+          h('div', { className: 'qat-ty' }, wpmMax, 0),
+          h('svg', { className: 'qat-tsvg', viewBox: `0 0 ${TREND_SIZE.w} ${TREND_SIZE.h}`, preserveAspectRatio: 'none' },
+            h('line', { className: 'qat-tax', x1: 0, y1: TREND_SIZE.h, x2: TREND_SIZE.w, y2: TREND_SIZE.h }),
+            h('polyline', { className: 'qat-twpm', points: polylineOf(points, 'wpm', { max: wpmMax }) }),
+            h('polyline', { className: 'qat-tacc', points: polylineOf(points, 'accuracy') }),
+            points.map((p, i) => h('circle', {
+              key: i, className: 'qat-tdot', r: 2,
+              cx: px(i, points.length), cy: py(p.wpm, wpmMax),
+              title: `WPM ${p.wpm} · ${t('accuracyShort', { n: p.accuracy })}`,
+            }))))
+          : h('div', null, t('trendEmpty')))
+    }
+
     /** 最容易打错的字母：把每章记录里的 wrongLetters 累加，取前 N */
     function topWrongLetters(chapters, limit) {
       const tally = new Map()
@@ -2380,6 +2428,8 @@ window.__ModuleLoader__.load({
         statsTitle: '近 14 天',
         statWords: '{n} 词',
         statChapters: '{n} 章',
+        trendAcc: '正确率',
+        trendEmpty: '记录不足 2 章',
         elapsedShort: '用时 {sec}s',
         dictation: '默写形态',
         dictation_none: '正常显示',
@@ -2527,6 +2577,8 @@ window.__ModuleLoader__.load({
         statsTitle: 'Last 14 days',
         statWords: '{n} words',
         statChapters: '{n} chapters',
+        trendAcc: 'Accuracy',
+        trendEmpty: 'Need 2 chapters',
         elapsedShort: '{sec}s',
         dictation: 'Dictation',
         dictation_none: 'Show all',
@@ -2666,6 +2718,15 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
 .qat-barfill{width:100%;max-width:22px;background:var(--dsw-alias-brand-primary);border-radius:3px 3px 0 0;min-height:2px}
 .qat-barfill[data-empty="true"]{background:var(--dsw-alias-border-l1)}
 .qat-barlabel{font-size:9px;color:var(--dsw-alias-label-tertiary)}
+.qat-trend{display:flex;flex-direction:column;gap:6px;font-size:11px}
+.qat-trend>div{display:flex;gap:6px}
+.qat-ty{display:flex;flex-direction:column;justify-content:space-between}
+.qat-tsvg{flex:1;min-width:0;height:80px}
+.qat-twpm,.qat-tacc{fill:none;stroke:currentColor;stroke-width:1.5}
+.qat-twpm{color:var(--dsw-alias-brand-primary)}
+.qat-tacc{color:var(--dsw-alias-label-secondary);stroke-dasharray:4 3}
+.qat-tdot{fill:var(--dsw-alias-brand-primary)}
+.qat-tax{stroke:var(--dsw-alias-border-l1)}
 .qat-btn:focus-visible,.qat-icon:focus-visible,.qat-chip:focus-visible,.qat-switch:focus-visible,.qat-item:focus-visible{outline:2px solid var(--dsw-alias-brand-primary);outline-offset:1px;border-radius:6px}
 .qat-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 .qat-help{margin:2px 0 8px;padding:8px 10px;border-radius:8px;background:var(--dsw-alias-bg-layer-2);font-size:12px;color:var(--dsw-alias-label-secondary);line-height:1.7}
@@ -5725,7 +5786,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
      * 键盘区两个视图（热力键盘 / 次数排行）用本地 state 切，对齐上游 toolbox 里的互切按钮；
      * defaultView 只给测试和「记住上次视图」留口子，正常入口不传。
      */
-    function StatsPanel({ t, days, weeks, letters, summary, onClose, defaultView = 'heat' }) {
+    function StatsPanel({ t, days, weeks, letters, summary, records = [], onClose, defaultView = 'heat' }) {
       const max = Math.max(1, ...days.map((day) => day.words))
       const [kbdView, setKbdView] = useState(defaultView)
       return h('div', { className: 'qat-picker' },
@@ -5761,6 +5822,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
               'data-level': day.future ? 'future' : String(day.level),
               title: `${day.day} · ${t('statWords', { n: day.words })}`,
             }))))),
+        TrendChart({ t, trend: trendSeries(records) }),
         h('div', { className: 'qat-bars' }, days.map((day) =>
           h('div', { key: day.day, className: 'qat-barcol', title: `${day.day} · ${t('statWords', { n: day.words })}` },
             h('div', {
@@ -5861,6 +5923,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
             weeks: heatmapWeeks(chapters, 12),
             letters: topWrongLetters(chapters, 5),
             summary: summarize(chapters),
+            records: chapters,
           })
         })
         return () => {
@@ -6138,6 +6201,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
                   days: stats.days,
                   weeks: stats.weeks,
                   letters: stats.letters,
+                  records: stats.records,
                   summary: stats.summary,
                   onClose: () => setView('practice'),
                 })
@@ -6202,6 +6266,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         wordListRows, WORDLIST_LIMIT, WORDLIST_STATES, WORDLIST_STATE_LABEL,
         serializeBackup, parseBackup, BACKUP_VERSION, BACKUP_LIMITS, playClick, pressable,
         topWrongLetters, readMastered, writeMastered, toggleMastered, masteredKey, MASTERED_KEY,
+        trendSeries, polylineOf,
         readCustomDicts, writeCustomDicts, parseCustomWords, saveCustomDict, removeCustomDict, clearCustomCache,
         customWords, isCustomId, CUSTOM_PREFIX, CUSTOM_LIMIT, dictionaryById, chapterCount,
         exportBackup, importData, clearData, readMirror, writeMirror, MIRROR_KEY,
