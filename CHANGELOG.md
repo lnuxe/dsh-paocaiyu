@@ -9,6 +9,13 @@
 
 无
 
+## [0.4.2] - 2026-11-25
+
+### Fixed · 中文输入法上屏的拼音留在输入框里
+
+- `inputmode=latin` 只是提示，用户输入法若仍是中文，拼音会在 `compositionend` 后落进 composer
+- 现在监听捕获阶段的 `compositionend`，把上屏内容抹回我们自己写的那句中文提示（`wroteDraftRef`），跟打条关闭前输入框始终只有那一句
+
 ## [0.4.1] - 2026-11-25
 
 跟打条从「抽 20 个词重开」改成「一本词库一直往下打」，条上控件砍到只剩一个 ×；
@@ -169,7 +176,8 @@
 - 隐藏焦点守卫：练习期间输入框区域的回车 / 制表符 / `Cmd+Enter` 与发送按钮点击全部被吃掉，草稿发不出去
 - 45 条测试（`test-client-logic.mjs`）：判定 / `pushChar` / 词库 / 渲染冒烟（一次性 React 桩真的调一遍组件），不需要浏览器
 
-[Unreleased]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.2...HEAD
+[0.4.2]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.2.0...v0.3.0
