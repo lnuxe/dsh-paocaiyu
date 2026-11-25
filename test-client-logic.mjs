@@ -187,6 +187,7 @@ const {
   stepIndex, toWordList, isRoundDone, pronunciationSrc, pronunciationType,
   writeDictId, releaseStuckComposer, shouldBlockSend, shouldClearDraft,
   topWrongLetters, readMastered, writeMastered, toggleMastered, masteredKey,
+  tipState, tipKey, nextWrongCount, TIP_THRESHOLDS, TIP_MASK, CLICK_TONES,
 } = plugin.__test
 
 let failures = 0
@@ -1433,6 +1434,105 @@ check('键位有分档', (function keys(node, out = []) {
   keys(node.props?.children, out)
   return out
 })(statsCase).includes('4'), true)
+
+// —— G4：打错 N 次给提示（对齐上游 TipAlert 的逐档揭示） ——
+const tip = (wrongCount, word, typed) => tipState({ wrongCount, word, typed })
+check('阈值常量是 3/4/5', TIP_THRESHOLDS, [3, 4, 5])
+check('遮罩字符是下划线', TIP_MASK, '_')
+check('打错 0 次不提示', tip(0, 'cancel'), { level: 0, reveal: 0, prefix: '', text: '', key: '' })
+check('打错 1 次不提示', tip(1, 'cancel').level, 0)
+check('打错 2 次不提示', tip(2, 'cancel').level, 0)
+check('第 3 次给首字母', tip(3, 'cancel'), { level: 1, reveal: 1, prefix: 'c', text: 'c_____', key: 'tipFirstLetter' })
+check('第 4 次给前两个字母', tip(4, 'cancel'), { level: 2, reveal: 2, prefix: 'ca', text: 'ca____', key: 'tipTwoLetters' })
+check('第 5 次起给到只剩最后一个字母', tip(5, 'cancel'), { level: 3, reveal: 5, prefix: 'cance', text: 'cance_', key: 'tipReveal' })
+check('第 5 次以后档位稳定', [6, 7, 9, 20].map((n) => tip(n, 'cancel').level), [3, 3, 3, 3])
+check('第 5 次以后揭示内容稳定', [6, 7, 9, 20].map((n) => tip(n, 'cancel').text), ['cance_', 'cance_', 'cance_', 'cance_'])
+check('档位到文案 key 的映射', [0, 1, 2, 3, 7].map(tipKey), ['', 'tipFirstLetter', 'tipTwoLetters', 'tipReveal', 'tipReveal'])
+check('打错一次计数加一', nextWrongCount(2, 'miss'), 3)
+check('打对一次计数归零', nextWrongCount(4, 'hit'), 0)
+check('其他结果不改计数', nextWrongCount(4, 'ok'), 4)
+check('打对归零后提示也归零', (() => {
+  let n = 0
+  n = nextWrongCount(n, 'miss')
+  n = nextWrongCount(n, 'miss')
+  n = nextWrongCount(n, 'hit')
+  return [n, tip(n, 'cancel').level]
+})(), [0, 0])
+check('归零后重新打错 3 次重新给首字母', (() => {
+  let n = 3
+  n = nextWrongCount(n, 'hit')
+  for (let i = 0; i < 3; i += 1) n = nextWrongCount(n, 'miss')
+  return [n, tip(n, 'cancel').text]
+})(), [3, 'c_____'])
+check('已打对的前缀算进提示', tip(3, 'cancel', 'ca').text, 'ca____')
+check('打错的前缀不冒充揭示', tip(3, 'cancel', 'cx').reveal, 1)
+check('阈值可配', tipState({ wrongCount: 2, word: 'cancel', thresholds: [1, 2, 3] }).level, 2)
+check('只给一档阈值也不越界', tipState({ wrongCount: 5, word: 'go', thresholds: [3] }).text, 'g_')
+const tipWords = ['a', 'go', 'cancel', 'govern', 'according to', 'x'.repeat(20)]
+check('reveal 不超过词长', tipWords.every((word) => [0, 1, 2, 3, 4, 5, 9, 30].every((n) => {
+  const state = tip(n, word)
+  if (state.reveal < 0 || state.reveal > word.length) return false
+  return state.level === 0 ? state.text === '' : state.text.length === word.length
+})), true)
+check('永远不会显示整词', tipWords.every((word) => [3, 4, 5, 9, 30].every((n) => {
+  const state = tip(n, word)
+  if (!state.text) return true
+  return state.text !== word && (word.length < 2 || state.text.includes(TIP_MASK))
+})), true)
+check('1 字母词不越界', tip(9, 'a'), { level: 3, reveal: 0, prefix: '', text: '_', key: 'tipReveal' })
+check('2 字母词第 3 次只给首字母', tip(3, 'go').text, 'g_')
+check('2 字母词最后一档也不整词', tip(9, 'go').text, 'g_')
+check('带空格的词长度不变', tip(5, 'according to').text.length, 'according to'.length)
+check('空词不崩', tipState({ wrongCount: 5, word: '' }), { level: 0, reveal: 0, prefix: '', text: '', key: '' })
+check('没传参数不崩', tipState(), { level: 0, reveal: 0, prefix: '', text: '', key: '' })
+check('提示音有 hit/hint/miss 三档', Object.keys(CLICK_TONES).sort(), ['hint', 'hit', 'miss'])
+check('提示音比打对音更轻', CLICK_TONES.hint.peak < CLICK_TONES.hit.peak, true)
+
+// —— 提示行 UI：小字次要色、带 data-tip-level、不遮单词 ——
+const tipUi = render('渲染：打错提示行', () => renderTest.components.TipLine({
+  tip: tip(3, 'cancel'),
+  t: (key, vars) => `${key}:${vars?.pattern ?? ''}`,
+}))
+check('提示行带 data-tip-level', (function find(node) {
+  if (!node || typeof node !== 'object') return null
+  if (Array.isArray(node)) {
+    for (const item of node) {
+      const hit = find(item)
+      if (hit !== null) return hit
+    }
+    return null
+  }
+  if (typeof node.type === 'function') return find(node.type(node.props ?? {}))
+  const props = node.props || {}
+  if (props['data-tip-level'] !== undefined) return props['data-tip-level']
+  const inProps = find(props.children)
+  return inProps !== null ? inProps : find(node.children)
+})(tipUi), '1')
+check('提示行是次要色小字', collectClasses(tipUi).includes('qat-tip'), true)
+check('提示行文案带遮罩', gatherText(tipUi).includes('c_____'), true)
+check('提示行不显示整词', gatherText(tipUi).includes('cancel'), false)
+check('高一级档位带自己的 data-tip-level', (function find(node) {
+  if (!node || typeof node !== 'object') return null
+  if (Array.isArray(node)) {
+    for (const item of node) {
+      const hit = find(item)
+      if (hit !== null) return hit
+    }
+    return null
+  }
+  if (typeof node.type === 'function') return find(node.type(node.props ?? {}))
+  const props = node.props || {}
+  if (props['data-tip-level'] !== undefined) return props['data-tip-level']
+  const inProps = find(props.children)
+  return inProps !== null ? inProps : find(node.children)
+})(renderTest.components.TipLine({ tip: tip(5, 'cancel'), t: (key) => key })), '3')
+check('不到档位时整行不渲染', renderTest.components.TipLine({ tip: tip(2, 'cancel'), t: (key) => key }), null)
+check('样式里有打错提示类', collectCss(cardCase).join('').includes('.qat-tip'), true)
+check('样式里有档位选择器', collectCss(cardCase).join('').includes('data-tip-level'), true)
+check('样式里跟打条提示不抢布局', /\.qat-bar-tip\{[^}]*pointer-events:none/.test(source), true)
+check('样式里提示行不接收鼠标', /\.qat-tip\{[^}]*pointer-events:none/.test(source), true)
+check('两份字典都有提示文案', ['tipFirstLetter', 'tipTwoLetters', 'tipReveal'].every((key) => DICT.zh[key] && DICT.en[key]), true)
+check('三种提示文案都带 pattern 占位', ['tipFirstLetter', 'tipTwoLetters', 'tipReveal'].every((key) => DICT.zh[key].includes('{pattern}') && DICT.en[key].includes('{pattern}')), true)
 
 await recordFlow
 
