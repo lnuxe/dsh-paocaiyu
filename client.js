@@ -2279,6 +2279,8 @@ window.__ModuleLoader__.load({
         todayStats: '今日 {words} 词 · 正确率 {accuracy}% · {wpm} WPM',
         liveSpeed: '实时 {wpm} WPM',
         accuracyShort: '正确率 {n}%',
+        conflictTitle: '插件冲突？',
+        conflictBody: '如果多次输入失败，可能是与本地浏览器插件冲突，请关闭相关插件或切换浏览器试试。',
         prevTip: '上一个（Ctrl/⌘+←）',
         skipTip: '跳过（Ctrl/⌘+→）',
         loopTip: '循环当前词（Ctrl/⌘+J）',
@@ -2426,6 +2428,8 @@ window.__ModuleLoader__.load({
         todayStats: 'Today {words} words · {accuracy}% · {wpm} WPM',
         liveSpeed: 'Live {wpm} WPM',
         accuracyShort: '{n}% accuracy',
+        conflictTitle: 'Plugin conflict?',
+        conflictBody: 'If typing keeps failing, a local browser extension may be interfering. Turn it off or try another browser.',
         prevTip: 'Previous (⌘/Ctrl+←)',
         skipTip: 'Skip (⌘/Ctrl+→)',
         loopTip: 'Loop this word (⌘/Ctrl+J)',
@@ -2754,6 +2758,13 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
 .qat-headtag{color:var(--dsw-alias-label-secondary);font-weight:600;font-size:12px;letter-spacing:.02em;white-space:nowrap}
 .qat-sep{width:1px;height:12px;background:var(--dsw-alias-border-l1)}
 .qat-grow{flex:1}
+.qat-progress{--qat-fill:var(--dsw-alias-brand-primary);height:3px;border-radius:2px;background:var(--dsw-alias-border-l1);overflow:hidden}
+.qat-progress[data-phase="1"]{--qat-fill:var(--dsw-alias-state-warn-primary)}
+.qat-progress[data-phase="2"]{--qat-fill:var(--dsw-alias-state-success-primary)}
+.qat-progress-fill{height:100%;background:var(--qat-fill)}
+.qat-conflict{display:flex;gap:8px;padding:8px 10px;border:1px solid var(--dsw-alias-state-error-primary);border-radius:8px;font:12px/1.5}
+.qat-conflict-title{flex:none;color:var(--dsw-alias-state-error-primary)}
+.qat-conflict-x{flex:none;margin-left:auto;cursor:pointer}
 .qat-word{display:flex;align-items:center;gap:2px;min-height:38px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:30px;line-height:1.15;letter-spacing:.02em;flex-wrap:wrap}
 .qat-word[data-wrap="true"]{flex-direction:column;align-items:center;gap:0;line-height:1.12}
 .qat-word[data-wrap="true"] .qat-word-line{display:flex;align-items:center;justify-content:center;gap:2px;white-space:pre}
@@ -3068,6 +3079,39 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const base = Number(clock?.ms) || 0
       if (!clock || clock.last === null || clock.last === undefined) return Math.max(0, base)
       return Math.max(0, base + Math.max(0, (now ?? Date.now()) - clock.last))
+    }
+
+    // mm:ss；满一小时 h:mm:ss；负数 / NaN 归 00:00（上游 Speed）
+    function clockText(ms) {
+      const sec = Math.max(0, Math.floor(Number(ms) / 1000)) || 0
+      const hours = Math.floor(sec / 3600)
+      const pad = (n) => String(n).padStart(2, '0')
+      const mm = Math.floor((sec % 3600) / 60)
+      return { text: (hours ? `${hours}:` : '') + pad(mm) + ':' + pad(sec % 60), hours }
+    }
+
+    // 跟打条满一分钟才占位置
+    function clockVisible(variant, ms) {
+      return variant === 'panel' || Number(ms) >= 60000
+    }
+
+    // 0/33/66 三档（上游 Progress）
+    function progressOf(index, total) {
+      const all = Number(total)
+      if (!(all > 0)) return { pct: 0, phase: 0 }
+      const at = Math.min(all, Math.max(0, Number(index) || 0))
+      const pct = Math.round((at / all) * 100)
+      return { pct, phase: pct >= 66 ? 2 : pct >= 33 ? 1 : 0 }
+    }
+
+    // 一次会话只提示一回
+    let tipShown = false
+
+    // 首章首词连错 3 次（上游 Word/TipAlert）
+    function shouldWarnConflict({ chapter, index, wrongCount, shown } = {}) {
+      if (shown) return false
+      if (chapter !== 0 || index !== 0) return false
+      return Number(wrongCount) >= 3
     }
 
     /**
@@ -3801,6 +3845,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const voiceOn = settingsNow.voice
       /** 指法图示：默认关，设置里打开后只在面板卡片下方出现 */
       const fingerOn = settingsNow.showFinger === true
+      const [conflict, setConflict] = useState(false)
       /** 本轮打错时"该打却没打对"的字母计数 */
       const lettersRef = useRef({})
       const pausedRef = useRef(false)
@@ -4113,6 +4158,10 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         // 提示档位升了一档（第 3/4/5 次）就给一声更轻的提示音
         const prevTip = tipState({ wrongCount: stateRef.current.wordWrong, word: target, typed: stateRef.current.typed })
         const nextWrong = nextWrongCount(stateRef.current.wordWrong, 'miss')
+        if (shouldWarnConflict({ chapter, index: stateRef.current.index, wrongCount: nextWrong, shown: tipShown })) {
+          tipShown = true
+          setConflict(true)   // 上游 Word/TipAlert：首章首词连错 3 次
+        }
         if (tipState({ wrongCount: nextWrong, word: target, typed: '' }).level > prevTip.level) playClick('hint')
         else playClick('miss')
         setAnnounce(t('announceWrong', { word: target }))
@@ -4137,7 +4186,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
             ...prev, typed: '', flash: false, retries: prev.retries + 1, wordWrong: nextWrong,
           }))
         }, 320)
-      }, [advance, options, setTyped, words])
+      }, [advance, chapter, options, setTyped, words])
 
       // 面板里输入框已经隐形，挂载时主动把焦点交给它，用户不用先点哪儿
       useEffect(() => {
@@ -4170,7 +4219,10 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         return h('div', { className: 'qat-card' }, h(Styles), h('div', { className: 'qat-hint' }, t('empty')))
       }
 
-      const elapsed = Math.max(1, Math.round(activeMs(clock.current, done ? state.finishedAt : Date.now()) / 1000))
+      // 计时只算一次 activeMs，刷新跟着 1 秒速度心跳
+      const activeNow = activeMs(clock.current, done ? state.finishedAt : Date.now())
+      const elapsed = Math.max(1, Math.round(activeNow / 1000))
+      const prog = progressOf(state.index, total)
 
       return h('div', { className: 'qat-card', 'data-variant': variant ?? 'command', onMouseDown: focusInput },
         h(Styles),
@@ -4185,6 +4237,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
           h('span', null, t('retries', { n: state.retries })),
           h('span', { className: 'qat-metric' }, `WPM ${calcWpm(state.hits, elapsed)}`),
           h('span', { className: 'qat-metric' }, t('accuracyShort', { n: calcAccuracy(state.hits, state.retries) })),
+          clockVisible(variant, activeNow) ? h('span', { className: 'qat-metric qat-clock' }, clockText(activeNow).text) : null,
           h('span', { className: 'qat-grow' }),
           h('span', {
             ...pressable(() => setHelpOpen((value) => !value)),
@@ -4251,6 +4304,8 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
             onNextChapter,
           })
           : h('div', null,
+            variant === 'panel' ? h('div', { className: 'qat-progress', 'data-phase': String(prog.phase) },
+              h('div', { className: 'qat-progress-fill', style: { width: `${prog.pct}%` } })) : null,
             notation ? h('div', { className: 'qat-gloss-notation' }, notation) : null,
             h(WordLetters, {
               text: target,
@@ -4303,6 +4358,10 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
               )
               : null,
             h(TipLine, { tip, t }),
+            conflict ? h('div', { className: 'qat-conflict' },
+              h('b', { className: 'qat-conflict-title' }, t('conflictTitle')),
+              h('span', null, t('conflictBody')),
+              h('span', { ...pressable(() => setConflict(false)), className: 'qat-conflict-x', 'aria-label': t('close') }, '×')) : null,
             // 上游没有可见输入框（InputHandler 用隐藏元素吃键盘）：这里同样只留一个
             // 视觉隐藏的输入目标，用来接住键入与输入法，界面上不画框。
             h('input', {
@@ -4791,10 +4850,14 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
 
       const loopRef = useRef(false)
       const pausedRef = useRef(false)
+      const clockRef = useRef({ ms: 0, last: Date.now() })
 
-      /** 暂停只意味着「不吃键」，条上没有计时器；实时速度的采样就地清空，
+      /** 暂停只意味着「不吃键」；实时速度的采样就地清空，
        * 否则暂停那段空白会被算进窗口、把数字压下去 */
       const applyPaused = useCallback((next) => {
+        clockRef.current = next
+          ? { ms: activeMs(clockRef.current, Date.now()), last: null }
+          : { ...clockRef.current, last: Date.now() }
         pausedRef.current = next
         speedSamples.current = []
         setLiveWpm(0)
@@ -5131,6 +5194,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const restart = useCallback(() => {
         startedAt.current = Date.now()
         lockRef.current = { locked: false, timer: null }
+        clockRef.current = { ms: 0, last: Date.now() }
         // 开新一轮：实时速度的累计字符和采样一起归零
         liveChars.current = 0
         speedSamples.current = []
@@ -5169,6 +5233,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
 
       // 位置按整本词库算：1 / 2607
       const position = (state.index % total) + 1
+      const barMs = activeMs(clockRef.current, Date.now())
       // 打错提示（跟打条）：3 / 4 / 5 次逐档揭示，打对后 wordWrong 归零
       const tip = tipState({ wrongCount: state.wordWrong, word: target, typed: state.typed })
 
@@ -5182,7 +5247,8 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         // 进度与关闭都绝对定位在两侧，中间那块才是真正居中的
         h('span', { className: 'qat-bar-count', title: t('dictTitle') }, `${position}/${total}`),
         // 实时速度：贴在关闭按钮左边的次要点位，小字置灰，不和左侧进度抢位置
-        h('span', { className: 'qat-bar-speed' }, t('liveSpeed', { wpm: liveWpm })),
+        h('span', { className: 'qat-bar-speed' }, t('liveSpeed', { wpm: liveWpm }),
+          clockVisible('command', barMs) ? ` · ${clockText(barMs).text}` : ''),
         h('span', { className: 'qat-bar-center' },
           h('span', { className: 'qat-wordblock' },
           h(WordLetters, {
@@ -6190,7 +6256,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         subscribeSettings, SETTING_DEFAULTS, DICT, heatLevel,
         dayKey, aggregateDaily, summarize, lastDays, readProgress, readChapterRecords, readWordRecords,
         recordWord, recordChapter, saveProgress,
-        dictSourceList, DICT_PIN, activeMs, resolveHotkey, calcWpm, calcAccuracy, shouldStartOnTab, saveSession, readSession, clearSession, sameSession,
+        dictSourceList, DICT_PIN, activeMs, clockText, clockVisible, progressOf, shouldWarnConflict, resolveHotkey, calcWpm, calcAccuracy, shouldStartOnTab, saveSession, readSession, clearSession, sameSession,
         calcLiveWpm, windowedWpm, pushSpeedSample, LIVE_WINDOW_MS, LIVE_HEARTBEAT_MS, LIVE_WPM_CAP, CHARS_PER_WORD,
         setOpen, getOpen, readDictId, writeDictId, releaseStuckComposer, ACCENTS, resolveAccent, shouldBlockSend, isSendTrigger, shouldClearDraft,
         ICONS, GLYPH, Icon, ensureStyles, Styles, CSS, lookup, lookupOnce, clearLookupCache, wordIndex, clearCatalogCache, buildCatalog,

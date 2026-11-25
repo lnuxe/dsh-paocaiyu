@@ -2863,6 +2863,86 @@ check('音标跟着口音设置走（uk → BrE 那一支）', (function () {
 check('音标样式有独立规则、不写死颜色', /\.qat-wrongipa\{[^}]*var\(--dsw-alias/.test(source), true)
 renderTest.removeCustomDict('ipa-visible')
 
+/* ------------------------------------------------------------------ */
+/* 章节计时 / 章节进度条 / 插件冲突提示（N5 / N25 / N11）               */
+/* ------------------------------------------------------------------ */
+// 单独解构：上面那一大段是多个子任务共用的，能不动就不动
+const { clockText, clockVisible, progressOf, shouldWarnConflict } = plugin.__test
+
+// —— 计时文本：对齐上游 src/pages/Typing/components/Speed（timerData.time 分/秒 padStart） ——
+check('计时 0 毫秒 → 00:00', clockText(0).text, '00:00')
+check('计时 59 秒 → 00:59', clockText(59_000).text, '00:59')
+check('计时 61 秒 → 01:01', clockText(61_000).text, '01:01')
+check('计时 3599 秒不跨小时', clockText(3_599_000).text, '59:59')
+check('满 3600 秒 → 1:00:00', clockText(3_600_000).text, '1:00:00')
+check('3661 秒 → 1:01:01', clockText(3_661_000).text, '1:01:01')
+check('负数归 00:00', clockText(-5_000).text, '00:00')
+check('NaN 归 00:00', clockText(NaN).text, '00:00')
+check('不足一小时 hours=0', clockText(61_000).hours, 0)
+check('满一小时 hours=1', clockText(3_661_000).hours, 1)
+// 计时占用：面板一直显示，跟打条满一分钟才让出位置
+check('面板一直显示计时', clockVisible('panel', 1_000), true)
+check('跟打条 30 秒不显示计时', clockVisible('command', 30_000), false)
+check('跟打条 60 秒开始显示计时', clockVisible('command', 60_000), true)
+
+// —— 章节进度：对齐上游 src/pages/Typing/components/Progress（0 / 33 / 66 三档换色） ——
+check('0 词进度归零', JSON.stringify(progressOf(0, 0)), '{"pct":0,"phase":0}')
+check('满章 100%', progressOf(20, 20).pct, 100)
+check('满章落到最后一档', progressOf(20, 20).phase, 2)
+check('过半是 50%', progressOf(1, 2).pct, 50)
+check('越界夹紧上限', progressOf(99, 20).pct, 100)
+check('越界夹紧下限', progressOf(-3, 20).pct, 0)
+check('phase 分界 32 → 0', progressOf(32, 100).phase, 0)
+check('phase 分界 33 → 1', progressOf(33, 100).phase, 1)
+check('phase 分界 65 → 1', progressOf(65, 100).phase, 1)
+check('phase 分界 66 → 2', progressOf(66, 100).phase, 2)
+
+// —— 插件冲突提示：对齐上游 Word/TipAlert（首章首词连错 3 次，会话说一次） ——
+check('首章首词连错 3 次要提示', shouldWarnConflict({ chapter: 0, index: 0, wrongCount: 3, shown: false }), true)
+check('错 2 次还不提示', shouldWarnConflict({ chapter: 0, index: 0, wrongCount: 2, shown: false }), false)
+check('第 2 章不提示', shouldWarnConflict({ chapter: 1, index: 0, wrongCount: 4, shown: false }), false)
+check('第 2 个词不提示', shouldWarnConflict({ chapter: 0, index: 1, wrongCount: 4, shown: false }), false)
+check('已经提示过就不再提示', shouldWarnConflict({ chapter: 0, index: 0, wrongCount: 9, shown: true }), false)
+check('跟打条（chapter=null）不提示', shouldWarnConflict({ chapter: null, index: 0, wrongCount: 3 }), false)
+check('空输入不炸', shouldWarnConflict(), false)
+
+// —— 渲染：面板有计时格与进度条，跟打条 0 秒不占位置 ——
+const timedCard = render('渲染：章节计时与进度条', () => renderTest.components.Trainer({
+  words: ['cancel', 'go'], variant: 'panel', chapter: 0, dictId: 'cet4', ctx: ctxStub,
+}))
+const clockNode = findNodeWithClass(timedCard, 'qat-clock')
+check('面板头部有计时格', Boolean(clockNode), true)
+check('面板计时文本形如 mm:ss', /^\d\d:\d\d$/.test(gatherText(clockNode) || ''), true)
+check('计时格在头部指标那一排', Boolean(findNodeWithClass(findNodeWithClass(timedCard, 'qat-head'), 'qat-clock')), true)
+const progressNode = findNodeWithClass(timedCard, 'qat-progress')
+const fillNode = findNodeWithClass(timedCard, 'qat-progress-fill')
+check('面板有进度条', Boolean(progressNode), true)
+check('进度条带 data-phase', progressNode?.props?.['data-phase'], '0')
+check('进度条宽度走百分比', fillNode?.props?.style?.width, '0%')
+check('进度宽度是唯一的内联样式', fillNode?.props?.style && Object.keys(fillNode.props.style).join(','), 'width')
+check('面板进度条在单词上方（先于 .qat-word 出现）', (function () {
+  const classes = collectClasses(timedCard)
+  return classes.indexOf('qat-progress') < classes.indexOf('qat-word')
+})(), true)
+
+renderTest.setOpen(true)
+const timedBar = render('渲染：跟打条计时', () => renderTest.components.ComposerTrainer({
+  useInput: () => '', inputActions: {}, ctx: ctxStub,
+}))
+const barSpeedText = gatherText(findNodeWithClass(timedBar, 'qat-bar-speed')) || ''
+check('跟打条 0 秒不显示计时', /\d\d:\d\d/.test(barSpeedText), false)
+check('跟打条不加章节进度条', hasClass(collectClasses(timedBar), 'qat-progress'), false)
+renderTest.setOpen(false)
+
+// —— 样式：三档颜色只走 data-phase + CSS 变量，不写死 ——
+check('进度条三档用 CSS 变量换色', /\.qat-progress\[data-phase="1"\]\{--qat-fill:var\(--dsw-alias-state-warn-primary\)\}/.test(source), true)
+check('进度填充读变量', /\.qat-progress-fill\{[^}]*background:var\(--qat-fill\)/.test(source), true)
+check('进度条不写死颜色', /\.qat-progress[^{]*\{[^}]*#[0-9a-fA-F]{3,6}/.test(source), false)
+
+// —— 文案：中英各一条，key 对齐由上面的通用断言兜住 ——
+check('冲突提示有中英文案', ['conflictTitle', 'conflictBody'].every((key) => DICT.zh[key] && DICT.en[key]), true)
+check('冲突提示说清「关插件或换浏览器」', /插件|扩展|browser/i.test(DICT.zh.conflictBody + DICT.en.conflictBody), true)
+
 await recordFlow
 
 if (failures > 0) {
