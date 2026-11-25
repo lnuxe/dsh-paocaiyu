@@ -2161,6 +2161,9 @@ window.__ModuleLoader__.load({
 .qat-sep{width:1px;height:12px;background:var(--dsw-alias-border-l1)}
 .qat-grow{flex:1}
 .qat-word{display:flex;align-items:center;gap:2px;min-height:38px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:30px;line-height:1.15;letter-spacing:.02em;flex-wrap:wrap}
+.qat-word[data-wrap="true"]{flex-direction:column;align-items:center;gap:0;line-height:1.12}
+.qat-word[data-wrap="true"] .qat-word-line{display:flex;align-items:center;justify-content:center;gap:2px;white-space:pre}
+.qat-bar .qat-word[data-wrap="true"]{min-height:0}
 .qat-letter{color:var(--dsw-alias-label-primary);transition:color 90ms linear}
 .qat-letter[data-state="ok"]{color:var(--dsw-alias-state-success-primary)}
 .qat-letter[data-state="bad"]{color:var(--dsw-alias-state-error-primary)}
@@ -2640,6 +2643,114 @@ window.__ModuleLoader__.load({
         const noise = Math.abs(Math.sin((Number(seed) + 1) * (index + 7)) * 10000) % 1
         return noise < 0.5
       })
+    }
+
+    /* ---------------- 长句排版：跟打条只有一条横带，整句雅思口语要缩字号 + 断行 ---------------- */
+
+    /** 逐档缩字号：宽度不够就往下一档走，最多给 maxLines 行 */
+    const FIT_SIZES = [52, 44, 36, 30, 25, 21, 18, 16]
+    /** 等宽字体下 1 个字符大约占字号这么多宽度 */
+    const CHAR_RATIO = 0.62
+
+    /** 按空格断行（不切词）；单个词超过一行宽度时才按字符硬断 */
+    function wrapWord(text, maxChars) {
+      const limit = Math.max(1, Math.floor(Number(maxChars) || 0))
+      const source = String(text ?? '')
+      if (!source) return []
+      // 逐「词 + 后面的空格」切，空格跟着前一个词，拼回去还能还原原文
+      const tokens = source.match(/\S+\s*/g) ?? [source]
+      const out = []
+      let line = ''
+      for (const token of tokens) {
+        if (line && line.length + token.length > limit) {
+          out.push(line)
+          line = ''
+        }
+        if (token.length <= limit) {
+          line += token
+          continue
+        }
+        // 超长词（无空格长串）：先冲掉已攒的，再按字符硬断
+        if (line) {
+          out.push(line)
+          line = ''
+        }
+        let rest = token
+        while (rest.length > limit) {
+          out.push(rest.slice(0, limit))
+          rest = rest.slice(limit)
+        }
+        line = rest
+      }
+      if (line) out.push(line)
+      return out
+    }
+
+    /**
+     * 一句词在给定宽度里怎么排：缩到放得下为止（最多 maxLines 行）
+     * 返回 { size, perLine, lines }，lines 是断好的行（每行是原串的一段，含词尾空格）
+     */
+    function fitWordStyle(text, width, options) {
+      const source = String(text ?? '')
+      const maxLines = Math.max(1, Number(options?.maxLines) || 2)
+      const sizes = options?.sizes ?? FIT_SIZES
+      const room = Math.max(120, Number(width) || 0)
+      let last = null
+      for (const size of sizes) {
+        const perLine = Math.max(4, Math.floor(room / (size * CHAR_RATIO)))
+        const lines = wrapWord(source, perLine)
+        last = { size, perLine, lines }
+        if (lines.length <= maxLines) return last
+      }
+      // 最小字号还是放不下（极端长句/窄条）：就按最小字号切开，宁可多一行也不截断
+      return last
+    }
+
+    /** 断好的行 → 每行的起止（全局索引跨行连续，逐字判定不能被拆行影响） */
+    function wordLines(text, perLine) {
+      const source = String(text ?? '')
+      const parts = perLine ? wrapWord(source, perLine) : [source]
+      if (!parts.length) return []
+      let offset = 0
+      return parts.map((part) => {
+        const start = offset
+        offset += part.length
+        return { start, chars: part.split('') }
+      })
+    }
+
+    /**
+     * 单词字母（跟打条 / 面板 / 指令卡共用）
+     * 单行时就是一个 .qat-word；给了 perLine 且断出多行时，每行一个 .qat-word-line。
+     * 行内字母的 data-state / data-mask 语义与单行完全一致，只是索引从全局算。
+     */
+    function WordLetters({ text, typed, masked, perLine, className, size, flash }) {
+      const lines = wordLines(text, perLine)
+      const renderLetter = (ch, index) => {
+        const typedChar = typed[index]
+        const letterState = typedChar === undefined ? 'idle' : typedChar === ch ? 'ok' : 'bad'
+        const hidden = typedChar === undefined && Boolean(masked?.[index])
+        return h('span', {
+          key: `${index}-${ch}`,
+          className: 'qat-letter',
+          'data-state': letterState,
+          'data-mask': hidden ? 'true' : 'false',
+        }, hidden ? '·' : (ch === ' ' ? '␣' : ch))
+      }
+      const multi = lines.length > 1
+      return h('div', {
+        className: className ? `qat-word ${className}` : 'qat-word',
+        'data-flash': flash ? 'true' : 'false',
+        'data-wrap': multi ? 'true' : 'false',
+        style: size ? { fontSize: `${size}px` } : undefined,
+      }, multi
+        ? lines.map((line, lineIndex) => h('div', {
+          key: `line-${lineIndex}`,
+          className: 'qat-word-line',
+        }, line.chars.map((ch, i) => renderLetter(ch, line.start + i))))
+        : lines[0]
+          ? lines[0].chars.map((ch, i) => renderLetter(ch, lines[0].start + i))
+          : null)
     }
 
     /** 读一遍这个词（浏览器内置 TTS，没有就静默返回 false） */
@@ -3525,19 +3636,14 @@ window.__ModuleLoader__.load({
             onNextChapter,
           })
           : h('div', null,
-            h('div', { className: 'qat-word', 'data-flash': state.flash ? 'true' : 'false' },
-              chars.map((ch, i) => {
-                const typedChar = state.typed[i]
-                const letterState = typedChar === undefined ? 'idle' : typedChar === ch ? 'ok' : 'bad'
-                const hidden = typedChar === undefined && masked[i]
-                return h('span', {
-                  key: `${i}-${ch}`,
-                  className: 'qat-letter',
-                  'data-state': letterState,
-                  'data-mask': hidden ? 'true' : 'false',
-                }, hidden ? '·' : (ch === ' ' ? '␣' : ch))
-              }),
-            ),
+            h(WordLetters, {
+              text: target,
+              typed: state.typed,
+              masked,
+              // 面板卡片大约 760 宽（max-width 820 减内边距），长句最多排三行
+              ...fitWordStyle(target, 700, { maxLines: 3 }),
+              flash: state.flash,
+            }),
             showMeta && (ipaText || gloss)
               ? h('div', { className: 'qat-gloss' },
                 ipaText ? h('div', { className: 'qat-gloss-ipa' }, ipaText) : null,
@@ -4470,19 +4576,14 @@ window.__ModuleLoader__.load({
         h('span', { className: 'qat-bar-speed' }, t('liveSpeed', { wpm: liveWpm })),
         h('span', { className: 'qat-bar-center' },
           h('span', { className: 'qat-wordblock' },
-          h('span', { className: 'qat-word', 'data-flash': state.flash ? 'true' : 'false' },
-            chars.map((ch, i) => {
-              const typedChar = state.typed[i]
-              const letterState = typedChar === undefined ? 'idle' : typedChar === ch ? 'ok' : 'bad'
-              const hidden = typedChar === undefined && masked[i]
-              return h('span', {
-                key: `${i}-${ch}`,
-                className: 'qat-letter',
-                'data-state': letterState,
-                'data-mask': hidden ? 'true' : 'false',
-              }, hidden ? '·' : (ch === ' ' ? '␣' : ch))
-            }),
-          ),
+          h(WordLetters, {
+            text: target,
+            typed: state.typed,
+            masked,
+            // 条宽要扣掉左边进度、右边速度与关闭按钮，剩下的才是单词能用的宽度
+            ...fitWordStyle(target, Math.max(200, (barWidth ?? 640) - 120), { maxLines: 3 }),
+            flash: state.flash,
+          }),
             ipa ? h('span', { className: 'qat-ipa' }, ipa) : null,
             h(TipLine, { tip, t, className: 'qat-bar-tip' }),
           ),
@@ -5461,6 +5562,7 @@ window.__ModuleLoader__.load({
         FINGER_MAP, FINGER_IDS, FINGER_LABELS, FINGER_COLORS, FINGER_KEY,
         parseCustomFile, serializeCustomDict, splitCsvLine, toCustomWord, downloadText, withSlashes,
         stepIndex, toWordList, isRoundDone,
+        wrapWord, fitWordStyle, wordLines, FIT_SIZES, CHAR_RATIO,
         readBarProgress, writeBarProgress, resumeIndex,
         readChapterPos, writeChapterPos, resumeChapter, resumeChapterSmart, BAR_KEY, CHAPTER_KEY, wordsOfRound, nextChapterIndex, pronunciationSrc, pronunciationType, speakWithTts,
         speak, speakMeaning, cancelMeaning, meaningLang, shouldReadMeaning, MEANING_DELAY_MS,

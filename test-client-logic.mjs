@@ -1948,6 +1948,48 @@ check('不是同一个词库 → 第 0 章',
   resumeChapterSmart({}, { dictId: 'cet6', chapter: 9 }, 'cet4', 131, false), 0)
 check('词库还没算好 → 第 0 章', resumeChapterSmart({}, { dictId: 'cet4', chapter: 3 }, 'cet4', 0, false), 0)
 
+// —— 长句排版：雅思整句要缩字号 + 断行，不能横着挤爆 ——
+const LONG = "I'm taking the IELTS test because I want to study overseas."
+check('wrapWord：空串 → 没有行', renderTest.wrapWord('', 10), [])
+check('wrapWord：一个短词就一行', renderTest.wrapWord('cancel', 10), ['cancel'])
+check('wrapWord：按空格断，不切词', renderTest.wrapWord('according to the rule', 12), ['according ', 'to the rule'])
+check('wrapWord：断行拼回去等于原文', renderTest.wrapWord(LONG, 20).join(''), LONG)
+check('wrapWord：超长无空格串按字符硬断', renderTest.wrapWord('abcdefghij', 4), ['abcd', 'efgh', 'ij'])
+check('wrapWord：多空格不丢字', renderTest.wrapWord('a  b', 2).join(''), 'a  b')
+check('wrapWord：中英混排也能断', renderTest.wrapWord('雅思 IELTS test', 6).join(''), '雅思 IELTS test')
+check('wrapWord：每行不超过上限', renderTest.wrapWord(LONG, 18).every((line) => line.length <= 18), true)
+check('字号阶梯从 52 起', renderTest.FIT_SIZES[0], 52)
+check('字号阶梯单调不增', renderTest.FIT_SIZES.every((size, i) => i === 0 || size <= renderTest.FIT_SIZES[i - 1]), true)
+check('等比系数在 0.5–0.8 之间', renderTest.CHAR_RATIO > 0.5 && renderTest.CHAR_RATIO < 0.8, true)
+check('短词用最大字号、一行', [renderTest.fitWordStyle('cancel', 600).size, renderTest.fitWordStyle('cancel', 600).lines.length], [52, 1])
+check('单行模式下中等长度会先缩字号', renderTest.fitWordStyle('extraordinary', 300, { maxLines: 1 }).size < 52, true)
+check('允许三行时不再硬缩到很小', renderTest.fitWordStyle('extraordinary', 300, { maxLines: 3 }).size, 52)
+check('雅思长句在条宽里排成三行内', renderTest.fitWordStyle(LONG, 520, { maxLines: 3 }).lines.length <= 3, true)
+check('条越窄字号越小', renderTest.fitWordStyle(LONG, 320).size <= renderTest.fitWordStyle(LONG, 760).size, true)
+check('fitWordStyle 的行拼回去等于原文', renderTest.fitWordStyle(LONG, 400).lines.join(''), LONG)
+check('fitWordStyle 不截断任何字符', renderTest.fitWordStyle(LONG, 200, { maxLines: 2 }).lines.join('').length, LONG.length)
+check('极端窄条也不丢字', renderTest.fitWordStyle(LONG, 10, { maxLines: 2 }).lines.join(''), LONG)
+check('空串不炸', renderTest.fitWordStyle('', 400).lines, [])
+check('没传宽度也有字号', renderTest.fitWordStyle('cancel').size > 0, true)
+{
+  const lines = renderTest.wordLines(LONG, 30)
+  check('wordLines 索引跨行连续', lines.map((line) => line.start),
+    lines.reduce((acc, line, i) => (i === 0 ? [0] : [...acc, acc[i - 1] + lines[i - 1].chars.length]), []))
+  check('wordLines 字母总数 = 句子长度', lines.reduce((acc, line) => acc + line.chars.length, 0), LONG.length)
+  check('不给 perLine 就一行', renderTest.wordLines('cancel').length, 1)
+}
+{
+  const wrapped = render('渲染：卡片上的长句', () => renderTest.components.Trainer({
+    words: [LONG], variant: 'panel', showMeta: true, ctx: ctxStub,
+  }))
+  const classes = collectClasses(wrapped)
+  check('长句渲染出多个 .qat-word-line', classes.filter((item) => String(item).split(/\s+/).includes('qat-word-line')).length >= 2, true)
+  const letters = collectClasses(wrapped).filter((item) => String(item).split(/\s+/).includes('qat-letter')).length
+  check('字母总数等于句子长度', letters, LONG.length)
+  check('样式里有多行排版的类', /\.qat-word\[data-wrap="true"\]/.test(source), true)
+  check('样式里有 .qat-word-line', /\.qat-word-line\{/.test(source), true)
+}
+
 // —— 进度存档：Esc 关掉跟打条再打开，接着打上次那个词 ——
 check('卡片里没有游离的 wordsRef 引用', /const prev = stepIndex\(stateRef\.current\.index, wordsRef/.test(source), false)
 
