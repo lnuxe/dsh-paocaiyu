@@ -5,6 +5,49 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [Unreleased]
+
+## [0.7.1] - 2026-11-25
+
+0.7.0 合并之后的收尾：把合并暴露的三处问题修掉，并给「插件装配」补了一道以前没有的闸门。
+
+### Fixed · 长句的 CSS 不再跟 `fitWordStyle` 抢字号
+
+- d1 给长句加了 `.qat-word[data-long="true"]{font-size:22px}` / `18px`，d2 的 `fitWordStyle` 把字号算好写成
+  inline style —— inline 赢，所以那两条 `font-size` 一直是死的；但同一行里的 `flex-wrap:wrap` 活着，
+  而多行容器是 `flex-direction:column`，一 wrap 就把三行排成三列
+- 现在长句规则只留 `line-height` / `letter-spacing` / `gap` / `text-align`，字号与断行全归 `fitWordStyle`
+
+### Fixed · 目录条数按真实词条校正（414,485 → 414,469）
+
+- 上游 `dictionary.ts` 的 `length` 是手写的，8 个日语库虚高（去重前计数）：`japanese006` 3477→3473、
+  `japanese005` 1836→1834、`japanese003` 635→634、`japanese002` 670→669，各带一份 `-zh`，合计多算 16 条
+- 章节数 `ceil(length/20)`、进度分母、面板「N 词」都挂这个字段，所以末章会少算、进度条末端永远差一点
+- `build-index.mjs` 加 `--count`：读 `public/dicts` 的真实条数覆盖声明值并逐库打印差异；
+  `npm run index:inline` 默认带上它，避免下次重新生成又退回手写值
+
+### Changed · 清掉合并遗留的死代码（client.js 374,896 → 373,947 字节）
+
+- `FALLBACK_DICT`（兜底早改成 `builtinDicts()` / `LEXICON`）、跟打条里的 `chooseDict`
+  （条上没有词库选择器）、`chaptersOf`（章节信息现算），以及两处 `const chars = target.split('')`
+  （渲染被 `WordLetters` 接手后无用）
+
+### Added · `npm run smoke`：装配冒烟
+
+- `scripts/smoke-apply.mjs` 把 `client.js` 过一遍 `__ModuleLoader__`、用 React 桩调 `apply(ctx)`，
+  核对注册的 **5 个 slot**（`sidebar.panellist` / `main` / `conversation.input.dock` / `settings.section` /
+  `conversation.chat.commandview`）、2 份 i18n（zh/en 各 140 key）、`locale/change` 监听，
+  并要求每个 slot 的 `render` 都给出非空节点
+- 纯逻辑测试抓不到「apply 里少写一个 slot」——那种错在浏览器里是「按钮不见了」，在测试里却全绿
+- `npm run verify` 串上 smoke：`check → test(846) → smoke`
+- 断言 840 → 846（长句 CSS 回归 5 条 + 日语库 length 校正 1 条）
+
+### Docs
+
+- 新增 `docs/multi-agent-flow.md`：worktree 开工、给子 agent 的 brief 六要素、交接必须带的偏差说明、
+  冲突按并集之后要复查的三类坏法、发版验证门槛、分支与工作树收尾、同仓库双 session 的风险
+- README 开发段补 `npm run audit` / `npm run smoke`，断言条数 677 → 846
+
 ## [0.7.0] - 2026-11-25
 
 四个子 agent 各开一个开发分支（`feat/d0-noauto`、`feat/d1-data`、`feat/d2-barwrap2`、`feat/d3-dicticon`），
@@ -71,18 +114,6 @@
 - 连带清掉自动打的 120ms 定时器、`auto` 状态、`restart` 里的 `setAuto(false)`，以及两份字典的
   `auto` / `autoStop` 死键；跟打条里同一套从没有入口的死代码一并删除
 
-### 测试
-
-- 新增 `npm run smoke`（`scripts/smoke-apply.mjs`）：把 `client.js` 过一遍 `__ModuleLoader__`、
-  用 React 桩调 `apply(ctx)`，核对**注册的 5 个 slot**、2 份 i18n、`locale/change` 监听，
-  并要求每个 slot 都能渲染出非空节点。纯逻辑测试抓不到「apply 里少写一个 slot」这种问题
-  —— 它在浏览器里的表现是「按钮不见了」，在测试里却全绿
-- **655 → 840 条**（+185）。重点新增：177/200/201 长度边界、假名入库与副行渲染、
-  `phoneticOf` 六种情形与面板按 `accent` 切换的端到端渲染、`dictBadge` 对 371 个真实库的全量覆盖、
-  `wrapWord` 断行还原 / 硬断 / 中英混排、`fitWordStyle` 字号单调与窄条不丢字、字母跨行索引连续
-
-## [Unreleased]
-
 ### Perf · 查词、词库目录、样式表
 
 - **`lookup()` 建索引**：以前每个词线性扫词表。缓存 `coca_20000`（17,633 词）后画一章 20 个词要
@@ -109,6 +140,12 @@
 
 - **跟打条首帧就接存档**：以前 `state.index` 初值是 0，要等 `loadDictWords` 异步回来才 `setState` 到存档位置——期间会闪一下第一个词；词库加载失败（走内置兜底）时更是永远停在 0。现在 `useState` 初始化函数里直接 `resumeIndex(readBarProgress(), …)`，`catch` 分支也补了同样的夹取
 - **面板：打完的那章不再重打**：新增纯函数 `resumeChapterSmart(progress, saved, dictId, total, hasSession)`——存档章已经 `done` 且没有中途存档时，跳到后面第一个没打完的章（末章绕回，整本打完留在原章）；章内有存档则原地上次那个词。挂载后只校正一次，不跟用户手动选章抢
+
+### 测试
+
+- **655 → 840 条**（+185）。重点新增：177/200/201 长度边界、假名入库与副行渲染、
+  `phoneticOf` 六种情形与面板按 `accent` 切换的端到端渲染、`dictBadge` 对 371 个真实库的全量覆盖、
+  `wrapWord` 断行还原 / 硬断 / 中英混排、`fitWordStyle` 字号单调与窄条不丢字、字母跨行索引连续
 
 ## [0.6.0] - 2026-11-25
 
@@ -164,7 +201,6 @@
 ### Test
 
 `456 → 644` 条，全绿。六个分支各自带断言，合并后统一跑 `npm run verify`。
-
 
 ## [0.5.1] - 2026-11-25
 
@@ -453,7 +489,6 @@ v0.4.1 在 composer 上写死过 `inputmode="latin"` / `data-qat-ime` / `ime-mod
 - 许可证 **MIT → GPL-3.0-only**（词库数据派生自 GPL-3.0 的 qwerty-learner），新增 `NOTICE`
 - 测试 45 → **65 条**（新增目录完整性、章节、归一化、搜索、抽样）
 
-
 ## [0.1.0] - 2026-11-24
 
 首个可用版本：侧栏左上角一个「⌨ 跟打」面板图标，对话里一条跟打条，判定语义对齐 qwerty-learner。
@@ -472,7 +507,8 @@ v0.4.1 在 composer 上写死过 `inputmode="latin"` / `data-qat-ime` / `ime-mod
 - 隐藏焦点守卫：练习期间输入框区域的回车 / 制表符 / `Cmd+Enter` 与发送按钮点击全部被吃掉，草稿发不出去
 - 45 条测试（`test-client-logic.mjs`）：判定 / `pushChar` / 词库 / 渲染冒烟（一次性 React 桩真的调一遍组件），不需要浏览器
 
-[Unreleased]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.5.1...v0.6.0
