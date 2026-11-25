@@ -7,6 +7,61 @@
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-11-25
+
+接着 v0.8.0 的缺口审计，把「数据已经在手、只差画出来」的那批先补完：章节计时、章节进度条、
+插件冲突提示、字号档、发音倍速与按键音音量、统计页趋势折线。三条分支并行、主 agent 合并。
+测试 995 → 1120 条；`client.js` 396,157 → 393,799 字节（含一次缩进收敛，见下）。
+
+### Added · 章节计时 `mm:ss`（N5）
+
+- 对齐上游 `Typing/components/Speed/index.tsx`（分/秒各 padStart）
+- 纯函数 `clockText(ms) → { text, hours }`：`mm:ss`，≥1 小时给 `h:mm:ss`，负数/NaN 归 `00:00`
+- 面板头部指标区多一格 `.qat-clock`；跟打条空间紧，≥60 秒才拼进 `.qat-bar-speed`（`clockVisible`）
+- 暂停冻结：`clock` 在 `applyPaused` 切段、`restart` 归零（跟打条此前其实没有有效计时，本次补上）
+
+### Added · 章节进度条（N25）
+
+- 对齐上游 `Typing/components/Progress/index.tsx`：`index / words.length` 百分比 + 0/33/66 三档配色
+- 纯函数 `progressOf(index, total) → { pct, phase }`（0 词归零、越界夹紧）
+- 面板单词上方一条 `.qat-progress > .qat-progress-fill`，宽度是组件里**唯一**的 inline style，
+  颜色走 `data-phase` + `--qat-fill` 变量
+
+### Added · 插件冲突提示（N11）
+
+- 对齐上游 `Word/TipAlert.tsx`：第 1 章第 1 个词连错 ≥3 次时提示「插件冲突！……关插件或换浏览器」
+- 纯函数 `shouldWarnConflict({ chapter, index, wrongCount, shown })`，同一会话只提示一次（不落存储）
+- `.qat-conflict` 一条警示，点「×」关掉；文案中英各一条（`conflictTitle` / `conflictBody`）
+
+### Added · 字号档（N13）
+
+- 新设置 `wordScale: 'auto' | 'small' | 'medium' | 'large'`。没照上游做成 20–96 的 px 滑杆：
+  我们的字号由 `fitWordStyle` 按宽度自动选档，直接给 px 会跟自动排版打架
+- 改成 `scaleWordSizes(sizes, scale)` 缩放整个字号阶梯再重新排版：`small 0.85 / medium 1.0 / large 1.25`，
+  行数上限随档位放宽（`small ≤2`、`large ≤4`），**不截字**
+- `auto` 与 `medium` 行为一致，仅作显式档位
+
+### Added · 发音倍速 + 按键音音量（N14 的一半）
+
+- `voiceRate: 0.6 | 0.8 | 1 | 1.2 | 1.5` → `audio.playbackRate`（TTS 兜底吃同一系数）
+- `clickVolume: 0 | 40 | 60 | 80 | 100` → 合成键音的增益乘数，无新增音频文件
+- 纯函数 `clampVoiceRate` / `clampClickVolume`：只认档位表里的值，脏值回落默认
+- 上游的「发音音量 / 释义音量」暂不做（`volume` 字段留着，等有真实投诉再说）
+
+### Added · 统计页 WPM / 正确率趋势折线（N7 的前半）
+
+- 最近 20 章双折线，纯 SVG `<polyline>`，不引图表库；Y 轴各自归一，正确率线用虚线区分
+- 纯函数 `trendSeries(records, limit)` / `polylineOf(points, key, { width, height, max })`
+- **顺手修了个数据认知错误**：`readChapterRecords()` 只存 `seconds / wordCount / wrongCount`，
+  从来没有 `wpm` / `accuracy` —— 趋势改成「有就用、没有就用 `calcWpm` / `calcAccuracy` 现算」，
+  否则生产环境里这张图永远是空态
+- 位置在日历热力之后、日柱之前，不打断键盘区顺序
+
+### Changed · 缩进收敛，给后续功能腾余量
+
+- 三条分支各自为了守住 400KB 上限压缩注释，合并后还是到了 406,971 字节（超线）
+- 把 factory 内 ≥8 空格的缩进统一收 4 格：**纯空白改动**，406,971 → 393,799 字节，行为零变化
+
 ## [0.8.0] - 2026-11-25
 
 四条并行分支各占一个 worktree 开发、主 agent 逐条合并：面板排版、上游键盘热力图、音标清洗与展示、缺口审计。

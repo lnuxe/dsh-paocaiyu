@@ -52,7 +52,7 @@ git merge --no-ff -m "merge: feat/<name>（一句话说清）" feat/<name>
 合并完、发版前，这三条都要过：
 
 ```bash
-npm run verify                                  # node --check + 995 条断言
+npm run verify                                  # node --check + 1120 条断言
 node scripts/audit-dicts.mjs --upstream <dir>   # 词库丢词率没退
 git worktree list                               # 只剩主工作树
 ```
