@@ -1228,7 +1228,10 @@ const dictBtn = (function find(node) {
   }
   return find(node.props?.children)
 })(panel)
-check('词库按钮显示当前词库名', dictBtn?.children?.[0], 'CET-4')
+check('词库按钮显示当前词库名', dictBtn?.children?.[1], 'CET-4')
+check('词库按钮前面挂 20 号徽标',
+  [dictBtn?.children?.[0]?.type?.name, dictBtn?.children?.[0]?.props?.size,
+    dictBtn?.children?.[0]?.props?.meta?.id], ['DictBadge', 20, 'cet4'])
 check('词库按钮的下拉箭头是图标不是字符', (function find(node) {
   if (!node || typeof node !== 'object') return false
   if (Array.isArray(node)) return node.some(find)
@@ -2097,6 +2100,162 @@ renderTest.clearCustomCache()
 check('清缓存后重新解析出同样内容', Object.keys(renderTest.readCustomDicts()), ['测试词表'])
 renderTest.writeCustomDicts({})
 check('清空自定义词表目录里就没了', renderTest.catalog().some((item) => item.id.includes('测试词表')), false)
+
+// —— 词库徽标：371 个库每个都有「色块 + 短标记」——
+{
+  const { dictBadge, badgeText, BADGE_TONES } = plugin.__test
+  const realDicts = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, 'dicts.index.json'), 'utf8')).dicts
+  const realById = (id) => {
+    const hit = realDicts.find((dict) => dict.id === id)
+    if (!hit) throw new Error(`dicts.index.json 里没有 ${id}`)
+    return hit
+  }
+
+  // 代表性词库：真实数据兜底
+  check('cet4 → C4 / en', dictBadge(realById('cet4')), { text: 'C4', tone: 'en', title: 'CET-4' })
+  check('ielts → IE', dictBadge(realById('ielts')).text, 'IE')
+  check('日语 N1（JapVocabList.N1）→ N1 / ja',
+    [dictBadge(realById('japanese006')).text, dictBadge(realById('japanese006')).tone], ['N1', 'ja'])
+  check('jsObject（js-object）→ JO / code',
+    [dictBadge(realById('jsObject')).text, dictBadge(realById('jsObject')).tone], ['JO', 'code'])
+  check('专插本英语词汇 → 专插', dictBadge(realById('zhuan-cha-ben-ying-yu')).text, '专插')
+  check('Oxford5000 → O5', dictBadge(realById('Oxford5000')).text, 'O5')
+  check('toefl → TO', dictBadge(realById('toefl')).text, 'TO')
+  check('gre3000 → G3', dictBadge(realById('gre3000')).text, 'G3')
+  check('raz-A → A（末尾字母字段）', dictBadge(realById('raz-A')).text, 'A')
+  check('SATen → EN（末尾 en-en）', dictBadge(realById('SATen')).text, 'EN')
+  check('kaoyan → 考研（中文片段）', dictBadge(realById('kaoyan')).text, '考研')
+  check('平假名 → 平假', dictBadge(realById('japanese-hiragana')).text, '平假')
+  check('德语 / 哈萨克语 / 印尼语都归 other',
+    ['german2en', 'kazakh_basic_3000_arabic_hapin', 'indonesian_highFrequency_3043'].map((id) => dictBadge(realById(id)).tone),
+    ['other', 'other', 'other'])
+  check('title 就是完整词库名', dictBadge(realById('ielts')).title, 'IELTS')
+
+  // 全量：371 个库逐个跑，只报一条
+  const bad = []
+  for (const meta of realDicts) {
+    const badge = dictBadge(meta)
+    if (!badge.text) bad.push(`${meta.id}:空`)
+    else if (Array.from(badge.text).length > 2) bad.push(`${meta.id}:超长`)
+    else if (!BADGE_TONES.includes(badge.tone)) bad.push(`${meta.id}:色相${badge.tone}`)
+    else if (badge.title !== meta.name) bad.push(`${meta.id}:标题`)
+  }
+  check('371 个词库全部有合法徽标（text 非空 / ≤2 字符 / tone 合法）', bad, [])
+  check('词库总数 371', realDicts.length, 371)
+  check('真实数据用到 en / ja / code / other 四种色相',
+    [...new Set(realDicts.map((meta) => dictBadge(meta).tone))].sort(), ['code', 'en', 'ja', 'other'])
+  check('371 个库里没有任何一条落到兜底问号',
+    realDicts.filter((meta) => dictBadge(meta).text === '?').length, 0)
+
+  // 边界：缺字段不炸
+  check('meta 为空 → 问号 + other', dictBadge(undefined), { text: '?', tone: 'other', title: '' })
+  check('空对象同样兜底', dictBadge({}), { text: '?', tone: 'other', title: '' })
+  check('只有 id 也能出标记', dictBadge({ id: 'cet4' }), { text: 'C4', tone: 'other', title: 'cet4' })
+  check('没有 languageCategory → other', dictBadge({ id: 'x', name: 'X' }).tone, 'other')
+  check('未知语言（fr）也归 other', dictBadge({ id: 'x', name: 'X', languageCategory: 'fr' }).tone, 'other')
+  check('中文语言走 zh 色相',
+    [dictBadge({ id: 'chengyu', name: '成语', languageCategory: 'zh' }).text,
+      dictBadge({ id: 'chengyu', name: '成语', languageCategory: 'zh' }).tone], ['成语', 'zh'])
+  check('名字全是符号也不崩', badgeText({ id: '???', name: '***' }), '?')
+
+  // 渲染：DictBadge 只管画
+  const { DictBadge } = renderPlugin.__test.components
+  const badge20 = DictBadge({ meta: realById('cet4'), size: 20 })
+  check('DictBadge 根节点是 span.qat-badge', [badge20.type, badge20.props.className], ['span', 'qat-badge'])
+  check('DictBadge 带 data-tone / data-size', [badge20.props['data-tone'], badge20.props['data-size']], ['en', '20'])
+  check('DictBadge 里是 span.qat-badge-text',
+    [badge20.children[0].props.className, badge20.children[0].children[0]], ['qat-badge-text', 'C4'])
+  check('DictBadge 的 title / aria-label 用完整库名',
+    [badge20.props.title, badge20.props['aria-label']], ['CET-4', 'CET-4'])
+  check('DictBadge 尺寸只认 20 / 28 两档',
+    [DictBadge({ meta: realById('ielts'), size: 28 }).props['data-size'],
+      DictBadge({ meta: realById('ielts') }).props['data-size'],
+      DictBadge({ meta: realById('ielts'), size: 44 }).props['data-size']], ['28', '28', '28'])
+  check('DictBadge 可以换成 i18n 的 aria 文案',
+    DictBadge({ meta: realById('ielts'), label: format(DICT.zh.dictBadgeTitle, { name: 'IELTS' }) }).props['aria-label'],
+    '词库：IELTS')
+  check('DictBadge 不引任何图片',
+    (() => {
+      const walk = (node) => {
+        if (!node || typeof node !== 'object') return true
+        const props = node.props ?? {}
+        if (props.src || props.href || props.backgroundImage) return false
+        if (String(props.className ?? '').includes('qat-svg')) return false
+        return node.children.every(walk)
+      }
+      return walk(badge20)
+    })(), true)
+
+  // 渲染：接进选择器以后，每个词库行前面都有徽标
+  const fakeList = [
+    { id: 'cet4', name: 'CET-4', category: '中国考试', length: 2607, languageCategory: 'en' },
+    { id: 'japanese006', name: 'N1', category: '日语学习', length: 3477, languageCategory: 'ja' },
+    { id: 'jsObject', name: 'JS: Object', category: '代码练习', length: 37, languageCategory: 'code' },
+  ]
+  const fakePicker = render('渲染：选择器带徽标', () => renderTest.components.DictPicker({
+    t: (key, vars) => (vars && vars.name !== undefined ? `${key}:${vars.name}` : key),
+    dictId: 'cet4',
+    query: '',
+    category: '',
+    recent: [],
+    categories: [],
+    list: fakeList,
+    onQuery: () => {},
+    onCategory: () => {},
+    onPick: () => {},
+    onClose: () => {},
+  }))
+  const badgeCount = (node) => collectClasses(node).filter((name) => name === 'qat-badge').length
+  check('徽标数量 = 词库数量', badgeCount(fakePicker), fakeList.length)
+  check('每个词库行的第一个子节点是徽标', (function walk(node, out = []) {
+    if (!node || typeof node !== 'object') return out
+    if (Array.isArray(node)) {
+      node.forEach((item) => walk(item, out))
+      return out
+    }
+    if (typeof node.type === 'function') return walk(node.type(node.props ?? {}), out)
+    if (String(node.props?.className ?? '') === 'qat-dictrow') {
+      const first = node.children[0]
+      const drawn = typeof first?.type === 'function' ? first.type(first.props ?? {}) : first
+      out.push(drawn?.props?.['data-tone'] ?? 'missing')
+    }
+    walk(node.children, out)
+    walk(node.props?.children, out)
+    return out
+  })(fakePicker), ['en', 'ja', 'code'])
+  check('行内徽标是 28 号', (function walk(node, out = []) {
+    if (!node || typeof node !== 'object') return out
+    if (Array.isArray(node)) {
+      node.forEach((item) => walk(item, out))
+      return out
+    }
+    if (typeof node.type === 'function') return walk(node.type(node.props ?? {}), out)
+    if (node.props?.['data-size'] === '28') out.push(1)
+    walk(node.children, out)
+    walk(node.props?.children, out)
+    return out
+  })(fakePicker).length, fakeList.length)
+  check('真实目录：徽标数量和词库行数一致',
+    badgeCount(picker), collectClasses(picker).filter((name) => name === 'qat-dictrow').length)
+
+  // 样式：色相变体、两档尺寸都在表里，且没有图片
+  check('样式表里有 .qat-badge', /\.qat-badge\{/.test(source), true)
+  check('样式表里有 5 个 data-tone 变体',
+    BADGE_TONES.every((tone) => new RegExp(`\\.qat-badge\\[data-tone="${tone}"\\]\\{`).test(source)), true)
+  check('样式表里有 20 / 28 两档尺寸',
+    [/\].qat-badge\[data-size="20"\]\{|\n\.qat-badge\[data-size="20"\]\{/.test(source),
+      /\n\.qat-badge\[data-size="28"\]\{/.test(source)].every(Boolean), true)
+  check('徽标用 --dsw token 上色，不写死颜色',
+    BADGE_TONES.every((tone) => new RegExp(`\\.qat-badge\\[data-tone="${tone}"\\]\\{[^}]*var\\(--dsw-`).test(source)), true)
+  check('徽标不吃布局宽度（flex:none）', /\.qat-badge\{[^}]*flex:none/.test(source), true)
+  check('徽标不用图片 / iconify',
+    /\.qat-badge[^{]*\{[^}]*url\(/.test(source) === false && /qat-badge[^}]*iconify/.test(source) === false, true)
+  check('徽标文字层有独立样式', /\.qat-badge-text\{/.test(source), true)
+
+  // 文案：两本字典都要有 aria 文案
+  check('两份字典都有徽标 aria 文案',
+    [DICT.zh.dictBadgeTitle, DICT.en.dictBadgeTitle].every((text) => typeof text === 'string' && text.includes('{name}')), true)
+}
 
 await recordFlow
 
