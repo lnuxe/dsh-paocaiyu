@@ -1,7 +1,8 @@
 # 与上游 qwerty-learner 的功能对照扫描
 
-> 更新：2026-11-25 · 插件 `v0.6.0` · 对照上游 `qwerty-learner@master`
+> 更新：2026-11-25 · 插件 `v0.7.0` · 对照上游 `qwerty-learner@master`
 > v0.6.0 记：G1–G6 全部落地，缺/部分两栏清零。
+> v0.7.0 记：数据完整性（G7）与三处体验（G8–G10）落地，词库丢词率 0.415% → 0.043%。
 > 方法：逐个核对上游 `src/pages/Typing/components/*`、`src/components/*` 与插件 `client.js` 的实现/导出，
 > 再用纯函数测试钉住结论。判定口径：**已实现**＝有代码且有测试；**部分**＝有入口但缺关键能力；**缺**＝没有。
 
@@ -83,6 +84,16 @@
 | `Mobile` 竖屏版 | 宿主是桌面 Web |
 | 云同步 / 账号进度 | 上游也没有账号体系，全靠本地 |
 
+### 2.7 数据与体验（v0.7.0）
+
+| 项 | 状态 | 分支 / 结论 |
+| --- | --- | --- |
+| G7 词库与单词完整迁移 | 已实现 | `feat/d1-data`：长度上限 40→200、`zh \| notation` 有一即可入库、`inspectWord` 四桶丢因、`npm run audit`。371 库 414,469 条 → 保留 414,289 条（丢 0.043%），IELTS-oral-900 900/900、平假名/片假名各 280/280 |
+| G8 音标按口音分美音/英音 | 已实现 | `feat/d1-data`：`phoneticOf(word, accent)`，面板与跟打条都跟 `settings.accent` 走；两支都缺才退回合音标且不加 `AmE:`/`BrE:` 前缀 |
+| G9 词库徽标 | 已实现 | `feat/d3-dicticon`：`dictBadge(meta)` 纯函数 + `DictBadge` 组件（20/28 两档），371 个库 0 条落到 `?`，零图片零 base64 |
+| G10 长句跟打排版 | 已实现 | `feat/d2-barwrap2`：`wrapWord` + `fitWordStyle` + `WordLetters`，八档缩字号、最多三行、字母索引跨行连续 |
+| 面板「自动打」按钮 | 已移除 | `feat/d0-noauto`：不是上游行为，且让人以为插件替自己打字；定时器与死键一并清掉 |
+
 ## 3. 待办（按性价比排）
 
 | # | 项 | 状态 | 分支 | 断言 |
@@ -99,5 +110,6 @@
 ## 4. 验收
 
 - 每条「已实现」都能在 `client.js` 找到导出，并在 `test-client-logic.mjs` 有断言。
-- 本轮新增：`ACCENTS` / `resolveAccent`（7 条断言）、`ICONS` / `GLYPH` / `PanelGlyph`（11 条断言）、面板排版（5 条断言）。
-- 测试总数：449 → **644**（G1–G6 合入 + 进度存档接线 + `goPrev` 回归各一轮）。
+- v0.7.0 新增：`inspectWord` / `phoneticOf`（82 条）、`dictBadge` / `badgeText` 等（46 条）、
+  `wrapWord` / `fitWordStyle` / `wordLines`（29 条）、去自动打（5 条）、审计脚本纯函数（含在 82 条内）。
+- 测试总数：655 → **840**（四个分支合入，冲突按并集并修掉合并暴露的两个实例串用问题）。

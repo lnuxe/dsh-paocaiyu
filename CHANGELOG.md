@@ -5,6 +5,74 @@
 格式遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，
 版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [0.7.0] - 2026-11-25
+
+四个子 agent 各开一个开发分支（`feat/d0-noauto`、`feat/d1-data`、`feat/d2-barwrap2`、`feat/d3-dicticon`），
+主 agent 逐个合并，冲突一律按并集并修掉合并暴露出的真问题。这一版把「迁移得对不对」从感觉变成数字：
+丢词率 **0.415% → 0.043%**，每个词库有徽标、每支音标按口音显示，雅思整句不再挤出条外，面板不再有「自动打」。
+
+### Data · 词库与单词完整迁移（丢词率 0.415% → 0.043%）
+
+- **词条长度上限 40 → 200**（`MAX_WORD_LENGTH`）。上游最长的一条词是 177 字符的雅思口语句子
+  （`I'm taking the IELTS test because I want to study overseas.`），旧上限把 **`IELTS-oral-900` 900 条砍掉 891 条**；
+  `word_roots1`（3–4 个词连写，如 `abyss achromatic anhydrous`）丢 22 条、`archVocabulary` 丢 6 条，一并回来
+- **假名词库整库入库**：`JapaneseHiragana` / `JapaneseKatakana` 的词条形如
+  `{"name":"aiueo","trans":[],"notation":"あいうえお"}`——没有中文释义但有假名。旧逻辑「无中文即丢弃」
+  把两库 **各 280 条全砍**。现在 `zh || notation` 有一即可入库，假名当副行显示在单词上方（对齐上游 `Notation`）
+- 词条形状扩为 `{ w, ipa, us, uk, zh, notation? }`，`lookup()` 原样带出 `us` / `uk` / `notation`；
+  老的 IndexedDB 缓存只有 `ipa`，三个字段为 `undefined`，不失效、不报错，自动退回 `ipa`
+- 归一化拆成 `inspectWord(raw, lang, opt) → { ok, reason, word }`（`normalizeWord` 变成它的薄壳），
+  丢弃原因分为 `empty / tooLong / badChars / noZh` 四桶，可按桶统计
+- 新增 `scripts/audit-dicts.mjs`（`npm run audit`）：拿 `dicts.index.json` 的 371 个库、414,469 条原始词条，
+  用**插件自己的归一化逻辑**跑一遍，逐库列出原始/保留/丢弃与四种丢因、音标覆盖率。纯函数部分 `auditRows`
+  等也进了测试，口径本身有断言钉住
+- 复盘：剩下的 180 条（0.043%）是 `empty` 3 条（上游 name 缺失或只有空格，如 `{"trans":["v. 拒绝"]}`）
+  + `noZh` 177 条（既无释义也无假名，如 `TOEIC` 47、`Oxford5000` 41）
+- 详见 [`docs/dict-audit.md`](docs/dict-audit.md)
+
+### Feat · 音标按口音分美音 / 英音
+
+- 上游 `Word` 是 `{ usphone, ukphone }` 两个字段，`Phonetic` 按设置显示 `AmE: [...]` 或 `BrE: [...]`；
+  插件以前把两者合并成一个 `ipa`（`ukphone || usphone`），**口音开关只换音频、显示的音标从来不变**
+- 新增纯函数 `phoneticOf(word, accent) → { text, label }`：`accent = uk` 取 `uk`、缺了退 `us`；
+  `accent = us` 取 `us`、缺了退 `uk`；两支都缺才退回合并的 `ipa`（此时**不加** `AmE:` / `BrE:` 前缀，
+  避免给 `route /ruːt/` 这种实为英音的词打上假的美音标签）
+- 面板的 `judgeOptions` 补上 `accent`，改设置立刻重渲染；跟打条同样按 `settings.accent` 取
+
+### Feat · 371 个词库每个都有矢量徽标
+
+- 新增纯函数 `dictBadge(meta) → { text, tone, title }`，零映射表、零图片、零 base64，`text` 恒为 1–2 字符：
+  字母+数字（`CET-4`→`C4`、`GRE3000`→`G3`）→ 名字末尾 1–2 字母独立字段（`RAZ 分级阅读 AA`→`AA`）→
+  两字以上中文片段（`考研`→`考研`、`平假名`→`平假`）→ ASCII 缩写（`IELTS`→`IE`、`jsObject`→`JO`）→ 中文首字
+- `tone` 只认 `en` / `ja` / `zh` / `code` / `other`（`de`/`kk`/`id` 归 `other`），五套色相全走主题变量 +
+  `color-mix`；**371 个库实测 0 条落到 `?`**
+- 新组件 `DictBadge({ meta, size, label })`（`size` 只认 20 / 28，CSS 定尺寸不写 inline style），
+  接进词库选择器每一行（28）与面板头部词库按钮（20），分类标题不加
+
+### Feat · 长句在跟打条里缩字号 + 断行
+
+- 跟打条是 composer 上方一条横带、字号固定 52px 且不换行，177 字符的雅思句子直接溢出被裁
+- 新增 `wrapWord(text, maxChars)`：按空格断行、**不切词**，空格跟着前一个词，断行拼回去与原串逐字一致；
+  单个超长无空格串才按字符硬断
+- 新增 `fitWordStyle(text, width, { maxLines })`：八档字号 `[52,44,36,30,25,21,18,16]` 逐档下探，
+  每档按 `0.62 × 字号` 估算每行容得下几个等宽字符，放得进 `maxLines` 就停；最小字号仍放不下也不截断
+- 新组件 `WordLetters` 统一三处渲染：单行仍是原来的 `.qat-word`，多行时每行一个 `.qat-word-line`，
+  **字母索引跨行连续**，`data-state` / `data-mask` 语义与逐字判定完全不变
+- 跟打条按实际条宽排（扣掉左右进度/速度/关闭按钮），面板按卡片估宽 700，两处都允许三行
+
+### Removed · 面板的「自动打」按钮
+
+- 面板工具行原来有「自动打 / 重开」两个按钮。自动打每 120ms 替人顶一个字，既不是上游行为，
+  也容易让人以为插件在自己打字、练不了手速。现在工具行只留「重开」
+- 连带清掉自动打的 120ms 定时器、`auto` 状态、`restart` 里的 `setAuto(false)`，以及两份字典的
+  `auto` / `autoStop` 死键；跟打条里同一套从没有入口的死代码一并删除
+
+### 测试
+
+- **655 → 840 条**（+185）。重点新增：177/200/201 长度边界、假名入库与副行渲染、
+  `phoneticOf` 六种情形与面板按 `accent` 切换的端到端渲染、`dictBadge` 对 371 个真实库的全量覆盖、
+  `wrapWord` 断行还原 / 硬断 / 中英混排、`fitWordStyle` 字号单调与窄条不丢字、字母跨行索引连续
+
 ## [Unreleased]
 
 ### Perf · 查词、词库目录、样式表
@@ -395,7 +463,8 @@ v0.4.1 在 composer 上写死过 `inputmode="latin"` / `data-qat-ime` / `ime-mod
 - 隐藏焦点守卫：练习期间输入框区域的回车 / 制表符 / `Cmd+Enter` 与发送按钮点击全部被吃掉，草稿发不出去
 - 45 条测试（`test-client-logic.mjs`）：判定 / `pushChar` / 词库 / 渲染冒烟（一次性 React 桩真的调一遍组件），不需要浏览器
 
-[Unreleased]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.5.1...HEAD
+[Unreleased]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.6.1...v0.7.0
 [0.6.1]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.5.0...v0.5.1
