@@ -188,6 +188,7 @@ const {
   writeDictId, releaseStuckComposer, shouldBlockSend, shouldClearDraft,
   topWrongLetters, readMastered, writeMastered, toggleMastered, masteredKey,
   tipState, tipKey, nextWrongCount, TIP_THRESHOLDS, TIP_MASK, CLICK_TONES,
+  shouldReadMeaning, meaningLang, speakMeaning, cancelMeaning, MEANING_DELAY_MS,
 } = plugin.__test
 
 let failures = 0
@@ -317,6 +318,30 @@ check('设置落 localStorage', store['qwerty-autotype:setting:dictation'], '"hi
 check('未知设置键被忽略', setSetting('nope', 1).nope, undefined)
 check('重新读到已存的设置', readSettings().dictation, 'hideVowel')
 setSetting('dictation', 'none')
+
+// —— 译义朗读：开关默认关、只在刚打完时读、同一个词不重复读 ——
+check('译义朗读默认关闭', SETTING_DEFAULTS.readMeaning, false)
+check('刚打完 + 开着 + 有释义才读',
+  shouldReadMeaning({ enabled: true, done: true, zh: '取消，撤销', lastWord: '', word: 'cancel' }), true)
+check('没打完不读',
+  shouldReadMeaning({ enabled: true, done: false, zh: '取消，撤销', lastWord: '', word: 'cancel' }), false)
+check('开关关着不读',
+  shouldReadMeaning({ enabled: false, done: true, zh: '取消，撤销', lastWord: '', word: 'cancel' }), false)
+check('同一个词不重复读',
+  shouldReadMeaning({ enabled: true, done: true, zh: '取消', lastWord: 'cancel', word: 'cancel' }), false)
+check('空释义不读',
+  shouldReadMeaning({ enabled: true, done: true, zh: '  ', lastWord: '', word: 'cancel' }), false)
+check('下一个词可以读',
+  shouldReadMeaning({ enabled: true, done: true, zh: '明显的', lastWord: 'cancel', word: 'apparent' }), true)
+check('中文释义走 zh-CN', meaningLang('取消，撤销'), 'zh-CN')
+check('日语释义走 ja-JP', meaningLang('キャンセルする'), 'ja-JP')
+check('汉字混合假名按日语', meaningLang('取り消す'), 'ja-JP')
+check('空释义默认中文', meaningLang(''), 'zh-CN')
+check('释义延迟常量是正数', MEANING_DELAY_MS > 0, true)
+check('没有 speechSynthesis 时静默失败', speakMeaning('取消，撤销', { delay: 0 }), false)
+check('排延迟朗读也不抛错', speakMeaning('取消，撤销', { delay: 30 }), false)
+check('空释义不开口', speakMeaning('   ', { delay: 0 }), false)
+check('撤掉空排期不抛错', cancelMeaning(), false)
 
 // —— 词库来源（钉提交优先） ——
 const sources = dictSourceList().map((build) => build('/dicts/CET4_T.json'))
@@ -1269,12 +1294,19 @@ check('样式里有读屏隐藏类', collectCss(cardA11y).join('').includes('.qa
 
 // —— 渲染冒烟：设置页 ——
 const settingsCase = render('渲染：设置页', () => renderTest.components.SettingsSection({}))
-check('设置页有八个设置行（含口音、自动继续与词库缓存）', collectClasses(settingsCase).filter((name) => name === 'qat-setrow').length, 8)
+check('设置页有九个设置行（含口音、译义朗读与词库缓存）', collectClasses(settingsCase).filter((name) => name === 'qat-setrow').length, 9)
 check('设置页含大小写开关', (function find(node) {
   if (!node || typeof node !== 'object') return false
   if (Array.isArray(node)) return node.some(find)
   if (typeof node.type === 'function') return find(node.type(node.props ?? {}))
   if (node.props?.['data-setting'] === 'caseSensitive') return true
+  return find(node.children) || find(node.props?.children)
+})(settingsCase), true)
+check('设置页含译义朗读开关', (function find(node) {
+  if (!node || typeof node !== 'object') return false
+  if (Array.isArray(node)) return node.some(find)
+  if (typeof node.type === 'function') return find(node.type(node.props ?? {}))
+  if (node.props?.['data-setting'] === 'readMeaning') return true
   return find(node.children) || find(node.props?.children)
 })(settingsCase), true)
 check('设置页有数据管理按钮', (function acts(node, out = []) {
