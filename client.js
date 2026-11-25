@@ -2755,6 +2755,31 @@ window.__ModuleLoader__.load({
       return editors.find((el) => el.offsetParent !== null) ?? editors[0] ?? null
     }
 
+    /** 旧版本曾在 composer 上留过 inputmode=latin / data-qat-ime，载入时清干净 */
+    function releaseStuckComposer() {
+      try {
+        for (const node of document.querySelectorAll(COMPOSER_EDITOR)) {
+          const marker = node.getAttribute('data-qat-ime')
+          if (marker) {
+            try {
+              const saved = JSON.parse(marker)
+              for (const [name, value] of Object.entries(saved || {})) {
+                if (value === null || value === undefined) node.removeAttribute(name)
+                else node.setAttribute(name, value)
+              }
+            } catch {
+              /* 存档坏了就直接删属性 */
+            }
+            node.removeAttribute('data-qat-ime')
+          }
+          if (node.getAttribute('inputmode') === 'latin') node.removeAttribute('inputmode')
+          if (node.style && node.style.imeMode === 'inactive') node.style.imeMode = ''
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+
     /**
      * 跟打条：单词显示在输入框正上方，**打字就打在真正的 composer 输入框里**。
      *
@@ -2994,11 +3019,14 @@ window.__ModuleLoader__.load({
           && (target.isContentEditable || target.closest(COMPOSER_EDITOR) !== null)
 
         const onBeforeInput = (event) => {
+          // 双门禁：条必须真的在跑（live），且落点确实在 composer 里
           if (!liveBarRef.current) return
+          if (getOpen() !== true) return
           if (!inComposer(event.target)) return
           event.preventDefault()
         }
         const onCompositionEnd = () => {
+          if (!liveBarRef.current || getOpen() !== true) return
           const wanted = wroteDraftRef.current
           setTimeout(() => {
             try {
@@ -3015,6 +3043,12 @@ window.__ModuleLoader__.load({
           window.removeEventListener('compositionend', onCompositionEnd, true)
         }
       }, [inputActions, isOpen])
+
+      // 收起时顺手把可能残留的输入法属性擦掉（旧版本留下的坑）
+      useEffect(() => {
+        if (isOpen) return
+        releaseStuckComposer()
+      }, [isOpen])
 
       // 收起时把留在输入框里的中文撤掉：只撤我们自己写进去的那一句
       useEffect(() => {
@@ -3059,10 +3093,25 @@ window.__ModuleLoader__.load({
       useEffect(() => {
         if (!isOpen) return undefined
         const onKeyDown = (event) => {
-          if (!liveBarRef.current) return
           const target = event.target
           if (!(target instanceof Node)) return
           const region = composerRegion()
+          // Esc 必须先于任何门禁生效：条卡住时这是唯一的逃生口
+          if (event.key === 'Escape') {
+            const near = (target instanceof HTMLElement
+              && (target.isContentEditable
+                || target.closest(COMPOSER_EDITOR) !== null
+                || target.closest('[contenteditable="true"]') !== null))
+              || (region && region.contains(target))
+            if (near) {
+              event.preventDefault()
+              event.stopPropagation()
+              setOpen(false)
+              releaseStuckComposer()
+              return
+            }
+          }
+          if (!liveBarRef.current) return
           const inComposer = target instanceof HTMLElement
             && (target.isContentEditable
               || target.closest(COMPOSER_EDITOR) !== null
@@ -4006,7 +4055,7 @@ window.__ModuleLoader__.load({
         dayKey, aggregateDaily, summarize, lastDays, readProgress, readChapterRecords, readWordRecords,
         recordWord, recordChapter, saveProgress,
         dictSourceList, DICT_PIN, activeMs, resolveHotkey, calcWpm, calcAccuracy, shouldStartOnTab, saveSession, readSession, clearSession, sameSession,
-        setOpen, getOpen, readDictId, writeDictId,
+        setOpen, getOpen, readDictId, writeDictId, releaseStuckComposer,
         ICON_PATHS, Icon,
         components: { Trainer, PracticePanel, PanelGlyph, ComposerTrainer, SidebarButton, DictPicker, WrongBookPanel, StatsPanel, SettingsSection, SettingRow },
         collectWrongWords, heatmapWeeks, heatLevel, filterWrongWords, DICT,
@@ -4040,6 +4089,13 @@ window.__ModuleLoader__.load({
         )))
 
         // 2) 输入框正上方：跟打条（打字发生在真正的 composer 里）
+        // 载入就先擦一遍：旧版本可能把 composer 的输入法属性写死过
+        try {
+          releaseStuckComposer()
+        } catch {
+          /* ignore */
+        }
+
         ctx.effect(() => ctx.slots.inject('conversation.input.dock', () => ctx.slots.register(
           { name: 'conversation.input.dock', id: COMMAND, order: 10 },
           (props) => h(ComposerTrainer, { useInput: props.useInput, inputActions: props.inputActions, ctx }),

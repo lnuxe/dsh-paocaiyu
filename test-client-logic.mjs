@@ -185,7 +185,7 @@ const {
   customWords, isCustomId, CUSTOM_PREFIX, dictionaryById,
   parseCustomFile, serializeCustomDict, splitCsvLine, toCustomWord, downloadText, withSlashes,
   stepIndex, toWordList, isRoundDone, pronunciationSrc, pronunciationType,
-  writeDictId,
+  writeDictId, releaseStuckComposer,
   topWrongLetters, readMastered, writeMastered, toggleMastered, masteredKey,
 } = plugin.__test
 
@@ -557,8 +557,10 @@ check('没有 Audio 时退回 TTS', (function () {
 // —— 回归：绝不再改 composer 的属性（上次 inputmode=latin 直接把输入法搞哑） ——
 const CLIENT_SRC = source
 check('不再给 composer 设 inputmode', CLIENT_SRC.includes("setAttribute('inputmode'"), false)
-check('不再给 composer 设 ime-mode', CLIENT_SRC.includes('style.imeMode'), false)
-check('不再写 data-qat-ime', CLIENT_SRC.includes('qatIme'), false)
+check('不再给 composer 设 ime-mode', CLIENT_SRC.includes("style.imeMode = 'inactive'"), false)
+check('仍然会清掉残留的 ime-mode', CLIENT_SRC.includes("style.imeMode === 'inactive'"), true)
+check('不再写 data-qat-ime', CLIENT_SRC.includes('dataset.qatIme ='), false)
+check('载入时会清掉旧的 data-qat-ime', CLIENT_SRC.includes('releaseStuckComposer'), true)
 check('键盘接管有 liveBarRef 门禁', CLIENT_SRC.includes('liveBarRef.current'), true)
 check('上屏拦截用 beforeinput', CLIENT_SRC.includes("addEventListener('beforeinput'"), true)
 
@@ -573,6 +575,37 @@ check('已打开不重复开', shouldStartOnTab({ ...tabBase, open: true, draft:
 check('不在输入框里不拦', shouldStartOnTab({ ...tabBase, inComposer: false, draft: '' }), false)
 check('带修饰键不拦', shouldStartOnTab({ ...tabBase, modifier: true, draft: '' }), false)
 check('别的键不管', shouldStartOnTab({ ...tabBase, key: 'Enter', draft: '' }), false)
+
+// —— 自愈：旧版本写死在 composer 上的属性必须被清掉 ——
+const stuckCase = (function () {
+  const attrs = new Map([
+    ['data-composer-input', ''],
+    ['contenteditable', 'true'],
+    ['inputmode', 'latin'],
+    ['data-qat-ime', JSON.stringify({ inputmode: null, lang: null, style: null })],
+  ])
+  const style = { imeMode: 'inactive' }
+  const node = {
+    style,
+    getAttribute: (name) => (attrs.has(name) ? attrs.get(name) : null),
+    setAttribute: (name, value) => attrs.set(name, String(value)),
+    removeAttribute: (name) => attrs.delete(name),
+  }
+  const prevDoc = sandbox.document
+  sandbox.document = { querySelectorAll: (selector) => (selector.includes('data-composer-input') ? [node] : []) }
+  releaseStuckComposer()
+  const after = {
+    inputmode: node.getAttribute('inputmode'),
+    marker: node.getAttribute('data-qat-ime'),
+    ime: style.imeMode,
+  }
+  sandbox.document = prevDoc
+  return after
+})()
+check('清掉残留 inputmode', stuckCase.inputmode, null)
+check('清掉残留标记', stuckCase.marker, null)
+check('清掉残留 ime-mode', stuckCase.ime, '')
+check('清掉残留 ime-mode', stuckCase.ime, '')
 
 // —— 键盘热力图 ——
 check('键盘三行', KEY_ROWS.join('|'), 'qwertyuiop|asdfghjkl|zxcvbnm')

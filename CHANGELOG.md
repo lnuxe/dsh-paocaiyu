@@ -9,6 +9,23 @@
 
 无
 
+## [0.4.5] - 2026-11-25
+
+### Fixed · 关掉跟打后输入框还是打不进字
+
+v0.4.1 在 composer 上写死过 `inputmode="latin"` / `data-qat-ime` / `ime-mode:inactive`，
+还原路径又有 bug，属性就永久留在 DOM 上——**关掉跟打也恢复不了**，只能刷新页面。
+
+- 新增 `releaseStuckComposer()`：扫 `[data-composer-input]`，有 `data-qat-ime` 就按存档还原、
+  没有就直接删掉 `inputmode="latin"` 与 `ime-mode:inactive`。**插件载入时先跑一遍**，
+  老页面不用手动修；每次关闭跟打再跑一遍
+- 关跟打时的 `Esc` 提到所有门禁之前：条卡在「加载中」占位态时 `liveBarRef` 为 false、
+  按键全被放行，Esc 也就失效了——现在 Esc 无条件能关，并顺手执行自愈
+- `beforeinput` / `compositionend` 加双门禁（`liveBarRef` **且** `getOpen() === true`），
+  任何一边不满足都不拦输入
+
+测试：419 → **425 条**（自愈三例：inputmode / 标记 / ime-mode 全清）。
+
 ## [0.4.4] - 2026-11-25
 
 ### Fixed · 跟打条「打不开 / 按了没反应」
@@ -209,7 +226,8 @@
 - 隐藏焦点守卫：练习期间输入框区域的回车 / 制表符 / `Cmd+Enter` 与发送按钮点击全部被吃掉，草稿发不出去
 - 45 条测试（`test-client-logic.mjs`）：判定 / `pushChar` / 词库 / 渲染冒烟（一次性 React 桩真的调一遍组件），不需要浏览器
 
-[Unreleased]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.4...HEAD
+[Unreleased]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.5...HEAD
+[0.4.5]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.4...v0.4.5
 [0.4.4]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.1...v0.4.2
