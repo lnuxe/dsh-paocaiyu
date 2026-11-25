@@ -2275,6 +2275,37 @@ window.__ModuleLoader__.load({
       return sampleFromWords(wordsSync(dictId), count)
     }
 
+    /**
+     * 章内单词随机排序（对齐上游 AdvancedSetting 的 randomConfig.isOpen「每次练习章节中
+     * 单词会随机排序」）：Fisher–Yates，纯函数，不改传入数组。
+     * @param words - 词数组（字符串或词条都行，原样搬动）
+     * @param random - 可注入的随机源（测试用固定序列复现），默认 Math.random
+     */
+    function shuffleWords(words, random) {
+      const rnd = typeof random === 'function' ? random : Math.random
+      const list = Array.isArray(words) ? words.slice() : []
+      for (let i = list.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rnd() * (i + 1))
+    const swap = list[i]
+    list[i] = list[j]
+    list[j] = swap
+      }
+      return list
+    }
+
+    /**
+     * 这一章这一轮该打的词（单词字符串）。
+     * 只在「取新一批词」那一刻调用：换章 / 重开一轮 / round 变化——
+     * 渲染里靠 useMemo 的洗牌代次守住，别每次重渲染都洗，否则边打边变。
+     */
+    function chapterWordList(words, chapter, round, options = {}) {
+      const all = words || []
+      if (!all.length) return []
+      const picked = round === 0 ? wordsOfChapter(all, chapter) : sampleFromWords(all, 20)
+      const list = picked.map((entry) => (typeof entry === 'string' ? entry : entry.w))
+      return options.shuffle ? shuffleWords(list, options.random) : list
+    }
+
     /** 搜索词库：名称 / id / 标签 */
     function searchCatalog(query, limit) {
       const q = String(query || '').trim().toLowerCase()
@@ -2424,6 +2455,9 @@ window.__ModuleLoader__.load({
     settingReadMeaningHint: '打完一个词后把释义也读一遍（先单词后释义，日语释义走 ja-JP）',
     settingDictation: '默写形态',
     settingDictationHint: '默认遮住哪些字母，练习时仍可临时切换',
+    settingShuffle: '章内乱序',
+    settingShuffleHint: '开启后，每次练习章节中单词会随机排序。下一章节生效',
+    dictationAuto: '默写本章节',
     reviewMistakes: '重练这些词',
     nextChapter: '下一章',
     allDicts: '全部',
@@ -2582,6 +2616,9 @@ window.__ModuleLoader__.load({
     settingReadMeaningHint: 'After a word is typed, read its meaning too (word first, then meaning; Japanese glosses use ja-JP)',
     settingDictation: 'Dictation',
     settingDictationHint: 'Which letters stay hidden by default',
+    settingShuffle: 'Shuffle in chapter',
+    settingShuffleHint: 'When on, the words in each practice chapter are randomly ordered. Takes effect from the next chapter',
+    dictationAuto: 'Dictate this chapter',
     reviewMistakes: 'Review them',
     nextChapter: 'Next chapter',
     allDicts: 'All',
@@ -2624,7 +2661,10 @@ window.__ModuleLoader__.load({
 .qat-bar-empty{font-size:12px;color:var(--dsw-alias-label-tertiary)}
 .qat-bar-center{display:flex;align-items:center;justify-content:center;min-width:0;width:100%}
 .qat-bar-count{position:absolute;left:0;top:50%;transform:translateY(-50%);font-size:11px;color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums}
-.qat-bar-speed{position:absolute;right:24px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--dsw-alias-label-tertiary);opacity:.75;font-variant-numeric:tabular-nums;pointer-events:none}
+.qat-bar-speed{position:absolute;right:42px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--dsw-alias-label-tertiary);opacity:.75;font-variant-numeric:tabular-nums;pointer-events:none}
+/* 跟打条的重开：夹在速度与关闭之间，常驻不浮动 */
+.qat-bar-restart{position:absolute;right:20px;top:50%;transform:translateY(-50%);opacity:.45;font-size:12px}
+.qat-bar-restart:hover{opacity:.9}
 .qat-bar-gloss{font-size:12px;color:var(--dsw-alias-label-tertiary);max-width:34%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .qat-bar-close{position:absolute;right:0;top:50%;transform:translateY(-50%);opacity:.45;font-size:13px}
 .qat-bar-close:hover{opacity:.9}
@@ -2870,6 +2910,9 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
 .qat-done-title{color:var(--dsw-alias-state-success-primary);font-weight:600;font-size:13px}
 .qat-done-acts{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .qat-btn-retry{border-color:var(--dsw-alias-state-error-primary);color:var(--dsw-alias-state-error-primary)}
+/* 面板头部的「重开」与工具行的「默写本章节」：小一号，和图标按钮、下拉同一行不抢戏 */
+.qat-restart,.qat-dictate{font-size:11px;padding:2px 8px;line-height:1.5}
+.qat-dictate[data-on="true"]{border-color:var(--dsw-alias-brand-primary);color:var(--dsw-alias-brand-primary)}
 .qat-btn-next{border-color:var(--dsw-alias-brand-primary);color:var(--dsw-alias-brand-primary)}
 .qat-side{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:28px;min-width:28px;padding:0 8px;border-radius:8px;border:1px solid transparent;background:transparent;color:var(--dsw-alias-label-secondary);cursor:pointer;font:inherit;font-size:12px;line-height:1;white-space:nowrap}
 .qat-side:hover{background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-label-primary)}
@@ -3365,7 +3408,30 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
 
     /** 默写形态（对齐上游 WordDictationSwitcher:18-32） */
     const DICTATION_MODES = ['none', 'hideAll', 'hideVowel', 'hideConsonant', 'randomHide']
+    /** 默写是谁打开的：user = 自己手动开的，auto = 「默写本章节」（换章自动关） */
+    const DICTATION_OPEN_BY = ['user', 'auto']
     const VOWELS = new Set(['a', 'e', 'i', 'o', 'u'])
+
+    /**
+     * 默写状态机（对齐上游 ResultScreen/index.tsx + WordDictationSwitcher）：
+     * - 手动改形态 → { dictation, openBy: 'user' }
+     * - 「默写本章节」→ { dictation, openBy: 'auto' }
+     * - 换章 → openBy === 'auto' 才关掉并复位 'user'，否则原样
+     * 非法 action / 不在 DICTATION_MODES 里的值：原样返回（不炸、不改状态）。
+     */
+    function nextDictation(prev, action) {
+      const state = {
+    dictation: DICTATION_MODES.includes(prev?.dictation) ? prev.dictation : 'none',
+    openBy: DICTATION_OPEN_BY.includes(prev?.openBy) ? prev.openBy : 'user',
+      }
+      if (!action || typeof action !== 'object') return state
+      if (action.type === 'chapter') {
+    return state.openBy === 'auto' ? { dictation: 'none', openBy: 'user' } : state
+      }
+      if (action.type !== 'user' && action.type !== 'auto') return state
+      if (!DICTATION_MODES.includes(action.value)) return state
+      return { dictation: action.value, openBy: action.type }
+    }
 
     /**
      * 每个字母是否要遮住（true = 默写时打码，打对后自动现身）
@@ -3798,6 +3864,10 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       voiceRate: 1,
       // 按键音音量 0..100（五档）
       clickVolume: 100,
+      // 谁打开的默写：user 手动 / auto「默写本章节」（换章自动关）
+      dictationOpenBy: 'user',
+      // 章内单词随机排序（对齐上游 randomConfig.isOpen），下一章节生效
+      shuffle: false,
     }
     const SETTING_PREFIX = 'qwerty-autotype:setting:'
 
@@ -3820,6 +3890,8 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     /* 无痕模式：用默认值 */
       }
       if (!DICTATION_MODES.includes(merged.dictation)) merged.dictation = 'none'
+      // 默写来源脏值一律当「自己开的」，不然换章会被莫名其妙关掉
+      if (!DICTATION_OPEN_BY.includes(merged.dictationOpenBy)) merged.dictationOpenBy = 'user'
       // 老存档没有这三个 key 或存了脏值：逐个收敛回合法档
       merged.wordScale = clampWordScale(merged.wordScale)
       merged.voiceRate = clampVoiceRate(merged.voiceRate)
@@ -3847,6 +3919,15 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       }
       for (const listener of settingListeners) listener()
       return SETTINGS
+    }
+
+    /** 把 nextDictation 的结果落到设置里（形态 + 谁开的两个 key 一起写） */
+    function applyDictation(action) {
+      const live = getSettings()
+      const next = nextDictation({ dictation: live.dictation, openBy: live.dictationOpenBy }, action)
+      if (next.dictation !== live.dictation) setSetting('dictation', next.dictation)
+      if (next.openBy !== live.dictationOpenBy) setSetting('dictationOpenBy', next.openBy)
+      return next
     }
 
     /* --------------------------------------------------------------- trainer */
@@ -3948,7 +4029,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     function Trainer({
       words, variant, onClose, showMeta = false, options, dictation = 'none',
       dictId = '', chapter = null, chapterTotal = 0, onFinish, onReview, onRetryWrong, onNextChapter, ctx,
-      jump = null, onIndex, onLiveWpm, headTag = '',
+      jump = null, onIndex, onLiveWpm, headTag = '', restartNonce = 0,
     }) {
       const t = useT(ctx)
       const [state, setState] = useState({
@@ -4330,6 +4411,8 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     live.current = { index: 0, typed: '', locked: false, timer: null }
     wrongRef.current = 0
     lettersRef.current = {}
+    // 计时归零：「本章从头再来」不能让上一轮的累计时长接着涨
+    clock.current = { ms: 0, last: Date.now() }
     // 重开一轮：上一轮排着的释义撤掉，同一个词可以重新读
     meaningRef.current = ''
     cancelMeaning()
@@ -4344,6 +4427,17 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     const input = inputRef.current
     if (input) input.focus()
       }, [onLiveWpm])
+
+      /**
+       * 面板头部的「重开」按钮：外部发一个信号（restartNonce 自增）就整章重来。
+       * 重置逻辑只有 restart 一份，这里只负责认信号；初值对齐，挂载时不会误触发。
+       */
+      const restartSeenRef = useRef(restartNonce)
+      useEffect(() => {
+    if (restartNonce === restartSeenRef.current) return
+    restartSeenRef.current = restartNonce
+    restart()
+      }, [restart, restartNonce])
 
       if (total === 0) {
     return h('div', { className: 'qat-card' }, h(Styles), h('div', { className: 'qat-hint' }, t('empty')))
@@ -4532,6 +4626,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
           h('span', {
             ...pressable(restart),
             className: 'qat-btn',
+            'data-act': 'restart',
           }, t('restart')),
         ),
         h('div', { className: 'qat-hint' }, t('hint')),
@@ -4848,10 +4943,19 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       // 词库词条按需加载：整本拿到，顺序往下打；失败退回内置兜底
       useEffect(() => {
     let cancelled = false
+    /**
+     * 取一批词（词库加载 / 重开一轮）时按 shuffle 决定要不要洗：
+     * 跟打条没有章节概念，整本词库一口气过，所以就洗整本；
+     * 只在「取新词」这一刻洗，不会边打边变。
+     */
+    const orderWords = (list) => {
+      const pool = Array.isArray(list) ? list : []
+      return getSettings().shuffle ? shuffleWords(pool) : pool
+    }
     loadDictWords(dictId)
       .then((all) => {
         if (!cancelled && all?.length) {
-          const list = toWordList(all)
+          const list = orderWords(toWordList(all))
           // round > 0 是「重开一轮」，必须从第一个词开始；初次挂载才接着上次那个词
           const index = round > 0 ? 0 : resumeIndex(readBarProgress(), dictId, list.length)
           setWords(list)
@@ -4860,7 +4964,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       })
       .catch((err) => {
         if (cancelled) return
-        const list = toWordList(err?.fallbackWords ?? wordsSync(dictId))
+        const list = orderWords(toWordList(err?.fallbackWords ?? wordsSync(dictId)))
         setWords(list)
         setState((prev) => ({ ...prev, index: resumeIndex(readBarProgress(), dictId, list.length) }))
       })
@@ -5379,6 +5483,15 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     // 实时速度：贴在关闭按钮左边的次要点位，小字置灰，不和左侧进度抢位置
     h('span', { className: 'qat-bar-speed' }, t('liveSpeed', { wpm: liveWpm }),
       clockVisible('command', barMs) ? ` · ${clockText(barMs).text}` : ''),
+    // 重开：跟打条也常驻一个小按钮（上游是 hover 浮出，这里直接摆着），
+    // 点了从第一个词再来，不打折扣地清计时/错词
+    h('span', {
+      ...pressable(restart),
+      className: 'qat-icon qat-bar-restart',
+      'data-act': 'restart',
+      title: t('restart'),
+      'aria-label': t('restart'),
+    }, h(Icon, { name: 'prev', size: 12 })),
     h('span', { className: 'qat-bar-center' },
       h('span', { className: 'qat-wordblock' },
       h(WordLetters, {
@@ -5740,12 +5853,20 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     }),
     h(SettingRow, {
       t,
+      label: t('settingShuffle'),
+      hint: t('settingShuffleHint'),
+      control: toggle('shuffle'),
+    }),
+    h(SettingRow, {
+      t,
       label: t('settingDictation'),
       hint: t('settingDictationHint'),
       control: h('select', {
         className: 'qat-select',
         value: settings.dictation,
-        onChange: (event) => setSetting('dictation', event.target.value),
+        'data-setting': 'dictation',
+        // 设置里手动改形态：openBy 记成 user，换章不会被自动关掉
+        onChange: (event) => applyDictation({ type: 'user', value: event.target.value }),
       }, DICTATION_MODES.map((mode) => h('option', { key: mode, value: mode }, t(`dictation_${mode}`)))),
     }),
     h('div', { className: 'qat-settings-title qat-datablock' }, t('hotkeysTitle')),
@@ -6001,6 +6122,10 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     return resumeChapter(readChapterPos(), id, dict ? chapterCount(dict) : 0)
       })
       const [round, setRound] = useState(0)
+      /** 洗牌代次：换章 / 重开 / round 变化时 +1，只在它变时重洗（不乱序时也用不着） */
+      const [shuffleGen, setShuffleGen] = useState(0)
+      /** 重开本章的信号：每点一次 +1，卡片认这个信号跑自己的 restart */
+      const [restartNonce, setRestartNonce] = useState(0)
       // 内置词库可直接同步出词条 → 首帧就能练；其余词库先显示加载态
       const [all, setAll] = useState(() => (builtinById(readDictId()) ?? {}).words ?? null)
       const [loading, setLoading] = useState(() => !(builtinById(readDictId()) ?? {}).words)
@@ -6111,12 +6236,12 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       }, [all, chapter, dictId, progress])
 
       // 章内词条 → 单词字符串（音标/中文由 lookup 从已加载词库里查）
-      const chapterWords = useMemo(() => {
-    const words = all || []
-    if (!words.length) return []
-    const picked = round === 0 ? wordsOfChapter(words, chapter) : sampleFromWords(words, 20)
-    return picked.map((entry) => (typeof entry === 'string' ? entry : entry.w))
-      }, [all, chapter, round])
+      // 乱序只在「取新一批词」那一刻发生：shuffleGen 是洗牌代次，换章 / 重开 / round
+      // 变化时 +1；Math.random() 绝不进依赖，否则每次重渲染都洗、边打边变。
+      const chapterWords = useMemo(
+    () => chapterWordList(all, chapter, round, { shuffle: settings.shuffle }),
+    [all, chapter, round, settings.shuffle, shuffleGen],
+      )
 
       // 词表抽屉的行：状态优先级 current > mastered > wrong > done > idle
       const wordRows = useMemo(
@@ -6131,6 +6256,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     writeDictId(id)
     setChapter(0)
     setRound(0)
+    setShuffleGen((value) => value + 1)
     setPicker(false)
     setQuery('')
     setCategory('')
@@ -6140,12 +6266,43 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const chooseChapter = (index) => {
     setChapter(index)
     setRound(0)
+    // 换章：洗牌代次 +1（乱序开着时这一章重新洗），默写若是 auto 则由 effect 归位
+    setShuffleGen((value) => value + 1)
     setJump(null)
       }
       const again = () => {
     setJump(null)
+    // 重开一轮也是「取新一批词」：randomHide 之外再洗一次
+    setShuffleGen((value) => value + 1)
     setRound((value) => value + 1)
       }
+      /**
+       * 重开本章（面板头部的 restart）：卡片自己把 index / typed / 错词 / 计时归零，
+       * 这里只负责发信号，外加乱序时重新洗一批词。不调 submit()、不发消息。
+       */
+      const restartChapter = () => {
+    setJump(null)
+    if (settings.shuffle) setShuffleGen((value) => value + 1)
+    setRestartNonce((value) => value + 1)
+      }
+      /** 「默写本章节」：openBy='auto'，换章自动关（见 nextDictation 的 chapter 分支） */
+      const dictateChapter = () => {
+    const live = getSettings()
+    // 已经是被这一键开着的 → 再点一下关掉（记成 user 的「none」，不留 auto 尾巴）
+    const on = live.dictation !== 'none' && live.dictationOpenBy === 'auto'
+    applyDictation(on ? { type: 'user', value: 'none' } : { type: 'auto', value: 'hideAll' })
+      }
+
+      // 换章 / 换一轮才叫换章：openBy='auto' 的默写自动关掉并复位 'user'。
+      // restart 不碰 chapter/round，所以重开本章不会被误判成换章。
+      const dictationMountRef = useRef(true)
+      useEffect(() => {
+    if (dictationMountRef.current) {
+      dictationMountRef.current = false
+      return
+    }
+    applyDictation({ type: 'chapter' })
+      }, [chapter, round, dictId])
 
       // 章节位置存起来：关掉面板再打开，还是这一章
       useEffect(() => {
@@ -6166,6 +6323,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       nextTimer.current = null
       setChapter((value) => (value + 1) % chapterTotal)
       setRound((value) => value + 1)
+      setShuffleGen((value) => value + 1)
     }, 1200)
       }, [chapterTotal, refreshStats, settings.autoNext])
 
@@ -6234,6 +6392,15 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         'data-act': 'again',
         onClick: again,
       }, h(Icon, { name: 'again', size: 15 })),
+      // 重开本章：常驻的小按钮（上游是 hover 浮出，这里直接摆着省事），
+      // 语义是「本章从头再来」，和上面「再来一轮（随机 20 词）」不是一回事
+      h('span', {
+        ...pressable(restartChapter),
+        className: 'qat-btn qat-restart',
+        title: t('restart'),
+        'aria-label': t('restart'),
+        'data-act': 'restart',
+      }, t('restart')),
     ),
     h('div', { className: 'qat-tools' },
       h('select', {
@@ -6251,10 +6418,20 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         className: 'qat-select qat-dictation',
         value: settings.dictation,
         title: t('dictation'),
-        onChange: (event) => setSetting('dictation', event.target.value),
+        'data-setting': 'dictation',
+        // 面板里手动切形态：openBy 记成 user（换章不会自动关）
+        onChange: (event) => applyDictation({ type: 'user', value: event.target.value }),
       },
         DICTATION_MODES.map((mode) => h('option', { key: mode, value: mode }, t(`dictation_${mode}`))),
       ),
+      // 「默写本章节」：一键开本章的默写，openBy='auto' → 换章自动关掉
+      h('span', {
+        ...pressable(dictateChapter),
+        className: 'qat-btn qat-dictate',
+        'data-act': 'dictation-auto',
+        'data-on': settings.dictation !== 'none' && settings.dictationOpenBy === 'auto' ? 'true' : 'false',
+        title: t('dictationAuto'),
+      }, t('dictationAuto')),
       h('span', { className: 'qat-grow' }),
       // 实时速度：紧挨着今日数据，小字置灰，练习中一直在动但不抢注意力
       h('span', { className: 'qat-live-speed' },
@@ -6375,6 +6552,8 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
           // 面板头部已有标题，这格换成章号（chapter 为 null 时说复练）
           headTag: t('panelHeadChapter', { n: chapter + 1 }),
           jump,
+          // 头部「重开」按钮的信号：卡片收到就整章从头再来
+          restartNonce,
           onIndex: handleIndex,
           onFinish: finishChapter,
           onReview: (words) => {
@@ -6407,7 +6586,8 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     cleanPhone, bracketPhone, PHONE_PLACEHOLDER,
     splitSense, splitSenses, sensesOf, SENSE_LIMIT,
     searchCatalog, readRecent, catalogSize: () => catalog().length, wordsSync, loadDictWords,
-    effectiveTarget, stripPunct, maskLetters, DICTATION_MODES, readSettings, getSettings, setSetting,
+    effectiveTarget, stripPunct, maskLetters, DICTATION_MODES, DICTATION_OPEN_BY, nextDictation, applyDictation,
+    readSettings, getSettings, setSetting,
     subscribeSettings, SETTING_DEFAULTS, DICT, heatLevel,
     dayKey, aggregateDaily, summarize, lastDays, readProgress, readChapterRecords, readWordRecords,
     recordWord, recordChapter, saveProgress,
@@ -6421,6 +6601,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     fingerOf, keyHighlight, FINGER_IDS, FINGER_MAP, FINGER_COLORS,
     collectWrongWords, heatmapWeeks, heatLevel, filterWrongWords, DICT,
     wordListRows, WORDLIST_LIMIT, WORDLIST_STATES, WORDLIST_STATE_LABEL,
+    shuffleWords, chapterWordList,
     serializeBackup, parseBackup, BACKUP_VERSION, BACKUP_LIMITS, playClick, pressable,
     topWrongLetters, readMastered, writeMastered, toggleMastered, masteredKey, MASTERED_KEY,
     trendSeries, polylineOf,
