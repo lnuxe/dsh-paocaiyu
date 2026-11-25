@@ -193,6 +193,12 @@ const {
   shouldReadMeaning, meaningLang, speakMeaning, cancelMeaning, MEANING_DELAY_MS,
 } = plugin.__test
 
+// 实时速度（G2）单独解构：上面那一大段是多个子任务共用的，能不动就不动
+const {
+  calcLiveWpm, windowedWpm, pushSpeedSample,
+  LIVE_WINDOW_MS, LIVE_HEARTBEAT_MS, LIVE_WPM_CAP, CHARS_PER_WORD,
+} = plugin.__test
+
 let failures = 0
 let passed = 0
 function check(label, actual, expected) {
@@ -369,6 +375,7 @@ check('占位符对齐（同一 key 的中英占位符集合相同）', Object.k
 check('WPM = 词数/秒*60', calcWpm(20, 30), 40)
 check('WPM 无耗时给 0', calcWpm(20, 0), 0)
 check('正确率 20/(20+5)', calcAccuracy(20, 5), 80)
+check('实时速度有中英文案', [DICT.zh.liveSpeed, DICT.en.liveSpeed].join('|'), '实时 {wpm} WPM|Live {wpm} WPM')
 check('正确率没数据给 0', calcAccuracy(0, 0), 0)
 check('正确率全错给 0', calcAccuracy(0, 7), 0)
 
@@ -433,6 +440,27 @@ check('未暂停：累计 + 本次', activeMs({ ms: 1000, last: 5000 }, 7000), 3
 check('暂停中：只算累计', activeMs({ ms: 1000, last: null }, 7000), 1000)
 check('没有时钟给 0', activeMs(null, 7000), 0)
 check('时间倒退不出现负数', activeMs({ ms: 500, last: 9000 }, 8000), 500)
+
+// —— 实时速度（G2）：5 字符 = 1 词，取最近窗口 ——
+const win = (t, chars) => ({ t, chars })
+check('实时速度：空样本返回 0', windowedWpm([], 60000), 0)
+check('实时速度：单样本算不出速度', windowedWpm([win(59000, 300)], 60000), 0)
+check('实时速度：正常窗口 80 字符 / 8 秒 = 120 WPM', windowedWpm([win(52000, 250), win(60000, 330)], 60000), 120)
+check('实时速度：窗口外的老样本被丢弃', windowedWpm([win(0, 0), win(55000, 100), win(60000, 130)], 60000), 72)
+check('实时速度：字符没涨（停手）给 0', windowedWpm([win(58000, 50), win(60000, 50)], 60000), 0)
+check('实时速度：暂停的采样不进样本', pushSpeedSample([win(1000, 5)], { t: 2000, chars: 9, paused: true }, 8000), [win(1000, 5)])
+check('实时速度：暂停后窗口里只剩一条 → 0', windowedWpm(pushSpeedSample([win(1000, 5)], { t: 2000, chars: 9, paused: true }, 8000), 2000), 0)
+const speedPool = [win(1000, 5), win(90000, 400)]
+const pruned = pushSpeedSample(speedPool, win(95000, 420), 8000)
+check('实时速度：追加时剪掉窗口外样本', pruned.length, 2)
+check('实时速度：剪枝留下的是最近的', pruned.map((item) => item.t).join(','), '90000,95000')
+check('实时速度：追加不改入参数组', speedPool.length, 2)
+check('实时速度：折算 = 300 字符 / 60 秒 = 60 WPM', calcLiveWpm({ chars: 300, ms: 60000 }), 60)
+check('实时速度：四舍五入取整（10.5 → 11）', calcLiveWpm({ chars: 7, ms: 8000 }), 11)
+check('实时速度：荒谬值压在上限', calcLiveWpm({ chars: 1000, ms: 100 }), LIVE_WPM_CAP)
+check('实时速度：没字符 / 没耗时都给 0', [calcLiveWpm({}), calcLiveWpm({ chars: 0, ms: 1000 }), calcLiveWpm({ chars: 10, ms: 0 }), calcLiveWpm(null)].join(','), '0,0,0,0')
+check('实时速度：负数按 0 处理', calcLiveWpm({ chars: -5, ms: 1000 }), 0)
+check('实时速度：采样窗口 8 秒、心跳 1 秒、5 字符 1 词', [LIVE_WINDOW_MS, LIVE_HEARTBEAT_MS, CHARS_PER_WORD].join(','), '8000,1000,5')
 
 // —— 快捷键裁决 ——
 const hk = (over) => resolveHotkey({ key: 'a', meta: false, ctrl: false, alt: false, shift: false, ...over })
@@ -1076,6 +1104,7 @@ const panel = render('渲染：跟打面板', () => renderTest.components.Practi
 const panelClasses = collectClasses(panel).join(' ')
 check('面板含词库下拉', panelClasses.includes('qat-select'), true)
 check('面板含跟打卡片', panelClasses.includes('qat-card'), true)
+check('面板在今日数据那一带显示实时速度', panelClasses.includes('qat-live-speed'), true)
 check('面板卡片是 panel 变体', findPanelCard(panel), true)
 
 // —— 面板排版：头部一行、工具行一行、按钮用迁移过来的图标 ——
@@ -1104,6 +1133,7 @@ check('跟打条含音标', barClasses.includes('qat-ipa'), true)
 // 中文释义在 composer 输入框里，条上不再重复一遍
 check('跟打条不重复显示中文释义', barClasses.includes('qat-bar-gloss'), false)
 check('跟打条显示整本进度', barClasses.includes('qat-bar-count'), true)
+check('跟打条显示实时速度', barClasses.includes('qat-bar-speed'), true)
 check('跟打条中间块单独一层（好居中）', barClasses.includes('qat-bar-center'), true)
 check('进度和关闭绝对定位在两侧', (function styles(node, out = []) {
   if (!node || typeof node !== 'object') return out
