@@ -7,6 +7,55 @@
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-25
+
+第三批：三条分支并行做「入口类 + 键盘 + 结算/错词本」十项。测试 1245 → 1448 条；
+`client.js` 413,930 → **446,492 字节（93.0% of 480KB）** —— 下一批**必须先拆包**，不然就顶线了。
+
+### Added · 入口类（N20 / N21 / N22 / N24）
+
+- **N20 词表点行发音**：行尾加 `.qat-wordlist-speak`（`data-act="wordlist-speak"`）→ 读该词；
+  行本身点击语义不变（跳转 + 关抽屉）。行改成 `.qat-wordlist-item` 包「行按钮 + 发音按钮」两个兄弟节点，
+  不嵌套交互元素；发音走 `pressable`，且 `onClick` 里 `stopPropagation`
+- **N21 错词胶囊点读**：结算页 `.qat-mistake` 加 `role="button"` / `tabIndex=0` / `data-act="pill-speak"`，
+  点或 Enter/空格（`pillActKey`）只发音，不跳转、不关页
+- **N22 复习模式出口**：复习卡片头部 `data-act="review-exit"`，`reviewExit()` 只把 `review` 置空回普通面板，
+  不打结算。结算态也能退（出口在 done 分支之外）
+- **N24 发音预取**：对齐上游 `usePrefetchPronunciationSound` —— 为下一个词建 `display:none` 的 `Audio`
+  （`preload='auto'`、`crossOrigin='anonymous'`）挂 `document.head`，卸载时 `removeChild`；
+  `nextWordToPrefetch` / `shouldPrefetch` 可测，缺 `document`/`Audio` 时静默跳过
+
+### Added · 键盘与预览（N3 / N18 / N4）
+
+- **N3 快捷键补齐**（`resolveHotkey` 只加档不删档）：`Enter` → 开始/暂停（`isComposing` 不拦）、
+  `Ctrl/Cmd+V` → 开关默写、`Ctrl/Cmd+Shift+V` → 循环换默写档、`Ctrl/Cmd+Shift+←/→` → 跳上/下一个词。
+  旧 `⌘←/⌘→/⌘J/⌘P/Esc` 与 `Alt → ''`（恐慌键不被抢）全部保留
+- **N18 按住 Tab 偷看**：keydown 全显答案 + 无视 `showZh` 显中文；keyup / 窗口 `blur` 复原。
+  面板只在自己打字框有焦点时抢 Tab，卡片内按钮的 Tab 走位不受影响；`⌘/Ctrl+Tab` 不接管
+- **N4 上一个/下一个词预览**：新设置 `showNeighbors`（默认关，同上游）→ `.qat-neighbors`
+  灰色小字（`pointer-events:none`），面板带箭头、跟打条只给「上一个 · 下一个」。设置行 16 → 17
+- 顺带修掉一个死设置：`showZh` 之前从没被任何渲染读过，现在 `showZh !== false || peeking`
+
+### Added · 结算页（N6）
+
+- **默写本章节**：`.qat-done-acts` 加 `data-act="dictation-auto"`，先 `applyDictation({type:'auto'})`
+  再走下一章（无则重开本章）；已开 auto 时 `data-active="true"`，再点退出 auto。
+  用 `keepDictationRef` 单次守卫，避免面板的换章 effect 立刻把 auto 关掉
+- **结语**：`doneMessage()` 四档（满分 / ≥90% / 继续 / 不打字），`.qat-done-note` 带 `data-level`
+- **撒花**：`confettiBits()` 只在满分给 12 片，纯 CSS 动画 `.qat-confetti-bit`（`--qat-i` 控延迟），
+  颜色只用 3 个 `--dsw-alias-*` token，`prefers-reduced-motion` 下关动画，`aria-hidden`
+
+### Added · 错词本（N8）
+
+- **分页**：`paginate(rows, page, size)`（`WRONG_PAGE_SIZE = 20`，页码从 1、越界夹取、非数组给空），
+  超过 20 条才出 `.qat-pager`
+- **单删**：行尾 `data-act="wrong-del"` → `removeWordRecords(word, dictId)` 真删存储（并清 `mastered` 同名项），
+  删空当前页由 `paginate` 自动夹回
+- **详情**：点行开 `.qat-detail`（fixed 遮罩 + 定位 div，不用原生 `dialog`）：音标、释义（≤3 段）、
+  打错次数、最近时间、所属词库
+- **csv 导出**：`wrongCsv(rows)` —— BOM + CRLF + 按需加引号并转义 `"`；按钮 `data-act="wrong-export"`。
+  **没引 `xlsx` / `file-saver`**（上游用这两个），走已有 `downloadText`
+
 ## [0.10.0] - 2026-11-25
 
 继续收审计清单：三条分支并行做「五个单点交互 + 日文两块」。测试 1120 → 1245 条；
