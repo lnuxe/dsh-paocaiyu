@@ -185,7 +185,7 @@ const {
   customWords, isCustomId, CUSTOM_PREFIX, dictionaryById,
   parseCustomFile, serializeCustomDict, splitCsvLine, toCustomWord, downloadText, withSlashes,
   stepIndex, toWordList, isRoundDone, pronunciationSrc, pronunciationType,
-  writeDictId, releaseStuckComposer,
+  writeDictId, releaseStuckComposer, shouldBlockSend, shouldClearDraft,
   topWrongLetters, readMastered, writeMastered, toggleMastered, masteredKey,
 } = plugin.__test
 
@@ -1029,6 +1029,38 @@ check('跟打条只有一个关闭按钮', collectClasses(bar).filter((name) => 
 check('跟打条不再有图标工具条', barClasses.includes('qat-acts'), false)
 check('跟打条不再有词库下拉', barClasses.includes('qat-select'), false)
 renderTest.setOpen(false)
+
+// —— 关掉跟打之后绝不清用户草稿（这是「输入框打不了字」的根因） ——
+const draftCase = (function () {
+  const writes = []
+  const actions = { setDraft: (text) => writes.push(text) }
+  // 模拟：条从来没写过提示语（wrote 为空），关闭状态下用户开始打字
+  renderTest.setOpen(false)
+  renderTest.components.ComposerTrainer({
+    useInput: () => 'hell',
+    inputActions: actions,
+    ctx: ctxStub,
+  })
+  return writes
+})()
+check('关条时不去清用户草稿', draftCase.length, 0)
+
+// —— 关条时清草稿的判定（真值表，防「关条后打不了字」复发） ——
+check('打开时不清', shouldClearDraft({ open: true, draft: '取消', wrote: '取消' }), false)
+check('我们写的能清掉', shouldClearDraft({ open: false, draft: '取消', wrote: '取消' }), true)
+check('没写过就绝不清（用户自己打的字）', shouldClearDraft({ open: false, draft: '你好', wrote: '' }), false)
+check('用户改过就保留', shouldClearDraft({ open: false, draft: '取消一下', wrote: '取消' }), false)
+check('草稿已空不用清', shouldClearDraft({ open: false, draft: '', wrote: '取消' }), false)
+check('wrote 为空草稿也空', shouldClearDraft({ open: false, draft: '', wrote: '' }), false)
+check('undefined 输入不炸', shouldClearDraft(), false)
+
+// —— 发送按钮要在训练中挡住 ——
+check('挡住发送消息', shouldBlockSend('发送消息'), true)
+check('挡住 Send message', shouldBlockSend('Send message'), true)
+check('挡住加入队列', shouldBlockSend('加入队列'), true)
+check('停止/打断永远放行', shouldBlockSend('停止生成'), false)
+check('空标签不管', shouldBlockSend(''), false)
+
 
 // —— 打开路径：空词库也要看得见 ——
 const emptyBar = (function () {

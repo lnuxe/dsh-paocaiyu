@@ -9,6 +9,36 @@
 
 无
 
+## [0.4.6] - 2026-11-25
+
+### Fixed · Esc 退出跟打后输入框打不了字（根因）
+
+上一轮的「关条时把中文撤掉」写成了无条件清空：
+
+```js
+const wrote = wroteDraftRef.current
+wroteDraftRef.current = ''
+if (wrote && draft !== wrote) return    // wrote 已经是 ''，这一行永远不生效（旧值被清前读了，但后续每次 draft 变化时 wrote 都空）
+inputActions.setDraft('')
+```
+
+`wrote` 一旦被清成空串，后面**每一次** `draft` 变化都会走到 `setDraft('')`——用户关掉跟打后敲一个字，就被抹掉一个字；
+换成新输入框也一样，因为草稿是同一份共享 store。这就是「Esc 之后打不了字」。
+
+- 抽出纯函数 `shouldClearDraft({ open, draft, wrote })`：只有**我们写过**且**草稿仍是那一句**才清
+- 效果里 `wrote` 为空直接返回，用户自己打的字一个字都不动
+- 7 条真值表断言钉死这个行为（含 `wrote` 为空、用户改过、草稿已空、`undefined` 入参）
+
+### Added · 训练中挡住「发送」
+
+- 之前只拦 Enter，点发送按钮会把输入框里的中文提示语当消息发出去
+- 现在捕获阶段拦 `click` / `pointerdown`：`shouldBlockSend(label)` 命中 `发送消息` / `Send message` / `加入队列` / `Queue` / `Steer` 就吞掉；
+  **`停止` / `Stop` 永远放行**（那是逃生口），我们自己的按钮（`[data-qat]`）也不受影响
+
+### Added · 逃生热键 `⌘/Ctrl + Alt + Q`
+
+不管卡在什么状态，按下就：强制关条 → 擦掉可能残留的输入法属性 → 清掉我们写过的提示语。不用刷新页面。
+
 ## [0.4.5] - 2026-11-25
 
 ### Fixed · 关掉跟打后输入框还是打不进字
@@ -226,7 +256,8 @@ v0.4.1 在 composer 上写死过 `inputmode="latin"` / `data-qat-ime` / `ime-mod
 - 隐藏焦点守卫：练习期间输入框区域的回车 / 制表符 / `Cmd+Enter` 与发送按钮点击全部被吃掉，草稿发不出去
 - 45 条测试（`test-client-logic.mjs`）：判定 / `pushChar` / 词库 / 渲染冒烟（一次性 React 桩真的调一遍组件），不需要浏览器
 
-[Unreleased]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.5...HEAD
+[Unreleased]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.6...HEAD
+[0.4.6]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.5...v0.4.6
 [0.4.5]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.4...v0.4.5
 [0.4.4]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.2...v0.4.3

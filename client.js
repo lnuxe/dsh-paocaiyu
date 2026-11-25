@@ -2755,6 +2755,41 @@ window.__ModuleLoader__.load({
       return editors.find((el) => el.offsetParent !== null) ?? editors[0] ?? null
     }
 
+    /**
+     * 关条时要不要清草稿：只有「我们写过 + 草稿还是我们那一句」才清。
+     * 抽成纯函数是因为这里曾经无条件清空，把用户关条后敲的每个字都吃掉了。
+     * @param input - { open, draft, wrote }
+     * @returns 是否应该执行清空。
+     */
+    function shouldClearDraft(input) {
+      const { open, draft, wrote } = input || {}
+      if (open) return false
+      if (!wrote) return false
+      return String(draft ?? '') === String(wrote)
+    }
+
+    /**
+     * 训练中要挡的按钮：发送 / 发送并排队 / 打断。
+     * 只看 aria-label（DSH 的发送按钮带 aria-label={primaryLabel}），中文 '发送消息'、英文 'Send message' 都命中。
+     */
+    const SEND_LABEL_RE = /发送|队列|发送消息|Send|Queue|Steer/i
+
+    function shouldBlockSend(label) {
+      const text = String(label ?? '').trim()
+      if (!text) return false
+      if (/停止|Stop/i.test(text)) return false   // 停止/中断是逃生口，永远放行
+      return SEND_LABEL_RE.test(text)
+    }
+
+    /** 点在这些按钮上就吞掉：训练中按发送会把输入框里的提示语发出去 */
+    function isSendTrigger(target) {
+      if (!(target instanceof Element)) return false
+      const button = target.closest('button, [role="button"]')
+      if (!button) return false
+      if (button.closest('[data-qat]')) return false      // 我们自己的按钮不管
+      return shouldBlockSend(button.getAttribute('aria-label') ?? button.textContent)
+    }
+
     /** 旧版本曾在 composer 上留过 inputmode=latin / data-qat-ime，载入时清干净 */
     function releaseStuckComposer() {
       try {
@@ -3028,6 +3063,7 @@ window.__ModuleLoader__.load({
         const onCompositionEnd = () => {
           if (!liveBarRef.current || getOpen() !== true) return
           const wanted = wroteDraftRef.current
+          if (!wanted) return                // 没写过提示语就别碰草稿
           setTimeout(() => {
             try {
               if (draftRef.current !== wanted) inputActions?.setDraft?.(wanted)
@@ -3036,11 +3072,21 @@ window.__ModuleLoader__.load({
             }
           }, 0)
         }
+        const onSendClick = (event) => {
+          if (!liveBarRef.current || getOpen() !== true) return
+          if (!isSendTrigger(event.target)) return
+          event.preventDefault()
+          event.stopPropagation()
+        }
         window.addEventListener('beforeinput', onBeforeInput, true)
         window.addEventListener('compositionend', onCompositionEnd, true)
+        window.addEventListener('click', onSendClick, true)
+        window.addEventListener('pointerdown', onSendClick, true)
         return () => {
           window.removeEventListener('beforeinput', onBeforeInput, true)
           window.removeEventListener('compositionend', onCompositionEnd, true)
+          window.removeEventListener('click', onSendClick, true)
+          window.removeEventListener('pointerdown', onSendClick, true)
         }
       }, [inputActions, isOpen])
 
@@ -3050,19 +3096,41 @@ window.__ModuleLoader__.load({
         releaseStuckComposer()
       }, [isOpen])
 
-      // 收起时把留在输入框里的中文撤掉：只撤我们自己写进去的那一句
+      // 收起时把留在输入框里的中文撤掉：**只撤我们自己写进去的那一句**，而且只撤一次。
+      // 注意：wrote 为空时必须直接返回。之前无条件清空，用户关掉跟打后每敲一个字
+      // 都会被这里抹掉，表现就是「输入框打不了字」（换新输入框也一样，因为草稿是共享的）。
       useEffect(() => {
         if (isOpen) return
         const wrote = wroteDraftRef.current
+        const clear = shouldClearDraft({ open: isOpen, draft, wrote })
         wroteDraftRef.current = ''
-        if (!draft) return
-        if (wrote && draft !== wrote) return   // 用户自己改过，不动
+        if (!clear) return                     // 没写过 / 用户改过 → 一个字都不动
         try {
           inputActions?.setDraft?.('')
         } catch {
           /* ignore */
         }
       }, [draft, inputActions, isOpen])
+
+      // 逃生热键：⌘/Ctrl + Alt + Q —— 不管卡在哪，强制关条、擦属性、清掉我们写的提示语
+      useEffect(() => {
+        const onPanic = (event) => {
+          if (!(event.metaKey || event.ctrlKey) || !event.altKey) return
+          if (String(event.key).toLowerCase() !== 'q') return
+          event.preventDefault()
+          event.stopPropagation()
+          setOpen(false)
+          releaseStuckComposer()
+          try {
+            if (wroteDraftRef.current) inputActions?.setDraft?.('')
+          } catch {
+            /* ignore */
+          }
+          wroteDraftRef.current = ''
+        }
+        window.addEventListener('keydown', onPanic, true)
+        return () => window.removeEventListener('keydown', onPanic, true)
+      }, [inputActions])
 
       // Tab 快速启动：输入框为空、且跟打条没开时，按 Tab 打开
       useEffect(() => {
@@ -4055,7 +4123,7 @@ window.__ModuleLoader__.load({
         dayKey, aggregateDaily, summarize, lastDays, readProgress, readChapterRecords, readWordRecords,
         recordWord, recordChapter, saveProgress,
         dictSourceList, DICT_PIN, activeMs, resolveHotkey, calcWpm, calcAccuracy, shouldStartOnTab, saveSession, readSession, clearSession, sameSession,
-        setOpen, getOpen, readDictId, writeDictId, releaseStuckComposer,
+        setOpen, getOpen, readDictId, writeDictId, releaseStuckComposer, shouldBlockSend, isSendTrigger, shouldClearDraft,
         ICON_PATHS, Icon,
         components: { Trainer, PracticePanel, PanelGlyph, ComposerTrainer, SidebarButton, DictPicker, WrongBookPanel, StatsPanel, SettingsSection, SettingRow },
         collectWrongWords, heatmapWeeks, heatLevel, filterWrongWords, DICT,
