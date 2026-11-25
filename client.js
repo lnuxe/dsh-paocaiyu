@@ -319,14 +319,51 @@ window.__ModuleLoader__.load({
         .trim()
     }
 
+    /** 音标占位值：这些等于「没有音标」，一律归一成空串 */
+    const PHONE_PLACEHOLDER = /^(?:[-–—−_~?]+|null|undefined|none|n\/?a|无|空)$/i
+
+    /**
+     * 上游 phone 字段的清洗（纯函数：入库与渲染都走它，口径只有这一份）。
+     * `/ˈæpl/` `[ˈæpl]` `/[...]/` `  goʊ  ` `／ruːt／` `''` `-` `null`
+     * → `ˈæpl` `ˈæpl` `ˈæpl` `goʊ` `ruːt` `''` `''` `''`
+     * - 全角斜杠 / 方括号 / 空格转半角，再把连续空白压成一个
+     * - 外层 `/`、`[`、`]` 剥干净（可能叠了两层，循环剥到不动为止）
+     * - 内部的分隔 `/` 保留：少数词库一个字段里塞了英/美两支（`bɑ:θ/bæθ`），
+     *   剥掉就等于替词库猜口音
+     */
+    function cleanPhone(raw) {
+      if (raw === null || raw === undefined) return ''
+      let text = String(raw)
+        .replace(/／/g, '/')
+        .replace(/［/g, '[')
+        .replace(/］/g, ']')
+        .replace(/[\u3000\u00a0\t\r\n]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+      if (!text) return ''
+      for (let i = 0; i < 4; i += 1) {
+        const stripped = text.replace(/^[/[\]]+/, '').replace(/[/[\]]+$/, '').trim()
+        if (stripped === text) break
+        text = stripped
+      }
+      if (!text || PHONE_PLACEHOLDER.test(text)) return ''
+      return text
+    }
+
+    /** 渲染层统一套一层方括号；已经洗过的音标体不会再套出第二层 */
+    function bracketPhone(text) {
+      const body = cleanPhone(text)
+      return body ? `[${body}]` : ''
+    }
+
     /** ukphone 优先、其次 usphone；多音取第一支；' → ˈ；包成 /.../ */
     function buildIpa(raw) {
-      const text = (raw || '').toString().trim()
+      const text = cleanPhone(raw)
       if (!text) return ''
-      let first = text.split(/[;；]/)[0].trim()
-      first = first.replace(/^[/[\].,，、\s]+/, '').replace(/[/[\]\s]+$/, '')
+      // 少数词库以逗号 / 顿号起头（`，ˈæpl`），入库前当成噪声去掉
+      const first = cleanPhone(text.split(/[;；]/)[0]).replace(/^[.,，、]+/, '').replace(/'/g, 'ˈ').replace(/\s+/g, '')
       if (!first) return ''
-      return `/${first.replace(/'/g, 'ˈ').replace(/\s+/g, '')}/`
+      return `/${first}/`
     }
 
     /** 允许词组（单词之间单空格），不允许前后空格 / 换行 / 控制字符 */
@@ -373,7 +410,9 @@ window.__ModuleLoader__.load({
       // 两支都缺时才退回上游自带的 ipa（老缓存 / 内置采样只有这一支，别给它编口音）
       const wantUk = options?.accent === 'uk'
       const picked = wantUk ? (uk || us) : (us || uk)
-      const word = { w, ipa: picked || (isCode ? '' : buildIpa(raw.ipa)), us, uk, zh }
+      // `en` 标记这份词库有没有英/美口音之分：日语罗马字 / 中文拼音 / 俄语转写拿到的
+      // 也是 phone 字段，但它们不是「美音」，phoneticOf 不给它们加 AmE/BrE 前缀
+      const word = { w, ipa: picked || (isCode ? '' : buildIpa(raw.ipa)), us, uk, zh, en: languageCategory === 'en' }
       if (notation) word.notation = notation
       return { ok: true, reason: '', word }
     }
@@ -394,23 +433,31 @@ window.__ModuleLoader__.load({
 
     /**
      * 按口音取要显示的音标（纯函数，UI 只调它）。
-     * - us 且 word.us 非空 → `AmE: /.../`
-     * - uk 且 word.uk 非空 → `BrE: /.../`
-     * - 对应口音缺失就退回另一支，标签跟着实际取值走（不显示空括号）
-     * - 两支都没有 → 退回老缓存的 `ipa`，不加口音前缀（老数据是美英合并的，标不准）
-     * - 什么都没有 → { text: '', label: '' }，UI 不渲染
+     * - `text` = 洗净后套好方括号的音标体（`[ˈæpl]`），`label` = 口音前缀（`AmE`/`BrE`/空）
+     *   前缀与音标分开画：前缀是更淡的小字，由 UI 拼 `.qat-ipa-label`
+     * - us 且 word.us 非空 → text `[goʊ]` + label `AmE`
+     * - uk 且 word.uk 非空 → text `[gəu]` + label `BrE`
+     * - 对应口音缺失就退回另一支，label 跟着**实际取到的那一支**走（不显示空括号）
+     * - 两支都没有 → 退回老缓存的 `ipa`，label 必须为空（老数据是美英合并的，标不准；
+     *   `route` 那种实际是英音的词也不能被打上 `AmE:`）
+     * - 非英文词库（word.en === false，日语罗马字 / 拼音）：只有 text，不加前缀
+     * - 什么都没有 → { text: '', label: '' }，UI 不渲染音标行
      * @returns {{ text: string, label: string }}
      */
     function phoneticOf(word, accent) {
-      const us = String(word?.us ?? '')
-      const uk = String(word?.uk ?? '')
+      const us = cleanPhone(word?.us)
+      const uk = cleanPhone(word?.uk)
       const picked = accent === 'uk' ? (uk ? 'uk' : 'us') : (us ? 'us' : 'uk')
       const value = picked === 'uk' ? uk : us
       if (value) {
-        const label = picked === 'uk' ? 'BrE' : 'AmE'
-        return { text: `${label}: ${value}`, label }
+        const accented = word?.en !== false
+        return {
+          text: bracketPhone(value),
+          label: accented ? (picked === 'uk' ? 'BrE' : 'AmE') : '',
+        }
       }
-      return { text: String(word?.ipa ?? ''), label: '' }
+      const legacy = cleanPhone(word?.ipa)
+      return legacy ? { text: bracketPhone(legacy), label: '' } : { text: '', label: '' }
     }
 
     /** 批量归一化 + 去重（保序） */
@@ -1835,12 +1882,12 @@ window.__ModuleLoader__.load({
       return map
     }
 
-    /** 查表结果统一整形：us / uk / notation 原样带出去 */
+    /** 查表结果统一整形：us / uk / notation / en 原样带出去 */
     function hitOf(entry) {
-      // us / uk / notation 原样带出去：phoneticOf 按口音挑显示哪一支；
-      // 老缓存条目只有 ipa，这三个就是 undefined，phoneticOf 会退回 ipa
+      // us / uk / notation / en 原样带出去：phoneticOf 按口音挑显示哪一支、要不要加前缀；
+      // 老缓存条目只有 ipa，这几项就是 undefined，phoneticOf 会退回 ipa 且不加前缀
       return entry
-        ? { word: entry.w, ipa: entry.ipa, zh: entry.zh, us: entry.us, uk: entry.uk, notation: entry.notation }
+        ? { word: entry.w, ipa: entry.ipa, zh: entry.zh, us: entry.us, uk: entry.uk, notation: entry.notation, en: entry.en }
         : undefined
     }
 
@@ -2239,6 +2286,8 @@ window.__ModuleLoader__.load({
 .qat-bar-close:hover{opacity:.9}
 .qat-wordblock{display:inline-flex;flex-direction:column;align-items:center;gap:1px;line-height:1.15}
 .qat-ipa{font-size:13px;line-height:1.25;color:var(--dsw-alias-label-secondary);opacity:.7;letter-spacing:0;user-select:none}
+/* 假名词库的 notation 在跟打条里也占这个位置，但它是假名、不是音标，样式走正文字体 */
+.qat-bar-notation{font-size:13px;line-height:1.25;color:var(--dsw-alias-label-secondary);opacity:.7;letter-spacing:0;user-select:none;font-family:inherit}
 .qat-bar-done{font-size:13px;color:var(--dsw-alias-state-success-primary)}
 .qat-meta{font-size:11px;opacity:.6;font-variant-numeric:tabular-nums;white-space:nowrap}
 .qat-meta-sep{margin:0 4px;opacity:.5}
@@ -2384,6 +2433,8 @@ window.__ModuleLoader__.load({
 .qat-gloss-notation{font-size:15px;line-height:1.4;color:var(--dsw-alias-label-secondary);font-family:inherit}
 .qat-gloss{display:flex;flex-direction:column;align-items:center;gap:4px;margin:6px 0 16px;text-align:center}
 .qat-gloss-ipa{font-size:15px;line-height:1.4;color:var(--dsw-alias-label-tertiary);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+/* 口音前缀（AmE / BrE）：比音标更淡的小字，只在真的取到该口音那一支时出现 */
+.qat-ipa-label{font-size:.8em;letter-spacing:0;opacity:.7;user-select:none}
 .qat-gloss-zh{font-size:16px;line-height:1.5;color:var(--dsw-alias-label-secondary);max-width:34em}
 .qat-acts{display:inline-flex;align-items:center;gap:2px;opacity:.55}
 .qat-acts:hover{opacity:1}
@@ -3585,8 +3636,11 @@ window.__ModuleLoader__.load({
       const target = effectiveTarget(current, options)
       const masked = maskLetters(target, dictation, state.index)
       const meta = lookup(current)
-      // 音标按设置里的口音显示（AmE / BrE）：日/中/俄等词条没有口音之分时退回 ipa 原文
-      const ipaText = phoneticOf(meta, options?.accent ?? getSettings().accent).text
+      // 音标按设置里的口音显示（AmE / BrE）：口音前缀只跟「实际取到的那一支」走，
+      // 两支都缺退回合并 ipa 时 label 为空（别给 route 这种实际英音的词标 AmE）
+      const phone = phoneticOf(meta, options?.accent ?? settingsNow.accent ?? getSettings().accent)
+      const ipaText = phone.text
+      const ipaLabel = phone.label
       // 日文假名词库没有中文释义：notation（假名）单独一行放在单词上方（对齐上游 Notation）
       const notation = String(meta?.notation ?? '')
       const gloss = meta?.zh ?? ''
@@ -3885,10 +3939,16 @@ window.__ModuleLoader__.load({
               long: longWord,
               flash: state.flash,
             }),
-            // 假名词库只有 notation 时也要保留这一块：发音按钮挂在里面
-            showMeta && (ipaText || gloss || notation)
+            // 假名词库只有 notation 时也要保留这一块：发音按钮挂在里面。
+            // 发音只看 current（读音不依赖音标），所以只有按钮时这块照样挂上
+            showMeta && (ipaText || gloss || notation || (current && voiceOn))
               ? h('div', { className: 'qat-gloss' },
-                ipaText ? h('div', { className: 'qat-gloss-ipa' }, ipaText) : null,
+                // 音标行只在真有音标时出现（prefix 与音标体分开画，前缀更淡）
+                ipaText
+                  ? h('div', { className: 'qat-gloss-ipa' },
+                    ipaLabel ? h('span', { className: 'qat-ipa-label' }, `${ipaLabel}: `) : null,
+                    ipaText)
+                  : null,
                 gloss ? h('div', { className: 'qat-gloss-zh' }, gloss) : null,
                 current && voiceOn
                   ? h('span', {
@@ -4343,8 +4403,12 @@ window.__ModuleLoader__.load({
       const target = effectiveTarget(current, judgeOptions)
       const masked = maskLetters(target, settings.dictation, state.index)
       const entry = lookup(current)
-      // 音标按口音显示；日文假名词条没有音标，就把假名顶上（跟面板一样当副行）
-      const ipa = phoneticOf(entry, settings.accent).text || String(entry?.notation ?? '')
+      // 音标按口音显示（前缀 AmE / BrE 随 accent 设置实时变）；
+      // 日文假名词条没有音标 → 假名走自己的 notation 位（不进音标行，避免同一串画两遍）
+      const phone = phoneticOf(entry, settings.accent)
+      const ipa = phone.text
+      const ipaLabel = phone.label
+      const barNotation = ipa ? '' : String(entry?.notation ?? '')
       const meaning = entry?.zh || entry?.notation || ''
       const longWord = target.length > LONG_WORD_CHARS
 
@@ -4793,7 +4857,12 @@ window.__ModuleLoader__.load({
             long: longWord,
             flash: state.flash,
           }),
-            ipa ? h('span', { className: 'qat-ipa' }, ipa) : null,
+            ipa
+              ? h('span', { className: 'qat-ipa' },
+                ipaLabel ? h('span', { className: 'qat-ipa-label' }, `${ipaLabel}: `) : null,
+                ipa)
+              // 假名不是音标：走自己的 class，别塞进 .qat-ipa（也不套方括号）
+              : barNotation ? h('span', { className: 'qat-bar-notation' }, barNotation) : null,
             h(TipLine, { tip, t, className: 'qat-bar-tip' }),
           ),
         ),
@@ -5768,6 +5837,7 @@ window.__ModuleLoader__.load({
         judgeTyping, parseWords, format, pushChar, lookup, dictionaries, sampleWords, groupByCategory,
         catalog, normalizeWord, normalizeWords, chapterCount, wordsOfChapter, sampleFromWords,
         inspectWord, phoneticOf, MAX_WORD_LENGTH, LONG_WORD_CHARS, DROP_REASONS,
+        cleanPhone, bracketPhone, PHONE_PLACEHOLDER,
         searchCatalog, readRecent, catalogSize: () => catalog().length, wordsSync, loadDictWords,
         effectiveTarget, stripPunct, maskLetters, DICTATION_MODES, readSettings, getSettings, setSetting,
         subscribeSettings, SETTING_DEFAULTS, DICT, heatLevel,
