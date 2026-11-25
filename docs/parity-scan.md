@@ -106,6 +106,7 @@
 | G6 | 译义朗读 | 已合入 | `feat/g6-readzh` | `shouldReadMeaning` / `meaningLang` / `speakMeaning`（17） |
 
 做法：六个子 agent 各开一个开发分支并行开发，主 agent 逐个合并（冲突按并集处理），合并后统一跑测试。
+流程（worktree 开工 / brief 六要素 / 冲突三类坏法 / 验证门槛 / 收尾）见 [`docs/multi-agent-flow.md`](multi-agent-flow.md)。
 
 ## 4. 验收
 

@@ -70,11 +70,12 @@ IndexedDB `qwerty-autotype`：`wordRecords`（逐词）、`chapterRecords`（逐
 
 ```bash
 npm run check         # node --check client.js
-npm test              # 677 条断言：判定 / 纯函数 / 渲染冒烟 / 存档 / 索引
+npm test              # 846 条断言：判定 / 纯函数 / 渲染冒烟 / 存档 / 索引 / 音标 / 徽标 / 排版
 npm run verify        # check + test
 npm run index         # 只生成 dicts.index.json
-npm run index:inline  # 同时写回 client.js 的 @dict-index 区间
-node scripts/build-index.mjs --pin <sha> --inline client.js   # 钉上游提交
+npm run index:inline  # --count 校正条数 + 写回 client.js 的 @dict-index 区间
+npm run audit         # 371 个库逐库核对：原始 / 保留 / 丢弃原因 / 音标覆盖率
+node scripts/build-index.mjs --pin <sha> --count --inline client.js   # 钉上游提交
 ```
 
 测试用一次性 React 桩在 `vm` 里真的把组件渲一遍，不需要浏览器。
