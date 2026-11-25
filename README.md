@@ -30,7 +30,7 @@ Qwerty 跟打的**对话界面**（Client 半边）。Host 半边在 `../qwerty-
 
 ## 图标
 
-侧栏那一笔水墨是设计稿原作：原图抠掉纸底存成透明 PNG（`assets/panel-icon.png`），base64 内联进包，用 CSS `mask-image` 以 `currentColor` 上色，深浅主题都不用另出图；`icon.svg` 是同一张（插件卡片用）。其余控制图标是一套自绘的 24 格线性 SVG（`ICON_PATHS`），不依赖 emoji 字体。
+侧栏与插件图标都是纯矢量（iconify 路径，`currentColor` 上色，深浅主题同一套）；控制图标同样用 24 格 SVG，不依赖 emoji 字体。水墨版 PNG 已随 v0.6.0 移除，仓库里不再留位图。
 
 **自定义词表**：词库选择器底部「＋ 导入自定义词表」，可以粘贴 `word 中文` 一行一个（也支持 `word,中文,/音标/`），也可以选 `.txt` / `.csv` / `.json` 文件导入；保存后出现在「自定义」分类里，行尾 `⤓` 导出为 `.txt`，整体随备份一起导出导入。
 

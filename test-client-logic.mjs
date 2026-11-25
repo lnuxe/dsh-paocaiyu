@@ -191,7 +191,7 @@ const {
   topWrongLetters, readMastered, writeMastered, toggleMastered, masteredKey,
   tipState, tipKey, nextWrongCount, TIP_THRESHOLDS, TIP_MASK, CLICK_TONES,
   shouldReadMeaning, meaningLang, speakMeaning, cancelMeaning, MEANING_DELAY_MS,
-  readBarProgress, writeBarProgress, resumeIndex, readChapterPos, writeChapterPos, resumeChapter, BAR_KEY, CHAPTER_KEY,
+  readBarProgress, writeBarProgress, resumeIndex, readChapterPos, writeChapterPos, resumeChapter, resumeChapterSmart, BAR_KEY, CHAPTER_KEY,
 } = plugin.__test
 
 // 实时速度（G2）单独解构：上面那一大段是多个子任务共用的，能不动就不动
@@ -1949,7 +1949,6 @@ check('不是同一个词库 → 第 0 章',
 check('词库还没算好 → 第 0 章', resumeChapterSmart({}, { dictId: 'cet4', chapter: 3 }, 'cet4', 0, false), 0)
 
 // —— 进度存档：Esc 关掉跟打条再打开，接着打上次那个词 ——
-// —— 回归：卡片里的「上一个」曾引用只存在于跟打条的 wordsRef，点了必崩 ——
 check('卡片里没有游离的 wordsRef 引用', /const prev = stepIndex\(stateRef\.current\.index, wordsRef/.test(source), false)
 
 const barStore = (() => {
@@ -1974,6 +1973,31 @@ renderTest.writeChapterPos('cet4', 5)
 check('章节存档可读回', renderTest.resumeChapter(renderTest.readChapterPos(), 'cet4', 131), 5)
 check('章节存档换库不认', renderTest.resumeChapter(renderTest.readChapterPos(), 'cet6', 131), 0)
 check('章号越界夹到最后一章', renderTest.resumeChapter({ dictId: 'cet4', chapter: 999 }, 'cet4', 131), 130)
+
+// 首帧就接上次那个词：存档 index=2，条上第一眼应该是词表第 3 个词
+const barWords = renderTest.toWordList(renderTest.wordsSync('cet4'))
+renderTest.writeBarProgress('cet4', 2)
+renderTest.setOpen(true)
+const resumedBar = render('渲染：跟打条接着上次那个词',
+  () => renderTest.components.ComposerTrainer({ useInput: () => '', inputActions: {}, ctx: ctxStub }))
+const resumedWord = (function pick(node) {
+  if (!node || typeof node !== 'object') return null
+  if (Array.isArray(node)) {
+    for (const item of node) {
+      const hit = pick(item)
+      if (hit) return hit
+    }
+    return null
+  }
+  if (typeof node.type === 'function') return pick(node.type(node.props ?? {}))
+  if (node.props?.className === 'qat-word') {
+    return (node.children ?? []).map((child) => (child?.children?.[0] ?? '')).join('')
+  }
+  return pick(node.children) || pick(node.props?.children)
+})(resumedBar)
+check('条上首帧就是存档那个词', resumedWord, barWords[2])
+renderTest.setOpen(false)
+renderTest.writeBarProgress('cet4', 0)
 
 await recordFlow
 

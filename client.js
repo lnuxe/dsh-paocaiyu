@@ -3894,9 +3894,11 @@ window.__ModuleLoader__.load({
       const [round, setRound] = useState(0)
       // 跟打条是「一本词库顺着往下打」，不是抽 20 个就结束
       const [words, setWords] = useState(() => toWordList(wordsSync(dictId)))
-      const [state, setState] = useState({
-        index: 0, typed: '', flash: false, hits: 0, retries: 0, wordWrong: 0, finishedAt: null,
-      })
+      const [state, setState] = useState(() => ({
+        // 首帧就接上次那个词（异步加载词库不会闪现第一个词）
+        index: resumeIndex(readBarProgress(), readDictId(), toWordList(wordsSync(readDictId())).length),
+        typed: '', flash: false, hits: 0, retries: 0, wordWrong: 0, finishedAt: null,
+      }))
       const [auto, setAuto] = useState(false)
       const [barWidth, setBarWidth] = useState(null)
       /** 我们自己写进 composer 的那句中文（关闭时要原样撤掉） */
@@ -3929,7 +3931,10 @@ window.__ModuleLoader__.load({
             }
           })
           .catch((err) => {
-            if (!cancelled) setWords(toWordList(err?.fallbackWords ?? wordsSync(dictId)))
+            if (cancelled) return
+            const list = toWordList(err?.fallbackWords ?? wordsSync(dictId))
+            setWords(list)
+            setState((prev) => ({ ...prev, index: resumeIndex(readBarProgress(), dictId, list.length) }))
           })
         return () => {
           cancelled = true
@@ -5130,14 +5135,18 @@ window.__ModuleLoader__.load({
       useEffect(() => {
         if (chapterFixedRef.current) return
         if (!all?.length) return
+        // 进度是异步读回来的：没读到就先等，否则「上一章打完了吗」永远判成没打完
+        if (!progress || !Object.keys(progress).length) return
         chapterFixedRef.current = true
         const total = chapterCount({ length: all.length })
         if (!total) return
         const saved = readSession()
         const target = resumeChapterSmart(progress, readChapterPos(), dictId, total, Boolean(saved))
         if (target !== chapter) {
+          // 只换章、不把 round 顶上去：round > 0 会切成随机 20 词，跑到别的章节去了
           setChapter(target)
-          setRound((value) => value + 1)
+          setRound(0)
+          setJump(null)
         }
       }, [all, chapter, dictId, progress])
 

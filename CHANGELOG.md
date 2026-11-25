@@ -7,7 +7,10 @@
 
 ## [Unreleased]
 
-无
+### Fixed · 打完之后 Esc 关掉、再打开又回到第一个词
+
+- **跟打条首帧就接存档**：以前 `state.index` 初值是 0，要等 `loadDictWords` 异步回来才 `setState` 到存档位置——期间会闪一下第一个词；词库加载失败（走内置兜底）时更是永远停在 0。现在 `useState` 初始化函数里直接 `resumeIndex(readBarProgress(), …)`，`catch` 分支也补了同样的夹取
+- **面板：打完的那章不再重打**：新增纯函数 `resumeChapterSmart(progress, saved, dictId, total, hasSession)`——存档章已经 `done` 且没有中途存档时，跳到后面第一个没打完的章（末章绕回，整本打完留在原章）；章内有存档则原地上次那个词。挂载后只校正一次，不跟用户手动选章抢
 
 ## [0.6.0] - 2026-11-25
 
@@ -371,6 +374,7 @@ v0.4.1 在 composer 上写死过 `inputmode="latin"` / `data-qat-ime` / `ime-mod
 - 45 条测试（`test-client-logic.mjs`）：判定 / `pushChar` / 词库 / 渲染冒烟（一次性 React 桩真的调一遍组件），不需要浏览器
 
 [Unreleased]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.5.1...HEAD
+[0.6.1]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.6...v0.5.0
