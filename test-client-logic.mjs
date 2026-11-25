@@ -643,6 +643,13 @@ check('空词没有地址', pronunciationSrc('  ', 'us'), '')
 check('英文按美音', pronunciationType('cancel'), 'us')
 check('假名按日语', pronunciationType('りんご'), 'ja')
 check('汉字按中文', pronunciationType('苹果'), 'zh')
+// N10：de / id / kk / romaji 四档（kk 上游用俄语兜底，romaji 先转假名）
+check('德语走 le=de', pronunciationSrc('Haus', 'de'), 'https://dict.youdao.com/dictvoice?audio=Haus&le=de')
+check('印尼语走 le=id', pronunciationSrc('rumah', 'id'), 'https://dict.youdao.com/dictvoice?audio=rumah&le=id')
+check('哈萨克语用俄语兜底 le=ru', pronunciationSrc('кітап', 'kk'), `https://dict.youdao.com/dictvoice?audio=${encodeURIComponent('кітап')}&le=ru`)
+check('罗马字先转假名再走 le=jap', pronunciationSrc('shinjuku', 'romaji'),
+  'https://dict.youdao.com/dictvoice?audio=%E3%81%97%E3%82%93%E3%81%98%E3%82%85%E3%81%8F&le=jap')
+check('未知 type 仍回落美音', pronunciationSrc('cancel', 'fr'), 'https://dict.youdao.com/dictvoice?audio=cancel&type=2')
 check('有 Audio 时用有道教音频', (function () {
   const calls = []
   sandbox.window.Audio = function (src) {
@@ -1270,7 +1277,7 @@ check('空标签不管', shouldBlockSend(''), false)
 
 // —— 口音设置：美音 type=2 / 英音 type=1，中日文按文字判定 ——
 check('默认是美音', renderTest.SETTING_DEFAULTS.accent, 'us')
-check('口音只有两档', renderTest.ACCENTS.join(','), 'us,uk')
+check('口音有六档', renderTest.ACCENTS.join(','), 'us,uk,de,id,kk,romaji')
 check('英文按设置吃英音', renderTest.resolveAccent('cancel', { accent: 'uk' }), 'uk')
 check('英文默认美音', renderTest.resolveAccent('cancel', { accent: 'us' }), 'us')
 check('设置坏了回退美音', renderTest.resolveAccent('cancel', { accent: 'fr' }), 'us')
@@ -2731,6 +2738,76 @@ function panelIpaText(accent) {
 check('面板按 accent=us 显示 AmE', panelIpaText('us'), 'AmE: [goʊ]')
 check('面板按 accent=uk 显示 BrE', panelIpaText('uk'), 'BrE: [gəu]')
 renderTest.removeCustomDict('accent-probe')
+
+// —— N9：notation 拆成逐字 ruby（汉字挂读音、送假名/纯假名不挂） ——
+const { isKanji, notationParts, notationNodes, romajiToHiragana } = renderTest
+check('isKanji 认统一表意汉字', isKanji('食'), true)
+check('isKanji 认兼容表意汉字', isKanji('\uf900'), true)
+check('isKanji 认扩展 A', isKanji('\u3400'), true)
+check('isKanji 不认假名', isKanji('あ'), false)
+check('isKanji 不认拉丁字母', isKanji('a'), false)
+check('isKanji 只认单字符', isKanji('食べ'), false)
+check('notationParts 空串 → 空数组', JSON.stringify(notationParts('')), '[]')
+check('notationParts 汉字整段挂 ruby', JSON.stringify(notationParts('食べる(たべる)')),
+  JSON.stringify([{ base: '食べる', ruby: 'たべる' }]))
+check('notationParts 送假名拆出来不挂 ruby', JSON.stringify(notationParts('お茶(おちゃ)')),
+  JSON.stringify([{ base: 'お', ruby: '' }, { base: '茶', ruby: 'おちゃ' }]))
+check('notationParts 纯假名单段无 ruby', JSON.stringify(notationParts('あい(あい)')),
+  JSON.stringify([{ base: 'あい', ruby: '' }]))
+check('notationParts 片假名保留读音', JSON.stringify(notationParts('コーヒー(こーひー)')),
+  JSON.stringify([{ base: 'コーヒー', ruby: 'こーひー' }]))
+check('notationParts 空括号吞掉读音', JSON.stringify(notationParts('食べる()')),
+  JSON.stringify([{ base: '食べる', ruby: '' }]))
+check('notationParts 嵌套按最外层不抛异常', JSON.stringify(notationParts('a(b(c))')),
+  JSON.stringify([{ base: 'a(b', ruby: '' }, { base: ')', ruby: '' }]))
+check('notationParts 括号外纯假名成段', JSON.stringify(notationParts('ねこ')),
+  JSON.stringify([{ base: 'ねこ', ruby: '' }]))
+check('notationNodes 没 ruby 时回纯文本', notationNodes('あいうえお'), 'あいうえお')
+check('notationNodes 空串回 null', notationNodes(''), null)
+check('样式表里有 ruby 样式', /\.qat-ruby\{/.test(source) && /\.qat-ruby-rt\{/.test(source), true)
+check('ruby 读音用更淡的字色', /\.qat-ruby-rt\{[^}]*var\(--dsw-alias-label-tertiary\)/.test(source), true)
+// 面板端到端：汉字挂 rt、纯假名不带 ruby
+renderTest.saveCustomDict('kana-ruby', [
+  { name: 'taberu', trans: [], notation: '食べる(たべる)' },
+  { name: 'aiueo2', trans: [], notation: 'あい(あい)' },
+])
+await renderTest.loadDictWords(`${CUSTOM_PREFIX}kana-ruby`)
+function panelNode(word) {
+  return renderTest.components.Trainer({ words: [word], variant: 'panel', showMeta: true, ctx: ctxStub })
+}
+check('面板假名画成 ruby', Boolean(findNodeWithClass(panelNode('taberu'), 'qat-ruby')), true)
+check('ruby 里只有一个读音 rt', findNodesByTag(panelNode('taberu'), 'rt').length, 1)
+check('rt 里是假名读音', gatherText(findNodesByTag(panelNode('taberu'), 'rt')[0]), 'たべる')
+check('ruby 的 base 是词形', gatherText(findNodeWithClass(panelNode('taberu'), 'qat-ruby')), '食べるたべる')
+check('纯平假名不画 ruby', findNodeWithClass(panelNode('aiueo2'), 'qat-ruby'), null)
+check('纯平假名仍是纯文本副行', gatherText(findNodeWithClass(panelNode('aiueo2'), 'qat-gloss-notation')), 'あい')
+renderTest.removeCustomDict('kana-ruby')
+// 跟打条太窄：继续纯文本，不挂 ruby
+check('跟打条仍是纯文本假名', /barNotation \? h\('span', \{ className: 'qat-bar-notation' \}, barNotation\)/.test(source), true)
+check('跟打条不接 ruby', /qat-bar-notation' \}, notationNodes/.test(source), false)
+
+// —— N10：罗马字 → 平假名（紧凑表，3→2→1 贪心） ——
+check('shinjuku → しんじゅく', romajiToHiragana('shinjuku'), 'しんじゅく')
+check('gakkou → がっこう', romajiToHiragana('gakkou'), 'がっこう')
+check('kanji → かんじ', romajiToHiragana('kanji'), 'かんじ')
+check('matcha → まっちゃ', romajiToHiragana('matcha'), 'まっちゃ')
+check('nihon → にほん', romajiToHiragana('nihon'), 'にほん')
+check('tokyo → ときょ（ou 不合并长音）', romajiToHiragana('tokyo'), 'ときょ')
+check('aiueo → あいうえお', romajiToHiragana('aiueo'), 'あいうえお')
+check('空串 → 空串', romajiToHiragana(''), '')
+check('ABC → あbc（小写化 + 不丢字）', romajiToHiragana('ABC'), 'あbc')
+check('撇号去掉：shin\'ichi → しんいち', romajiToHiragana("shin'ichi"), 'しんいち')
+check('非字母原样保留', romajiToHiragana('-ka-'), '-か-')
+// 口音优先级：假名/汉字永远不听设置，只有英文吃 romaji 这类新档
+check('罗马字档不抢假名词', renderTest.resolveAccent('りんご', { accent: 'romaji' }), 'ja')
+check('罗马字档不抢汉字词', renderTest.resolveAccent('苹果', { accent: 'romaji' }), 'zh')
+check('英文可吃 romaji 档', renderTest.resolveAccent('shinjuku', { accent: 'romaji' }), 'romaji')
+check('英文可吃 de 档', renderTest.resolveAccent('Haus', { accent: 'de' }), 'de')
+check('设置坏了仍回退美音', renderTest.resolveAccent('cancel', { accent: 'fr' }), 'us')
+check('四档都有中文标签', ['de', 'id', 'kk', 'romaji'].map((k) => renderTest.DICT.zh[`accent_${k}`]).join('|'),
+  'Deutsch|Indonesia|哈萨克语(俄音)|Romaji')
+check('四档都有英文标签', ['de', 'id', 'kk', 'romaji'].map((k) => renderTest.DICT.en[`accent_${k}`]).join('|'),
+  'German|Indonesian|Kazakh (Russian)|Romaji')
 
 // —— 审计脚本：统计纯函数 ——
 const auditNormalize = (raw) => (raw.ok ? { w: raw.ok, ipa: raw.ipa || '', us: '', uk: '', zh: raw.zh || '' } : null)
