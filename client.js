@@ -224,6 +224,72 @@ window.__ModuleLoader__.load({
       return Math.max(1, Math.ceil(length / CHAPTER_LENGTH))
     }
 
+    /* ---------------------------------------------------------------- badges */
+
+    // 371 个词库每个都得有个能扫的锚点：色相按语言、短标记按规则从 id/name 里抽。
+    // 不引图片、不内联 base64、也不写 371 条映射表 —— 规则化提取 + 兜底，缺字段也不炸。
+    const BADGE_TONES = ['en', 'ja', 'zh', 'code', 'other']
+    const BADGE_CJK = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]/
+    const BADGE_CJK_RUN = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff]{2,}/
+
+    /** 词库 → 徽标色相 key（CSS 的 data-tone 只认这五个） */
+    function badgeTone(meta) {
+      const lang = String(meta?.languageCategory ?? '').toLowerCase()
+      return BADGE_TONES.includes(lang) ? lang : 'other'
+    }
+
+    /** 按 camelCase 与非字母数字切词：jsObject → [js, Object] */
+    function badgeWords(text) {
+      return String(text)
+        .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+        .split(/[^A-Za-z0-9]+/)
+        .filter((value) => value)
+    }
+
+    /**
+     * 词库 → 2 字符以内的短标记。按优先级取第一个命中：
+     * 1. 字母 + 数字（等级/编号）：CET-4 → C4、GRE3000 → G3、waiyan3 → W3、raz-Z1 → Z1
+     * 2. 名字末尾的 1-2 字母独立字段：RAZ 分级阅读 A → A、SAT en-en → EN
+     * 3. 两字以上的中文片段：考研 → 考研、雅思听力场景词汇 → 雅思
+     * 4. ASCII 缩写（切词取首字母；只有一个词就取前两字母）：IELTS → IE、js-object → JO、TOEFL → TO
+     * 5. 兜底：名字里第一个汉字，再不行 '?'
+     */
+    function badgeText(meta) {
+      const name = String(meta?.name ?? '')
+      const id = String(meta?.id ?? '')
+      const sources = [name, id].filter((value) => value)
+      for (const source of sources) {
+        const hit = source.match(/([A-Za-z]+)[^A-Za-z0-9]{0,2}(\d+)/)
+        if (hit) return (hit[1][0] + hit[2][0]).toUpperCase()
+      }
+      // 2. 只看名字：名字末尾的 1-2 字母独立字段才有区分度，id 的尾巴多是拼音碎片
+      const nameTokens = name.split(/[^A-Za-z0-9]+/).filter((value) => value)
+      const nameTail = nameTokens[nameTokens.length - 1]
+      if (nameTokens.length > 1 && /^[A-Za-z]{1,2}$/.test(nameTail)) return nameTail.toUpperCase()
+      for (const source of sources) {
+        const hit = source.match(BADGE_CJK_RUN)
+        if (hit) return Array.from(hit[0]).slice(0, 2).join('')
+      }
+      for (const source of sources) {
+        const words = badgeWords(source)
+        if (!words.length) continue
+        return words.length === 1
+          ? words[0].slice(0, 2).toUpperCase()
+          : (words[0][0] + words[1][0]).toUpperCase()
+      }
+      const cjk = name.match(BADGE_CJK)
+      return cjk ? cjk[0] : '?'
+    }
+
+    /** 词库 → { text, tone, title }：徽标要用的全在这儿算，组件只管画 */
+    function dictBadge(meta) {
+      return {
+        text: badgeText(meta),
+        tone: badgeTone(meta),
+        title: String(meta?.name ?? meta?.id ?? ''),
+      }
+    }
+
     function chaptersOf(id) {
       const meta = dictionaryById(id)
       return { count: chapterCount(meta), length: CHAPTER_LENGTH, words: Number(meta?.length) || 0 }
@@ -1727,6 +1793,7 @@ window.__ModuleLoader__.load({
         close: '收起',
         barHint: '焦点放在下面的输入框，照着单词打；打错整词重打，回车不会发送。',
         dictTitle: '选择词库',
+        dictBadgeTitle: '词库：{name}',
         doneShort: '完成 {total} 个 · {sec}s',
         autoTitle: '自动打',
         doneTitle: '这一轮打完了',
@@ -1870,6 +1937,7 @@ window.__ModuleLoader__.load({
         close: 'Hide',
         barHint: 'Focus the composer below and type along; a wrong letter restarts the word, and Enter never sends.',
         dictTitle: 'Choose a dictionary',
+        dictBadgeTitle: 'Dictionary: {name}',
         doneShort: '{total} done · {sec}s',
         autoTitle: 'Auto type',
         loading: 'Loading dictionary…',
@@ -2037,11 +2105,22 @@ window.__ModuleLoader__.load({
 .qat-dictgroup{display:flex;flex-direction:column;gap:4px;min-height:0}
 .qat-dictgroup-title{font-size:11px;color:var(--dsw-alias-label-tertiary);padding:2px 2px 4px}
 .qat-dictscroll{max-height:320px;overflow:auto;display:flex;flex-direction:column;gap:2px;padding-right:4px}
-.qat-dictrow{display:flex;align-items:baseline;justify-content:space-between;gap:10px;border:none;background:transparent;color:var(--dsw-alias-label-primary);text-align:left;padding:7px 9px;border-radius:8px;font:inherit;font-size:13px;cursor:pointer}
+.qat-dictrow{display:flex;align-items:center;justify-content:space-between;gap:10px;border:none;background:transparent;color:var(--dsw-alias-label-primary);text-align:left;padding:7px 9px;border-radius:8px;font:inherit;font-size:13px;cursor:pointer}
 .qat-dictrow:hover{background:var(--dsw-alias-interactive-bg-hover)}
 .qat-dictrow[data-active="true"]{background:var(--dsw-alias-interactive-bg-hover)}
-.qat-dictname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qat-dictname{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .qat-dictmeta{flex:none;font-size:11px;color:var(--dsw-alias-label-tertiary)}
+/* 词库徽标：色块 + 短标记，纯 CSS，没有任何图片 */
+.qat-badge{display:inline-flex;flex:none;align-items:center;justify-content:center;box-sizing:border-box;line-height:1;font-weight:600;letter-spacing:0;border-radius:7px;font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;box-shadow:inset 0 0 0 1px color-mix(in srgb,currentColor 20%,transparent);user-select:none}
+.qat-badge[data-size="28"]{width:28px;height:28px;font-size:11px;border-radius:8px}
+.qat-badge[data-size="20"]{width:20px;height:20px;font-size:8px;border-radius:6px}
+.qat-badge-text{display:block;text-align:center;white-space:nowrap}
+.qat-dictbtn .qat-badge{margin-right:-2px}
+.qat-badge[data-tone="en"]{color:var(--dsw-alias-brand-primary);background:color-mix(in srgb,var(--dsw-alias-brand-primary) 14%,transparent)}
+.qat-badge[data-tone="ja"]{color:var(--dsw-alias-state-error-primary);background:color-mix(in srgb,var(--dsw-alias-state-error-primary) 14%,transparent)}
+.qat-badge[data-tone="zh"]{color:var(--dsw-alias-state-warn-primary);background:color-mix(in srgb,var(--dsw-alias-state-warn-primary) 16%,transparent)}
+.qat-badge[data-tone="code"]{color:var(--dsw-alias-state-success-primary);background:color-mix(in srgb,var(--dsw-alias-state-success-primary) 14%,transparent)}
+.qat-badge[data-tone="other"]{color:var(--dsw-alias-label-secondary);background:color-mix(in srgb,var(--dsw-alias-label-secondary) 14%,transparent)}
 .qat-loading{color:var(--dsw-alias-label-secondary);font-size:13px;padding:24px 0;text-align:center}
 .qat-letter[data-mask="true"]{color:var(--dsw-alias-label-tertiary);opacity:.55}
 .qat-picker-title{font-size:13px;color:var(--dsw-alias-label-secondary)}
@@ -4515,6 +4594,23 @@ window.__ModuleLoader__.load({
       }, GLYPH.d.map((d, index) => h('path', { key: index, d })))
     }
 
+    /**
+     * 词库徽标：色块 + 2 字符短标记。
+     * 纯 CSS 画，不加载图片、不依赖 iconify；size 只认 20 / 28 两档。
+     */
+    function DictBadge({ meta, size, label }) {
+      const badge = dictBadge(meta)
+      const px = Number(size) === 20 ? 20 : 28
+      return h('span', {
+        className: 'qat-badge',
+        'data-tone': badge.tone,
+        'data-size': String(px),
+        title: badge.title,
+        'aria-label': label || badge.title,
+        role: 'img',
+      }, h('span', { className: 'qat-badge-text' }, badge.text))
+    }
+
     /** 顶层面板：词库分类 + 大字跟打 */
     /** 词库选择器（面板内二级页）：搜索 + 分类 + 最近使用 + 列表 */
     function DictPicker({ t, dictId, query, category, recent, categories, list, onQuery, onCategory, onPick, onImported, onClose }) {
@@ -4543,6 +4639,7 @@ window.__ModuleLoader__.load({
         'data-active': active ? 'true' : 'false',
         onClick: () => onPick(item.id),
       },
+        h(DictBadge, { meta: item, size: 28, label: t('dictBadgeTitle', { name: item.name }) }),
         h('span', { className: 'qat-dictname' }, item.name),
         h('span', { className: 'qat-dictmeta' }, `${item.length} 词 · ${chapterCount(item)} 章`),
         isCustomId(item.id)
@@ -5231,7 +5328,7 @@ window.__ModuleLoader__.load({
               setView('practice')
               setPicker((value) => !value)
             },
-          }, meta.name, h(Icon, { name: 'caret', size: 12 })),
+          }, h(DictBadge, { meta, size: 20, label: t('dictBadgeTitle', { name: meta.name }) }), meta.name, h(Icon, { name: 'caret', size: 12 })),
           h('span', { className: 'qat-panel-sub' }, `${meta.category} · ${meta.length} 词 · ${chapterTotal} 章`),
           h('span', { className: 'qat-grow' }),
           h('button', {
@@ -5446,7 +5543,8 @@ window.__ModuleLoader__.load({
         calcLiveWpm, windowedWpm, pushSpeedSample, LIVE_WINDOW_MS, LIVE_HEARTBEAT_MS, LIVE_WPM_CAP, CHARS_PER_WORD,
         setOpen, getOpen, readDictId, writeDictId, releaseStuckComposer, ACCENTS, resolveAccent, shouldBlockSend, isSendTrigger, shouldClearDraft,
         ICONS, GLYPH, Icon,
-        components: { Trainer, ResultScreen, PracticePanel, PanelGlyph, ComposerTrainer, SidebarButton, DictPicker, WrongBookPanel, StatsPanel, SettingsSection, SettingRow, WordListPanel, TipLine, FingerHint },
+        components: { Trainer, ResultScreen, PracticePanel, PanelGlyph, ComposerTrainer, SidebarButton, DictPicker, DictBadge, WrongBookPanel, StatsPanel, SettingsSection, SettingRow, WordListPanel, TipLine, FingerHint },
+        dictBadge, badgeText, badgeTone, badgeWords, BADGE_TONES,
         tipState, tipKey, nextWrongCount, TIP_THRESHOLDS, TIP_MASK, CLICK_TONES,
         fingerOf, keyHighlight, FINGER_IDS, FINGER_MAP, FINGER_COLORS,
         collectWrongWords, heatmapWeeks, heatLevel, filterWrongWords, DICT,
