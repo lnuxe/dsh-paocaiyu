@@ -1948,6 +1948,28 @@ check('不是同一个词库 → 第 0 章',
   resumeChapterSmart({}, { dictId: 'cet6', chapter: 9 }, 'cet4', 131, false), 0)
 check('词库还没算好 → 第 0 章', resumeChapterSmart({}, { dictId: 'cet4', chapter: 3 }, 'cet4', 0, false), 0)
 
+// —— 面板工具行：只剩「重开」，不再有「自动打」 ——
+{
+  const bar = render('渲染：面板工具行', () => renderTest.components.Trainer({
+    words: ['alpha', 'beta'], variant: 'panel', showMeta: true, ctx: ctxStub,
+  }))
+  const classes = collectClasses(bar)
+  const rowBtns = classes.filter((item) => String(item).split(/\s+/).includes('qat-btn'))
+  // ctxStub 的 t 原样返回 key，所以文案断言看 key（Styles 的 CSS 里也有 "auto"，不能整串搜）
+  // 上一词 / 跳过 / 循环 / 暂停 四个控制按钮 + 工具行的「重开」，就这五个
+  check('卡片按钮数量 = 四个控制 + 重开', rowBtns.length, 5)
+  check('工具行里没有带 data-active 的自动打开关', (function walk(node) {
+    if (!node || typeof node !== 'object') return false
+    if (Array.isArray(node)) return node.some((item) => walk(item))
+    const cls = String(node.props?.className ?? '')
+    if (cls.split(/\s+/).includes('qat-btn') && node.props?.['data-active'] !== undefined) return true
+    return walk(node.children) || walk(node.props?.children)
+  })(bar), false)
+  check('两份字典都删掉了 auto / autoStop 死键', ['auto', 'autoStop'].every((key) => !DICT.zh[key] && !DICT.en[key]), true)
+  check('代码里没有残留的 auto 开关状态', /setAuto\(/.test(source), false)
+  check('也没有残留的自动打定时器', /自动打：/.test(source), false)
+}
+
 // —— 进度存档：Esc 关掉跟打条再打开，接着打上次那个词 ——
 check('卡片里没有游离的 wordsRef 引用', /const prev = stepIndex\(stateRef\.current\.index, wordsRef/.test(source), false)
 
