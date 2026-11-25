@@ -2591,6 +2591,13 @@ window.__ModuleLoader__.load({
         return () => clearInterval(id)
       }, [advance, auto, done, options, setTyped, total, words])
 
+      // 面板里输入框已经隐形，挂载时主动把焦点交给它，用户不用先点哪儿
+      useEffect(() => {
+        if (variant !== 'panel') return
+        const input = inputRef.current
+        if (input && typeof input.focus === 'function') input.focus()
+      }, [variant, words])
+
       const restart = useCallback(() => {
         startedAt.current = Date.now()
         live.current = { index: 0, typed: '', locked: false, timer: null }
