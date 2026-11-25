@@ -1399,6 +1399,64 @@ window.__ModuleLoader__.load({
       })))
     }
 
+    /**
+     * 键盘几何常量：直接沿用上游 Analysis/components/keyboard.ts 那张 GeoJSON 的比例——
+     * 键宽 10、键距 1（相邻键的 x 差 11），三行起点偏移 0 / 5 / 10
+     * （对应上游多边形的 Q x=0、A x=5、Z x=10，即「半格」「一整格」）。
+     * 唯一改动是行高：上游地图按 10:8 压扁，我们按真实键帽观感取 10:10 近正方形，
+     * 行距仍留 1，所以 viewBox 高 = 3×10 + 2×1 = 32。
+     */
+    const KEYBOARD_GEOM = { w: 10, h: 10, gap: 1, offsets: [0, 5, 10] }
+
+    /** 键盘 SVG 的 viewBox 尺寸：由 KEYBOARD_GEOM 与 KEY_ROWS 算出来，不手写魔数 */
+    const KEYBOARD_VIEW = (() => {
+      const { w, h, gap, offsets } = KEYBOARD_GEOM
+      const pitch = w + gap
+      const width = Math.max(...KEY_ROWS.map((row, index) => (offsets[index] ?? 0) + (row.length - 1) * pitch + w))
+      const height = KEY_ROWS.length * h + (KEY_ROWS.length - 1) * gap
+      return { width, height, pitch }
+    })()
+
+    /**
+     * 26 个键帽的坐标：三行 × 10/9/7 键，行内等距、第二三行依次右移。
+     * 纯计算，渲染和单测共用一份。
+     * @returns {Array<Array<{key: string, x: number, y: number, w: number, h: number}>>}
+     */
+    function keyLayout() {
+      const { w, h, gap, offsets } = KEYBOARD_GEOM
+      const pitch = w + gap
+      return KEY_ROWS.map((row, rowIndex) => [...row].map((key, colIndex) => ({
+        key,
+        x: (offsets[rowIndex] ?? 0) + colIndex * pitch,
+        y: rowIndex * (h + gap),
+        w,
+        h,
+      })))
+    }
+
+    /** 排行视图最多列几个键（对齐上游柱状图「按次数从多到少」的前十） */
+    const KEY_BARS_TOP = 10
+
+    /**
+     * 键盘排行：把 keyboardHeat 摊平，去掉没打错的键，按次数从多到少取 topN。
+     * ratio 按「本次最多的键」归一到 0..1，条形长度用。
+     * @param {Array|Object} letters 同 keyboardHeat 的入参
+     * @param {number} [topN]
+     * @returns {Array<{key: string, count: number, ratio: number}>}
+     */
+    function heatBars(letters, topN = KEY_BARS_TOP) {
+      const cells = keyboardHeat(letters).flat().filter((cell) => cell.count > 0)
+      if (!cells.length) return []
+      const limit = Math.max(0, Math.floor(Number(topN) || 0))
+      if (!limit) return []
+      const max = Math.max(...cells.map((cell) => cell.count))
+      return cells
+        .slice()
+        .sort((a, b) => b.count - a.count || (a.key < b.key ? -1 : 1))
+        .slice(0, limit)
+        .map((cell) => ({ key: cell.key, count: cell.count, ratio: max ? cell.count / max : 0 }))
+    }
+
     /* -------------------------------------------------- 指法图示（纯 SVG） */
 
     /** 八根手指，顺序从左小指到右小指（指法图的固定顺序） */
@@ -1555,6 +1613,114 @@ window.__ModuleLoader__.load({
         'aria-label': label || 'keyboard',
         focusable: 'false',
       }, children)
+    }
+
+    /* -------------------------------------------------- 键盘热力图 / 排行（纯 SVG） */
+
+    /**
+     * 键盘热力图层：一个 <svg> 里 26 个 <rect> + 26 个字母 + 次数小字。
+     * 对齐上游「真键盘形状的 geo 图层 + 按打错次数着色」的信息设计，
+     * 但不用 echarts：形状来自 keyLayout()，颜色来自 keyboardHeat 的 level。
+     * @param {{letters: Array|Object, t: Function}} input
+     */
+    function KeyboardHeatMap({ letters, t }) {
+      const cells = keyboardHeat(letters)
+      const layout = keyLayout()
+      const total = cells.flat().reduce((sum, cell) => sum + cell.count, 0)
+      return h('div', { className: 'qat-kbd' },
+        h('svg', {
+          className: 'qat-kbdsvg',
+          viewBox: `0 0 ${KEYBOARD_VIEW.width} ${KEYBOARD_VIEW.height}`,
+          role: 'img',
+          'aria-label': t ? t('kbdAria', { n: total }) : `${total}`,
+          focusable: 'false',
+        }, layout.flatMap((row, rowIndex) => row.map((geom, colIndex) => {
+          const cell = cells[rowIndex][colIndex]
+          return h('g', {
+            key: cell.key,
+            className: 'qat-key',
+            'data-level': String(cell.level),
+            // 指法分区：CSS 按这个属性给 0 档键淡染该手指的颜色
+            'data-finger': fingerOf(cell.key) ?? '',
+          },
+            // 悬停提示走 SVG 原生 <title>，不额外挂 tooltip 组件
+            h('title', null, `${cell.key} ×${cell.count}`),
+            h('rect', {
+              className: 'qat-keycap',
+              x: geom.x,
+              y: geom.y,
+              width: geom.w,
+              height: geom.h,
+              rx: 1.6,
+              ry: 1.6,
+            }),
+            h('text', {
+              className: 'qat-keylabel',
+              x: geom.x + geom.w / 2,
+              y: geom.y + geom.h * 0.58,
+              'text-anchor': 'middle',
+            }, cell.key.toUpperCase()),
+            cell.count
+              ? h('text', {
+                className: 'qat-keynum',
+                x: geom.x + geom.w / 2,
+                y: geom.y + geom.h * 0.9,
+                'text-anchor': 'middle',
+              }, String(cell.count))
+              : null,
+          )
+        }))),
+      )
+    }
+
+    /**
+     * 键盘区块：热力键盘 ⇄ 次数排行两个视图互切，对齐上游 toolbox 里 map / bar 那对按钮。
+     * view 由调用方（StatsPanel 的本地 state）传进来，onView 是切换回调；组件本身不持状态。
+     * @param {{letters: Array|Object, t: Function, view?: 'heat'|'bars', onView?: Function}} input
+     */
+    function KeyboardHeat({ letters, t, view = 'heat', onView }) {
+      return h('div', { className: 'qat-kbdwrap', 'data-view': view },
+        h('div', { className: 'qat-kbdhead' },
+          h('span', { className: 'qat-kbdlegend' }, t ? t('kbdLegend') : ''),
+          h('span', { className: 'qat-grow' }),
+          h('span', {
+            ...pressable(() => onView?.('heat')),
+            className: 'qat-btn qat-kbdtab',
+            'data-on': view === 'heat' ? 'true' : 'false',
+          }, t ? t('kbdViewHeat') : 'heat'),
+          h('span', {
+            ...pressable(() => onView?.('bars')),
+            className: 'qat-btn qat-kbdtab',
+            'data-on': view === 'bars' ? 'true' : 'false',
+          }, t ? t('kbdViewBars') : 'bars')),
+        view === 'bars' ? h(KeyboardBars, { letters, t }) : h(KeyboardHeatMap, { letters, t }),
+        h('span', { className: 'qat-kbdfinger' }, t ? t('kbdFingerLegend') : ''),
+      )
+    }
+
+    /**
+     * 键盘排行视图：对齐上游柱状图（按次数从多到少），这里画横向条形更好读。
+     * 数据只从 heatBars 来，不另读存储。
+     * @param {{letters: Array|Object, t: Function, topN?: number}} input
+     */
+    function KeyboardBars({ letters, t, topN = KEY_BARS_TOP }) {
+      const rows = heatBars(letters, topN)
+      if (!rows.length) {
+        return h('div', { className: 'qat-keybars', 'data-empty': 'true' },
+          h('span', { className: 'qat-keybars-empty' }, t ? t('kbdBarsEmpty') : '—'))
+      }
+      return h('div', { className: 'qat-keybars' }, rows.map((row) => h('div', {
+        key: row.key,
+        className: 'qat-keybar',
+        title: `${row.key} ×${row.count}`,
+      },
+        h('span', { className: 'qat-keybar-label' }, row.key.toUpperCase()),
+        h('span', { className: 'qat-keybar-track' },
+          h('span', {
+            className: 'qat-keybar-fill',
+            style: { width: `${Math.round(row.ratio * 100)}%` },
+          })),
+        h('span', { className: 'qat-keybar-count' }, `×${row.count}`))))
     }
 
     /**
@@ -2014,6 +2180,12 @@ window.__ModuleLoader__.load({
         announceDone: '本轮完成，共 {n} 个词',
         hotkeysList: 'Esc 关闭 · Ctrl/⌘+← 上一个 · Ctrl/⌘+→ 跳过 · Ctrl/⌘+J 循环 · Ctrl/⌘+P 暂停 · 在输入框里按 Tab 开始',
         lettersTitle: '易错字母',
+        kbdLegend: '颜色越深打错越多',
+        kbdFingerLegend: '浅底色是手指分区',
+        kbdViewHeat: '键盘',
+        kbdViewBars: '排行',
+        kbdBarsEmpty: '这一轮没有打错的字母',
+        kbdAria: '键盘热力图，共打错 {n} 次',
         customNew: '＋ 导入自定义词表',
         customName: '词表名字（可留空）',
         customPlaceholder: '一行一个词：word 中文\n也支持 word,中文,/音标/\n# 开头是注释',
@@ -2153,6 +2325,12 @@ window.__ModuleLoader__.load({
         announceDone: 'Round finished, {n} words',
         hotkeysList: 'Esc close · Ctrl/⌘+← prev · Ctrl/⌘+→ skip · Ctrl/⌘+J loop · Ctrl/⌘+P pause · Tab in the composer starts',
         lettersTitle: 'Tricky letters',
+        kbdLegend: 'Darker means more misses',
+        kbdFingerLegend: 'Pale tint shows finger zones',
+        kbdViewHeat: 'Keyboard',
+        kbdViewBars: 'Ranking',
+        kbdBarsEmpty: 'No mistyped letters this round',
+        kbdAria: 'Keyboard heatmap, {n} misses in total',
         customNew: '+ Import word list',
         customName: 'List name (optional)',
         customPlaceholder: 'One word per line: word meaning\nalso word,meaning,/ipa/\n# starts a comment',
@@ -2304,15 +2482,31 @@ window.__ModuleLoader__.load({
 .qat-letters{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;color:var(--dsw-alias-label-secondary);margin:2px 0 6px}
 .qat-letters-label{color:var(--dsw-alias-label-tertiary)}
 .qat-letterchip{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-.qat-kbd{display:flex;flex-direction:column;gap:3px;margin:0 0 10px}
-.qat-kbdrow{display:flex;gap:3px}
-.qat-kbdrow:nth-child(2){margin-left:8px}
-.qat-kbdrow:nth-child(3){margin-left:18px}
-.qat-key{width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;border-radius:3px;font-size:9px;line-height:1;color:var(--dsw-alias-label-tertiary);background:var(--dsw-alias-bg-layer-2);border:1px solid var(--dsw-alias-border-l1);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-.qat-key[data-level="1"]{background:color-mix(in srgb, var(--dsw-alias-state-error-primary) 22%, transparent);color:var(--dsw-alias-label-secondary)}
-.qat-key[data-level="2"]{background:color-mix(in srgb, var(--dsw-alias-state-error-primary) 40%, transparent);color:var(--dsw-alias-label-primary)}
-.qat-key[data-level="3"]{background:color-mix(in srgb, var(--dsw-alias-state-error-primary) 62%, transparent);color:#fff}
-.qat-key[data-level="4"]{background:var(--dsw-alias-state-error-primary);color:#fff}
+.qat-kbdwrap{display:flex;flex-direction:column;gap:6px;margin:0 0 10px;min-width:0}
+.qat-kbdhead{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.qat-kbdlegend{font-size:11px;color:var(--dsw-alias-label-tertiary)}
+.qat-kbdtab{font-size:11px}
+.qat-kbdfinger{font-size:11px;color:var(--dsw-alias-label-tertiary);opacity:.85}
+.qat-kbd{display:block;min-width:0}
+.qat-kbdsvg{display:block;width:100%;max-width:360px;height:auto}
+.qat-key .qat-keycap{fill:var(--dsw-alias-bg-layer-2);stroke:var(--dsw-alias-border-l1);stroke-width:.5}
+${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-mix(in srgb,${FINGER_COLORS[id]} 26%,var(--dsw-alias-bg-layer-2))}`).join('\n')}
+.qat-key[data-level="1"] .qat-keycap{fill:color-mix(in srgb,var(--dsw-alias-state-error-primary) 26%,var(--dsw-alias-bg-layer-2))}
+.qat-key[data-level="2"] .qat-keycap{fill:color-mix(in srgb,var(--dsw-alias-state-error-primary) 45%,var(--dsw-alias-bg-layer-2))}
+.qat-key[data-level="3"] .qat-keycap{fill:color-mix(in srgb,var(--dsw-alias-state-error-primary) 68%,var(--dsw-alias-bg-layer-2))}
+.qat-key[data-level="4"] .qat-keycap{fill:var(--dsw-alias-state-error-primary)}
+.qat-key .qat-keylabel{fill:var(--dsw-alias-label-tertiary);font-size:4.2px;font-weight:600;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.qat-key[data-level="2"] .qat-keylabel,.qat-key[data-level="3"] .qat-keylabel,.qat-key[data-level="4"] .qat-keylabel{fill:var(--dsw-alias-label-primary)}
+.qat-key .qat-keynum{fill:var(--dsw-alias-label-tertiary);font-size:2.8px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+.qat-key[data-level="3"] .qat-keynum,.qat-key[data-level="4"] .qat-keynum{fill:var(--dsw-alias-label-primary);opacity:.9}
+.qat-key:hover .qat-keycap{stroke:var(--dsw-alias-brand-primary);stroke-width:.9}
+.qat-keybars{display:flex;flex-direction:column;gap:5px;padding:2px 0 0}
+.qat-keybar{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--dsw-alias-label-secondary)}
+.qat-keybar-label{flex:none;width:14px;text-align:center;font-size:12px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;color:var(--dsw-alias-label-primary)}
+.qat-keybar-track{flex:1;min-width:0;height:8px;border-radius:4px;background:var(--dsw-alias-bg-layer-2);overflow:hidden}
+.qat-keybar-fill{display:block;height:100%;min-width:3px;border-radius:4px;background:var(--dsw-alias-state-error-primary)}
+.qat-keybar-count{flex:none;width:36px;text-align:right;font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-tertiary)}
+.qat-keybars-empty{font-size:12px;color:var(--dsw-alias-label-tertiary);padding:6px 0}
 .qat-heat{display:flex;gap:3px;margin:4px 0 10px}
 .qat-heatcol{display:flex;flex-direction:column;gap:3px}
 .qat-heatcell{width:9px;height:9px;border-radius:2px;background:var(--dsw-alias-border-l1)}
@@ -5308,9 +5502,14 @@ window.__ModuleLoader__.load({
       )
     }
 
-    /** 统计浮层：近 14 天柱状 + 汇总数字（纯 SVG/div，不引图表库） */
-    function StatsPanel({ t, days, weeks, letters, summary, onClose }) {
+    /**
+     * 统计浮层：近 14 天柱状 + 汇总数字（纯 SVG/div，不引图表库）。
+     * 键盘区两个视图（热力键盘 / 次数排行）用本地 state 切，对齐上游 toolbox 里的互切按钮；
+     * defaultView 只给测试和「记住上次视图」留口子，正常入口不传。
+     */
+    function StatsPanel({ t, days, weeks, letters, summary, onClose, defaultView = 'heat' }) {
       const max = Math.max(1, ...days.map((day) => day.words))
+      const [kbdView, setKbdView] = useState(defaultView)
       return h('div', { className: 'qat-picker' },
         h('div', { className: 'qat-picker-head' },
           h('span', { className: 'qat-picker-title' }, t('statsTitle')),
@@ -5334,13 +5533,7 @@ window.__ModuleLoader__.load({
                 key: item.letter,
                 className: 'qat-chip qat-letterchip',
               }, `${item.letter} ×${item.count}`))),
-            h('div', { className: 'qat-kbd' }, keyboardHeat(letters).map((row, rowIndex) =>
-              h('div', { key: rowIndex, className: 'qat-kbdrow' }, row.map((cell) => h('span', {
-                key: cell.key,
-                className: 'qat-key',
-                'data-level': String(cell.level),
-                title: `${cell.key} ×${cell.count}`,
-              }, cell.key.toUpperCase()))))))
+            h(KeyboardHeat, { letters, t, view: kbdView, onView: setKbdView }))
           : null,
         h('div', { className: 'qat-heat' }, (weeks || []).map((col, index) =>
           h('div', { key: index, className: 'qat-heatcol' }, col.days.map((day) =>
@@ -5777,7 +5970,7 @@ window.__ModuleLoader__.load({
         calcLiveWpm, windowedWpm, pushSpeedSample, LIVE_WINDOW_MS, LIVE_HEARTBEAT_MS, LIVE_WPM_CAP, CHARS_PER_WORD,
         setOpen, getOpen, readDictId, writeDictId, releaseStuckComposer, ACCENTS, resolveAccent, shouldBlockSend, isSendTrigger, shouldClearDraft,
         ICONS, GLYPH, Icon, ensureStyles, Styles, CSS, lookup, lookupOnce, clearLookupCache, wordIndex, clearCatalogCache, buildCatalog,
-        components: { Trainer, ResultScreen, PracticePanel, PanelGlyph, ComposerTrainer, SidebarButton, DictPicker, DictBadge, WrongBookPanel, StatsPanel, SettingsSection, SettingRow, WordListPanel, TipLine, FingerHint },
+        components: { Trainer, ResultScreen, PracticePanel, PanelGlyph, ComposerTrainer, SidebarButton, DictPicker, DictBadge, WrongBookPanel, StatsPanel, SettingsSection, SettingRow, WordListPanel, TipLine, FingerHint, KeyboardHeat, KeyboardBars },
         dictBadge, badgeText, badgeTone, badgeWords, BADGE_TONES,
         tipState, tipKey, nextWrongCount, TIP_THRESHOLDS, TIP_MASK, CLICK_TONES,
         fingerOf, keyHighlight, FINGER_IDS, FINGER_MAP, FINGER_COLORS,
@@ -5789,6 +5982,7 @@ window.__ModuleLoader__.load({
         customWords, isCustomId, CUSTOM_PREFIX, CUSTOM_LIMIT, dictionaryById, chapterCount,
         exportBackup, importData, clearData, readMirror, writeMirror, MIRROR_KEY,
         keyboardHeat, KEY_ROWS, cacheStats, clearDictCache,
+        keyLayout, KEYBOARD_GEOM, KEYBOARD_VIEW, heatBars, KEY_BARS_TOP,
         fingerOf, keyHighlight, keyPosition, keyGeom, fingerKeyboardNode,
         FINGER_MAP, FINGER_IDS, FINGER_LABELS, FINGER_COLORS, FINGER_KEY,
         parseCustomFile, serializeCustomDict, splitCsvLine, toCustomWord, downloadText, withSlashes,

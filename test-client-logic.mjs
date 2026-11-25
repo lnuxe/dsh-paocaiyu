@@ -187,6 +187,7 @@ const {
   serializeBackup, parseBackup, BACKUP_VERSION, BACKUP_LIMITS, pressable, playClick,
   readCustomDicts, writeCustomDicts, parseCustomWords, saveCustomDict, removeCustomDict,
   keyboardHeat, KEY_ROWS, cacheStats, clearDictCache,
+  keyLayout, KEYBOARD_GEOM, KEYBOARD_VIEW, heatBars, KEY_BARS_TOP,
   fingerOf, keyHighlight, keyPosition, keyGeom, fingerKeyboardNode,
   FINGER_MAP, FINGER_IDS, FINGER_LABELS, FINGER_COLORS, FINGER_KEY,
   customWords, isCustomId, CUSTOM_PREFIX, dictionaryById,
@@ -690,6 +691,41 @@ check('没打错的键计数为 0', heat[0].find((cell) => cell.key === 'w').cou
 check('大写输入也能归位', keyboardHeat([{ letter: 'E', count: 5 }])[0].find((cell) => cell.key === 'e').count, 5)
 check('接受对象形式的 wrongLetters', keyboardHeat({ s: 6, d: 3 })[1].find((cell) => cell.key === 's').level, 4)
 check('空输入全是 0 档', keyboardHeat([]).flat().every((cell) => cell.level === 0), true)
+
+// —— 键盘形状：真键盘偏移（SVG 键帽坐标全从 keyLayout 来） ——
+const layout = keyLayout()
+check('键位布局三行', layout.length, 3)
+check('键位布局 26 键', layout.flat().length, 26)
+check('三行 10 / 9 / 7 键', layout.map((row) => row.length).join('/'), '10/9/7')
+check('q 行起点 0 偏移', layout[0][0].x, 0)
+check('a 行右移半格', layout[1][0].x > layout[0][0].x, true)
+check('z 行再右移一格', layout[2][0].x > layout[1][0].x, true)
+check('行距逐行下移', layout.map((row) => row[0].y).join(','), '0,11,22')
+check('键宽 / 键高统一走常量',
+  layout.flat().every((cell) => cell.w === KEYBOARD_GEOM.w && cell.h === KEYBOARD_GEOM.h), true)
+check('同行相邻键不重叠',
+  layout.every((row) => row.every((cell, index) => index === 0 || row[index - 1].x + row[index - 1].w < cell.x)), true)
+check('三行纵向不重叠',
+  layout[0].every((cell) => cell.y + cell.h <= layout[1][0].y) && layout[1].every((cell) => cell.y + cell.h <= layout[2][0].y), true)
+check('所有键都在 viewBox 内',
+  layout.flat().every((cell) => cell.x >= 0 && cell.x + cell.w <= KEYBOARD_VIEW.width && cell.y + cell.h <= KEYBOARD_VIEW.height), true)
+check('viewBox 由常量算出', `${KEYBOARD_VIEW.width}x${KEYBOARD_VIEW.height}`, '109x32')
+check('布局里的键正好是 26 个字母', layout.flat().map((cell) => cell.key).join(''), KEY_ROWS.join(''))
+
+// —— 键盘排行：热力图 ⇄ 条形图切换用的数据（0 次键不出现，ratio 归一到 0..1） ——
+const barRows = heatBars([{ letter: 'e', count: 9 }, { letter: 'a', count: 6 }, { letter: 'q', count: 1 }], 10)
+check('排行按次数从多到少', barRows.map((row) => row.key).join(''), 'eaq')
+check('排行首位 ratio 为 1', barRows[0].ratio, 1)
+check('排行按最大键归一', barRows[1].ratio, 0.6666666666666666)
+check('排行 ratio 都在 0..1', barRows.every((row) => row.ratio > 0 && row.ratio <= 1), true)
+check('排行只取 topN', heatBars([{ letter: 'e', count: 9 }, { letter: 'a', count: 6 }, { letter: 'q', count: 1 }], 2).length, 2)
+check('0 次的键不进排行', barRows.every((row) => row.count > 0), true)
+check('排行每项结构固定', Object.keys(barRows[0]), ['key', 'count', 'ratio'])
+check('空输入 → 空排行', heatBars([]), [])
+check('全 0 输入 → 空排行', heatBars({ w: 0, e: 0 }), [])
+check('对象形式入参也认', heatBars({ s: 4 })[0].key, 's')
+check('默认 top 10', KEY_BARS_TOP, 10)
+check('超过 10 个键也只留 10 条', heatBars(KEY_ROWS.join('').split('').map((letter, index) => ({ letter, count: index + 1 }))).length, 10)
 
 // —— 指法图示：字母 → 手指（标准指法，f / j 是基准键） ——
 check('左小/无名/中/食：a s d f',
@@ -1696,14 +1732,49 @@ const statDays = lastDays(
   7,
   at(2026, 11, 24, 18),
 )
-const statsCase = render('渲染：统计', () => renderTest.components.StatsPanel({
+const statWeeks = heatmapWeeks([{ at: at(2026, 11, 24, 9), wordCount: 60, wrongCount: 0, seconds: 40 }], 12, at(2026, 11, 24, 18))
+/** 统计面板的公共入参：热力 / 排行两个视图吃同一份数据，只差 defaultView */
+const statsProps = {
   t: (key, vars) => (vars && vars.n !== undefined ? `${key}:${vars.n}` : key),
   days: statDays,
-  weeks: heatmapWeeks([{ at: at(2026, 11, 24, 9), wordCount: 60, wrongCount: 0, seconds: 40 }], 12, at(2026, 11, 24, 18)),
+  weeks: statWeeks,
   letters: [{ letter: 'e', count: 5 }, { letter: 'a', count: 3 }],
   summary: summarize([]),
   onClose: () => {},
-}))
+}
+/** 按 class 抓「节点本身」：collectClasses 只回收 class 名，数子节点还得有 node */
+function findNodesByClass(node, className, out = []) {
+  if (!node || typeof node !== 'object') return out
+  if (Array.isArray(node)) {
+    node.forEach((item) => findNodesByClass(item, className, out))
+    return out
+  }
+  if (typeof node.type === 'function') {
+    findNodesByClass(node.type(node.props ?? {}), className, out)
+    return out
+  }
+  if (String(node.props?.className ?? '').split(/\s+/).includes(className)) out.push(node)
+  findNodesByClass(node.children, className, out)
+  findNodesByClass(node.props?.children, className, out)
+  return out
+}
+/** 按标签名抓节点（svg / rect / title 这些没有 class 的要看标签） */
+function findNodesByTag(node, tag, out = []) {
+  if (!node || typeof node !== 'object') return out
+  if (Array.isArray(node)) {
+    node.forEach((item) => findNodesByTag(item, tag, out))
+    return out
+  }
+  if (typeof node.type === 'function') {
+    findNodesByTag(node.type(node.props ?? {}), tag, out)
+    return out
+  }
+  if (node.type === tag) out.push(node)
+  findNodesByTag(node.children, tag, out)
+  findNodesByTag(node.props?.children, tag, out)
+  return out
+}
+const statsCase = render('渲染：统计', () => renderTest.components.StatsPanel(statsProps))
 check('统计每根柱一个列', (gatherText(statsCase).match(/\d\d-\d\d/g) || []).length, 7)
 check('统计显示词数', gatherText(statsCase).includes('statWords'), true)
 check('统计显示易错字母', gatherText(statsCase).includes('e ×5'), true)
@@ -1724,6 +1795,47 @@ check('键位有分档', (function keys(node, out = []) {
   keys(node.props?.children, out)
   return out
 })(statsCase).includes('4'), true)
+
+// —— 键盘热力图：一个 svg 里 26 个 rect（形状来自 keyLayout，不用 26 个 div 拼） ——
+const kbdWrap = findNodesByClass(statsCase, 'qat-kbd')
+check('键盘热力区只有一个容器', kbdWrap.length, 1)
+const kbdSvg = findNodesByTag(kbdWrap[0], 'svg')
+check('键盘区里正好一个 svg', kbdSvg.length, 1)
+const kbdRects = findNodesByTag(kbdSvg[0], 'rect')
+check('一个 svg 里 26 个键帽 rect', kbdRects.length, 26)
+check('键帽坐标与键宽来自 keyLayout', kbdRects[0].props.x === 0 && kbdRects[0].props.width === KEYBOARD_GEOM.w, true)
+const kbdTitles = findNodesByTag(kbdSvg[0], 'title').map((node) => node.children[0])
+check('每个键都有悬停 title', kbdTitles.length, 26)
+check('悬停文案是「键 ×次数」', kbdTitles.find((text) => text.startsWith('e ')), 'e ×5')
+check('键上小字写次数（0 次不写）',
+  findNodesByTag(kbdSvg[0], 'text').filter((node) => String(node.props.className).includes('qat-keynum')).length, 2)
+check('图例说明颜色越深打错越多', gatherText(statsCase).includes('kbdLegend'), true)
+check('指法分区写到 data-finger 上',
+  findNodesByClass(statsCase, 'qat-key').every((node) => !!node.props['data-finger']), true)
+check('视图切换按钮两个', findNodesByClass(statsCase, 'qat-kbdtab').length, 2)
+check('默认停在键盘视图', findNodesByClass(statsCase, 'qat-kbdwrap')[0].props['data-view'], 'heat')
+const kbdCss = collectCss(statsCase).join('\n')
+check('CSS 有 SVG 键盘样式', kbdCss.includes('.qat-kbdsvg{'), true)
+check('CSS 按 level 递进加深', [1, 2, 3, 4].every((n) => kbdCss.includes(`.qat-key[data-level="${n}"] .qat-keycap`)), true)
+check('CSS 给每根手指一条淡染规则',
+  FINGER_IDS.every((id) => kbdCss.includes(`.qat-key[data-finger="${id}"]`)), true)
+check('键盘样式不写死黑白', /#000|#fff/.test(kbdCss.slice(kbdCss.indexOf('.qat-kbdwrap{'), kbdCss.indexOf('.qat-heat{'))), false)
+
+// —— 视图切换：排行视图（defaultView 只是本地 state 的初值，桩里 useState 不回写） ——
+const statsBarsCase = render('渲染：统计 · 键盘排行', () => renderTest.components.StatsPanel({ ...statsProps, defaultView: 'bars' }))
+check('排行视图不再画键盘 svg', findNodesByTag(findNodesByClass(statsBarsCase, 'qat-kbd'), 'svg').length, 0)
+check('排行视图换成 .qat-keybars', findNodesByClass(statsBarsCase, 'qat-keybars').length, 1)
+const kbdBarNodes = findNodesByClass(statsBarsCase, 'qat-keybar')
+check('排行条数 ≤ 10 且非空', kbdBarNodes.length > 0 && kbdBarNodes.length <= 10, true)
+check('排行按次数从多到少', kbdBarNodes.map((node) => node.props.title).join(','), 'e ×5,a ×3')
+check('视图标记切到 bars', findNodesByClass(statsBarsCase, 'qat-kbdwrap')[0].props['data-view'], 'bars')
+
+const statsNoLetters = render('渲染：统计 · 没有易错字母', () => renderTest.components.StatsPanel({ ...statsProps, letters: [] }))
+check('没有 letters 不渲染键盘区',
+  findNodesByClass(statsNoLetters, 'qat-kbd').length + findNodesByClass(statsNoLetters, 'qat-keybars').length, 0)
+const emptyBars = render('渲染：排行空态', () => renderTest.components.KeyboardBars({ letters: [], t: statsProps.t }))
+check('空排行挂 data-empty', findNodesByClass(emptyBars, 'qat-keybars')[0].props['data-empty'], 'true')
+check('空排行给文案', gatherText(emptyBars).includes('kbdBarsEmpty'), true)
 
 // —— 词表抽屉（G3）：本章 20 词、状态优先级、点一行跳过去 ——
 /** 按 className 抓节点 props（词表行要看 data-* 属性） */
