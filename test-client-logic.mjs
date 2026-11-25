@@ -190,7 +190,8 @@ const {
   readSettings, getSettings, setSetting, SETTING_DEFAULTS,
   dayKey, aggregateDaily, summarize, lastDays,
   calcWpm, calcAccuracy, shouldStartOnTab, saveSession, readSession, clearSession, sameSession,
-  collectWrongWords, activeMs, resolveHotkey, dictSourceList, DICT_PIN,
+  collectWrongWords, activeMs, resolveHotkey, peekKey, hotkeyAction, neighborWords,
+  toggleDictationMode, nextDictationMode, dictSourceList, DICT_PIN,
   heatmapWeeks, heatLevel, filterWrongWords, DICT,
   serializeBackup, parseBackup, BACKUP_VERSION, BACKUP_LIMITS, pressable, playClick,
   readCustomDicts, writeCustomDicts, parseCustomWords, saveCustomDict, removeCustomDict,
@@ -350,7 +351,7 @@ check('重新读到已存的设置', readSettings().dictation, 'hideVowel')
 setSetting('dictation', 'none')
 
 // —— 新增三项（字号 / 发音倍速 / 按键音音量）：老存档缺 key 时回落默认，且不弄丢别的项 ——
-check('设置键总数 18（原 11 + 字号/倍速/音量 + 悬停/选中 + 乱序/默写来源）', Object.keys(SETTING_DEFAULTS).length, 18)
+check('设置键总数 19（原 11 + 字号/倍速/音量 + 悬停/选中 + 乱序/默写来源 + 前后词预览）', Object.keys(SETTING_DEFAULTS).length, 19)
 check('新设置项默认值',
   [SETTING_DEFAULTS.wordScale, SETTING_DEFAULTS.voiceRate, SETTING_DEFAULTS.clickVolume], ['auto', 1, 100])
 check('显示类两项默认值（悬停开 / 选中关）',
@@ -530,7 +531,7 @@ check('Cmd+← 上一个', hk({ key: 'ArrowLeft', meta: true }), 'prev')
 check('Ctrl+← 上一个（Windows）', hk({ key: 'ArrowLeft', ctrl: true }), 'prev')
 check('裸 ← 不接管（留给输入框）', hk({ key: 'ArrowLeft' }), '')
 check('Cmd+→ 跳过', hk({ key: 'ArrowRight', meta: true }), 'skip')
-check('Cmd+Shift+→ 不接管', hk({ key: 'ArrowRight', meta: true, shift: true }), '')
+check('Cmd+Shift+→ 跳到下一个词（上游 WordPanel）', hk({ key: 'ArrowRight', meta: true, shift: true }), 'next-word')
 check('Cmd+J 循环', hk({ key: 'j', meta: true }), 'loop')
 check('Cmd+P 暂停', hk({ key: 'p', meta: true }), 'pause')
 check('普通字母不接管', hk({ key: 'j' }), '')
@@ -1452,7 +1453,7 @@ check('样式里有读屏隐藏类', collectCss(cardA11y).join('').includes('.qa
 
 // —— 渲染冒烟：设置页 ——
 const settingsCase = render('渲染：设置页', () => renderTest.components.SettingsSection({}))
-check('设置页有十六个设置行（+ 悬停提示 / 允许选中文本 / 章内乱序）', collectClasses(settingsCase).filter((name) => name === 'qat-setrow').length, 16)
+check('设置页有十七个设置行（+ 悬停提示 / 允许选中文本 / 章内乱序 / 前后词预览）', collectClasses(settingsCase).filter((name) => name === 'qat-setrow').length, 17)
 check('设置页含章内乱序开关', (function find(node) {
   if (!node || typeof node !== 'object') return false
   if (Array.isArray(node)) return node.some(find)
@@ -3584,6 +3585,179 @@ check('重开：不弹确认、不调 submit / 不发消息',
 renderTest.setSetting('dictation', 'none')
 renderTest.setSetting('dictationOpenBy', 'user')
 renderTest.setSetting('shuffle', false)
+
+
+/* ================================================================== */
+/* N3 快捷键补齐 / N18 按住 Tab 偷看 / N4 上一个·下一个词预览           */
+/* ================================================================== */
+
+// —— resolveHotkey 全表：旧动作一条都不删，新动作只是多出来的档 ——
+const hk2 = (over) => resolveHotkey({ key: 'a', meta: false, ctrl: false, alt: false, shift: false, ...over })
+check('N3 Enter → 开始/暂停', hk2({ key: 'Enter' }), 'toggle')
+check('N3 回车在输入框里也生效（无修饰键就接管）', hk2({ key: 'Enter', shift: false }), 'toggle')
+check('N3 Cmd+Enter 不接管（宿主的换行/发送）', hk2({ key: 'Enter', meta: true }), '')
+check('N3 Shift+Enter 不接管', hk2({ key: 'Enter', shift: true }), '')
+check('N3 输入法组合中的回车不拦', hk2({ key: 'Enter', composing: true }), '')
+check('N3 Ctrl+V → 开关默写', hk2({ key: 'v', ctrl: true }), 'dictate')
+check('N3 Cmd+V → 开关默写', hk2({ key: 'V', meta: true }), 'dictate')
+check('N3 Cmd+Shift+V → 换下一档默写', hk2({ key: 'v', meta: true, shift: true }), 'dictate-mode')
+check('N3 Cmd+Shift+← → 上一个词', hk2({ key: 'ArrowLeft', meta: true, shift: true }), 'prev-word')
+check('N3 Ctrl+Shift+← → 上一个词（Windows）', hk2({ key: 'ArrowLeft', ctrl: true, shift: true }), 'prev-word')
+check('N3 Cmd+Shift+→ → 下一个词', hk2({ key: 'ArrowRight', meta: true, shift: true }), 'next-word')
+check('N3 Ctrl+Shift+→ → 下一个词（Windows）', hk2({ key: 'ArrowRight', ctrl: true, shift: true }), 'next-word')
+check('N3 Ctrl+← 仍是旧行为 prev（不带 shift）', hk2({ key: 'ArrowLeft', ctrl: true }), 'prev')
+check('N3 Ctrl+→ 仍是旧行为 skip（不带 shift）', hk2({ key: 'ArrowRight', ctrl: true }), 'skip')
+check('N3 裸 ←/→ 不接管（留给输入框）', [hk2({ key: 'ArrowLeft' }), hk2({ key: 'ArrowRight' })].join('|'), '|')
+check('N3 Alt 组合一律不接管（⌘⌥Q 恐慌键不受影响）',
+  [hk2({ key: 'Enter', alt: true }), hk2({ key: 'v', meta: true, alt: true }),
+    hk2({ key: 'ArrowLeft', meta: true, shift: true, alt: true }), hk2({ key: 'Tab', alt: true }),
+    hk2({ key: 'Escape', alt: true }), hk2({ key: 'j', ctrl: true, alt: true })].join('|'), '|||||')
+check('N3 Esc / J / P 旧动作没被挤掉',
+  [hk2({ key: 'Escape' }), hk2({ key: 'Escape', ctrl: true }), hk2({ key: 'j', meta: true }),
+    hk2({ key: 'p', ctrl: true }), hk2({ key: 'P', meta: true, shift: true })].join('|'),
+  'close||loop|pause|')
+check('N3 空键 / null 输入返回空串', [resolveHotkey(null), resolveHotkey({}), resolveHotkey({ key: '' })].join('|'), '||')
+
+// —— N18 Tab：resolveHotkey 认得它，但绝不和动作表里的任何一项混 ——
+const PEEK_ACTIONS = ['close', 'prev', 'skip', 'prev-word', 'next-word', 'loop', 'pause', 'toggle', 'dictate', 'dictate-mode']
+check('N18 Tab → peek（keydown 通道）', hk2({ key: 'Tab' }), 'peek')
+check('N18 Cmd+Tab 不接管（系统切窗）', hk2({ key: 'Tab', meta: true }), '')
+check('N18 Tab 不被误判成其它动作', PEEK_ACTIONS.includes(hk2({ key: 'Tab' })), false)
+check('N18 peekKey 三态', [peekKey('down'), peekKey('up'), peekKey('')].join('|'), 'peek-on|peek-off|')
+check('N18 peekKey 未知阶段给空串', [peekKey('press'), peekKey(undefined), peekKey(null)].join('|'), '||')
+check('N18 源码里 keyup 也有偷看通道（不是只有 keydown）',
+  /addEventListener\('keyup', onKey/.test(source) && /peekKey\('up'\)/.test(source), true)
+check('N18 切窗（blur）会复位偷看态', /addEventListener\('blur', off\)/.test(source) && /addEventListener\('blur', onBlur\)/.test(source), true)
+
+// —— N3 跳词复用同一套实现 ——
+check('N3 跳词归一到同一套实现', [hotkeyAction('prev-word'), hotkeyAction('next-word')].join(','), 'prev,skip')
+check('N3 其它动作原样透传',
+  PEEK_ACTIONS.filter((act) => act !== 'prev-word' && act !== 'next-word').map(hotkeyAction).join(','),
+  'close,prev,skip,loop,pause,toggle,dictate,dictate-mode')
+check('N3 动作分发里一次 submit( 都没有（不碰 composer 内容）',
+  source.split('hotkeyAction(resolveHotkey(').slice(1).every((tail) => !/submit\(/.test(tail.slice(0, 1400))), true)
+
+// —— N3 默写两档 ——
+check('N3 Ctrl+V：没默写 → 全遮', toggleDictationMode('none'), 'hideAll')
+check('N3 Ctrl+V：已在默写 → 关掉',
+  [toggleDictationMode('hideAll'), toggleDictationMode('hideVowel'), toggleDictationMode('randomHide')].join(','),
+  'none,none,none')
+check('N3 Ctrl+V：脏档位当没默写', [toggleDictationMode('nope'), toggleDictationMode(undefined)].join(','), 'hideAll,hideAll')
+check('N3 Ctrl+Shift+V：循环换下一档',
+  DICTATION_MODES.map(nextDictationMode).join(','), 'hideAll,hideVowel,hideConsonant,randomHide,none')
+check('N3 Ctrl+Shift+V：末尾回 none',
+  nextDictationMode(DICTATION_MODES[DICTATION_MODES.length - 1]), 'none')
+check('N3 Ctrl+Shift+V：脏档位从头来', nextDictationMode('nope'), 'none')
+check('N3 默写动作走 applyDictation（openBy 记 user）', (function () {
+  renderTest.setSetting('dictation', 'none')
+  renderTest.setSetting('dictationOpenBy', 'user')
+  const next = renderTest.applyDictation({ type: 'user', value: toggleDictationMode('none') })
+  renderTest.setSetting('dictation', 'none')
+  return next
+})(), { dictation: 'hideAll', openBy: 'user' })
+
+// —— N4 neighborWords ——
+const nb = ['alpha', 'bravo', 'charlie']
+check('N4 中间词：前后都有', neighborWords(nb, 1), { prev: 'alpha', next: 'charlie' })
+check('N4 第一个词：没有上一个', neighborWords(nb, 0), { prev: '', next: 'bravo' })
+check('N4 最后一个词：没有下一个', neighborWords(nb, 2), { prev: 'bravo', next: '' })
+check('N4 只有一个词：两边都空', neighborWords(['only'], 0), { prev: '', next: '' })
+check('N4 非数组 / 空数组给两个空串',
+  [neighborWords(null, 0), neighborWords(undefined, 0), neighborWords('abc', 0), neighborWords([], 0)]
+    .every((item) => item.prev === '' && item.next === ''), true)
+check('N4 越界索引也给两个空串',
+  [neighborWords(nb, 5), neighborWords(nb, -1), neighborWords(nb, 1.5)]
+    .every((item) => item.prev === '' && item.next === ''), true)
+check('N4 默认关（上游 isShowPrevAndNextWordAtom 也是关）', SETTING_DEFAULTS.showNeighbors, false)
+check('N4 中英都有设置文案',
+  ['settingNeighbors', 'settingNeighborsHint'].every((key) => DICT.zh[key] && DICT.en[key]), true)
+check('N4 设置页有 showNeighbors 开关', settingNode('showNeighbors')?.props?.['data-setting'], 'showNeighbors')
+check('N4 开关是 role=switch 的控件', settingNode('showNeighbors')?.props?.role, 'switch')
+
+// —— N18 answersRevealed：偷看优先级最高 ——
+check('N18 偷看优先于 hover 开关',
+  [answersRevealed({ dictation: 'hideAll', answerOnHover: false, hovering: false, peeking: true }),
+    answersRevealed({ dictation: 'hideAll', answerOnHover: false, hovering: false, peeking: false })].join(','),
+  'true,false')
+
+// —— N4 渲染：开 → 出现 .qat-neighbors；关 → 不出现；边界不画空的 ——
+const findNeighbors = (node) => (function walk(item) {
+  if (!item || typeof item !== 'object') return null
+  if (Array.isArray(item)) {
+    for (const child of item) {
+      const hit = walk(child)
+      if (hit) return hit
+    }
+    return null
+  }
+  if (typeof item.props?.className === 'string' && item.props.className.split(/\s+/).includes('qat-neighbors')) return item
+  if (typeof item.type === 'function') return walk(item.type(item.props ?? {}))
+  return walk(item.children) ?? walk(item.props?.children)
+})(node)
+const findMasked = (node) => (function walk(item) {
+  if (!item || typeof item !== 'object') return null
+  if (Array.isArray(item)) {
+    for (const child of item) {
+      const hit = walk(child)
+      if (hit) return hit
+    }
+    return null
+  }
+  if (Array.isArray(item.props?.masked)) return item.props.masked
+  if (typeof item.type === 'function') return walk(item.type(item.props ?? {}))
+  return walk(item.children) ?? walk(item.props?.children)
+})(node)
+
+renderTest.setSetting('showNeighbors', false)
+const nbOff = renderTest.components.Trainer({ words: nb, variant: 'panel', showMeta: true, ctx: ctxStub })
+check('N4 设置关着：不画 .qat-neighbors', countClass(nbOff, 'qat-neighbors'), 0)
+
+renderTest.setSetting('showNeighbors', true)
+const nbOn = renderTest.components.Trainer({ words: nb, variant: 'panel', showMeta: true, ctx: ctxStub })
+check('N4 设置开着：出现 .qat-neighbors', countClass(nbOn, 'qat-neighbors'), 1)
+check('N4 第一个词只给下一个（没有上一个）',
+  [gatherText(findNeighbors(nbOn)).includes('bravo'), gatherText(findNeighbors(nbOn)).includes('<')].join(','),
+  'true,false')
+const nbSingle = renderTest.components.Trainer({ words: ['only'], variant: 'panel', showMeta: true, ctx: ctxStub })
+check('N4 只有一个词：不画空气泡', countClass(nbSingle, 'qat-neighbors'), 0)
+
+// 中间词（条里接着上次的进度）：两边都有，条上一律不带箭头字符
+const nbBarDict = renderTest.readDictId()
+const nbBarWords = renderTest.toWordList(renderTest.wordsSync(nbBarDict))
+renderTest.writeBarProgress(nbBarDict, 1)
+renderTest.setSetting('dictation', 'none')
+renderTest.setOpen(true)
+const nbBar = renderTest.components.ComposerTrainer({ useInput: () => '', inputActions: {}, ctx: ctxStub })
+check('N4 跟打条也画 .qat-neighbors', countClass(nbBar, 'qat-neighbors'), 1)
+check('N4 跟打条两个词都在、都不带箭头',
+  [gatherText(findNeighbors(nbBar)).includes(nbBarWords[0]),
+    gatherText(findNeighbors(nbBar)).includes(nbBarWords[2]),
+    /[<>]/.test(gatherText(findNeighbors(nbBar)))].join(','),
+  'true,true,false')
+check('N4 跟打条预览用 · 分隔', gatherText(findNeighbors(nbBar)).includes('·'), true)
+renderTest.setSetting('showNeighbors', false)
+renderTest.setOpen(false)
+
+// —— N18 渲染：hideAll 下偷看 → 字母全显 + 中文照给（即便 showZh:false） ——
+renderTest.setSetting('showZh', false)
+const peekOff = renderTest.components.Trainer({
+  words: ['cancel'], variant: 'panel', showMeta: true, dictation: 'hideAll', ctx: ctxStub,
+})
+const peekOn = renderTest.components.Trainer({
+  words: ['cancel'], variant: 'panel', showMeta: true, dictation: 'hideAll', peeking: true, ctx: ctxStub,
+})
+check('N18 不偷看：hideAll 字母全遮', findMasked(peekOff).join(','), 'true,true,true,true,true,true')
+check('N18 偷看：字母全显', findMasked(peekOn).every((item) => item === false), true)
+check('N18 偷看：无视 showZh 也给中文', countClass(peekOn, 'qat-gloss-zh'), 1)
+check('N18 松手复原：中文照设置关掉', countClass(peekOff, 'qat-gloss-zh'), 0)
+check('N18 偷看不改计数/判定（typed 仍是空、无 flash）',
+  [findMasked(peekOn).length === findMasked(peekOff).length,
+    /setPeeking\(true\)/.test(source)].join(','), 'true,true')
+renderTest.setSetting('showZh', true)
+renderTest.setSetting('dictation', 'none')
+
+check('N4 样式表有 .qat-neighbors（灰色小字，不可点）',
+  /\.qat-neighbors\{/.test(renderTest.CSS) && /pointer-events:none/.test(renderTest.CSS), true)
 
 await recordFlow
 
