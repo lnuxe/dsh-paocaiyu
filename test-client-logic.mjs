@@ -2823,6 +2823,46 @@ check('上游候选带默认目录，且优先挑真实存在的那个',
     pickUpstream(['/tmp/definitely-not-here'])].join('|'),
   `true|${import.meta.dirname}|/tmp/definitely-not-here`)
 
+// —— 音标在「错词本行」和「结算页错词胶囊」上也要看得见（N23：有字段却没画）——
+renderTest.saveCustomDict('ipa-visible', [
+  { name: 'go', trans: ['去'], usphone: 'goʊ', ukphone: 'gəu' },
+  { name: 'plain', trans: ['朴素的'] },
+])
+await renderTest.loadDictWords(`${CUSTOM_PREFIX}ipa-visible`)
+const ipaWrong = renderTest.components.WrongBookPanel({
+  t: (key, vars) => (vars && vars.n !== undefined ? `${key}:${vars.n}` : key),
+  rows: [
+    { word: 'go', dictId: 'cet4', wrongCount: 2, lastAt: 1 },
+    { word: 'plain', dictId: 'cet4', wrongCount: 1, lastAt: 2 },
+  ],
+  onReview: () => {}, onClear: () => {}, onClose: () => {},
+})
+check('错词本行带上音标', gatherText(findNodeWithClass(ipaWrong, 'qat-wrongipa')), '[goʊ]')
+check('错词本里没音标的词不画空音标格', (collectClasses(ipaWrong).filter((name) => name === 'qat-wrongipa').length), 1)
+const ipaScreen = renderTest.components.ResultScreen({
+  t: (key, vars) => (vars && vars.n !== undefined ? `${key}:${vars.n}` : key),
+  total: 2, elapsed: 10, hits: 2, retries: 1,
+  mistakes: [{ word: 'go', wrongCount: 1 }],
+  words: ['go', 'plain'],
+  onRestart: () => {}, onRetryWrong: () => {}, onNextChapter: () => {},
+})
+check('结算页错词胶囊带上音标', gatherText(findNodeWithClass(ipaScreen, 'qat-mistake-ipa')), '[goʊ]')
+check('音标跟着口音设置走（uk → BrE 那一支）', (function () {
+  // 设置走 renderTest 这一份实例：两个 plugin 实例的设置缓存不共享（D1 踩过同一个坑）
+  const previous = renderTest.readSettings().accent
+  renderTest.setSetting('accent', 'uk')
+  const node = findNodeWithClass(renderTest.components.WrongBookPanel({
+    t: (key) => key,
+    rows: [{ word: 'go', dictId: 'cet4', wrongCount: 1, lastAt: 1 }],
+    onReview: () => {}, onClear: () => {}, onClose: () => {},
+  }), 'qat-wrongipa')
+  const text = node ? gatherText(node) : ''
+  renderTest.setSetting('accent', previous)
+  return text
+})(), '[gəu]')
+check('音标样式有独立规则、不写死颜色', /\.qat-wrongipa\{[^}]*var\(--dsw-alias/.test(source), true)
+renderTest.removeCustomDict('ipa-visible')
+
 await recordFlow
 
 if (failures > 0) {

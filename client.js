@@ -2695,6 +2695,9 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
 .qat-mistake{display:inline-flex;align-items:baseline;gap:5px;padding:1px 7px;border-radius:6px;border:1px solid var(--dsw-alias-border-l1);background:var(--dsw-alias-bg-layer-2);color:var(--dsw-alias-state-error-primary);line-height:1.5}
 .qat-mistake[data-wrong="1"]{color:var(--dsw-alias-label-primary)}
 .qat-mistake-zh{font-family:inherit;font-size:11px;color:var(--dsw-alias-label-tertiary);font-weight:400;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qat-mistake-ipa{font-size:10px;color:var(--dsw-alias-label-tertiary);opacity:.9}
+.qat-wrongipa{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;color:var(--dsw-alias-label-tertiary)}
+.qat-wrongipa[data-empty="true"]{display:none}
 .qat-done-metrics{display:flex;gap:14px;font-size:13px;color:var(--dsw-alias-label-secondary);margin-top:6px}
 .qat-speak{display:inline-flex;align-items:center;margin-left:8px;cursor:pointer;font-size:13px;opacity:.65;user-select:none}
 .qat-speak:hover{opacity:1}
@@ -3700,14 +3703,18 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
             h('span', { className: 'qat-mistakes-title' }, t('resultWrongTitle', { n: rows.length })),
             h('div', { className: 'qat-mistakes-list' },
               rows.map((row) => {
-                const zh = lookup(row.word)?.zh ?? ''
+                const meta = lookup(row.word)
+                const zh = meta?.zh ?? ''
+                const phone = phoneticOf(meta, getSettings().accent)
                 return h('span', {
                   key: row.word,
                   className: 'qat-mistake',
                   'data-wrong': String(row.wrongCount),
-                  title: zh ? `${row.word} ${zh}` : row.word,
+                  title: [row.word, phone.text, zh].filter(Boolean).join(' '),
                 },
                   h('span', null, `${row.word} ×${row.wrongCount}`),
+                  // 音标之前拿到手却没画：错词胶囊上也该看得见怎么读
+                  phone.text ? h('span', { className: 'qat-mistake-ipa' }, phone.text) : null,
                   zh ? h('span', { className: 'qat-mistake-zh' }, zh) : null,
                 )
               }),
@@ -5690,8 +5697,14 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
           ? h('div', { className: 'qat-loading' }, t('wrongEmpty'))
           : h('div', { className: 'qat-dictscroll' }, rows.map((row) => {
             const meta = lookup(row.word)
-            return h('div', { key: `${row.dictId}:${row.word}`, className: 'qat-wrongrow' },
+            const phone = phoneticOf(meta, getSettings().accent)
+            return h('div', {
+              key: `${row.dictId}:${row.word}`,
+              className: 'qat-wrongrow',
+              title: [row.word, phone.text, meta?.zh].filter(Boolean).join(' '),
+            },
               h('span', { className: 'qat-wrongword' }, row.word),
+              phone.text ? h('span', { className: 'qat-wrongipa' }, phone.text) : null,
               h('span', { className: 'qat-wrongzh' }, meta?.zh ?? ''),
               h('span', { className: 'qat-wrongcount' }, `×${row.wrongCount}`),
               h('span', {
