@@ -2556,6 +2556,89 @@ renderTest.removeCustomDict('kana-probe2')
 check('跟打条里的假名有自己的 class（不进 .qat-ipa）', /\.qat-bar-notation\{/.test(source), true)
 check('口音前缀有独立样式类', /\.qat-ipa-label\{/.test(source), true)
 
+// —— 面板排版之一：标题只出现一遍 ——
+const textCount = (node, needle) => (gatherText(node).match(new RegExp(needle, 'g')) || []).length
+const countClass = (node, name) => collectClasses(node).filter((item) => String(item).split(/\s+/).includes(name)).length
+
+const panelTrainerText = (() => {
+  const tree = renderTest.components.Trainer({ words: ['cancel'], variant: 'panel', showMeta: true, ctx: ctxStub })
+  check('面板卡片渲染成功（标题断言前提）', tree !== null, true)
+  return gatherText(tree)
+})()
+check('面板卡片不再重复标题', (panelTrainerText.match(/title/g) || []).length, 0)
+check('面板卡片头部换成复练标签（chapter 为空时）', panelTrainerText.includes('panelHeadReview'), true)
+const commandTrainerText = gatherText(
+  renderTest.components.Trainer({ words: ['cancel'], variant: 'command', showMeta: true, ctx: ctxStub }),
+)
+check('跟打条仍然保留标题', (commandTrainerText.match(/title/g) || []).length, 1)
+check('面板页面上「标题」只出现一次',
+  textCount(renderTest.components.PracticePanel({ ctx: ctxStub }), 'title'), 1)
+check('面板卡片给了 chapter 就显示章号', gatherText(
+  renderTest.components.Trainer({ words: ['cancel'], variant: 'panel', showMeta: true, chapter: 2, chapterTotal: 20, ctx: ctxStub }),
+).includes('panelHeadChapter'), true)
+check('面板把章节标签透传进卡片', gatherText(
+  renderTest.components.Trainer({ words: ['cancel'], variant: 'panel', showMeta: true, headTag: '第 3 章', ctx: ctxStub }),
+).includes('第 3 章'), true)
+
+// —— 面板排版之二：释义按条分行 ——
+const splitSenseCase = renderTest.splitSense
+check('splitSense：前缀词性 n.', splitSenseCase('n. 苹果'), { pos: 'n.', body: '苹果' })
+check('splitSense：前缀词性 vt.', splitSenseCase('vt. 使…确信'), { pos: 'vt.', body: '使…确信' })
+check('splitSense：没有词性的中文', splitSenseCase('苹果'), { pos: '', body: '苹果' })
+check('splitSense：英文 adj.', splitSenseCase('adj. 正确的'), { pos: 'adj.', body: '正确的' })
+check('splitSense：空串', splitSenseCase(''), { pos: '', body: '' })
+check('splitSense：非字符串不炸', splitSenseCase(null), { pos: '', body: '' })
+check('splitSense：词性后面紧跟空格', splitSenseCase('n.   苹果'), { pos: 'n.', body: '苹果' })
+check('splitSense：词性后面没有空格', splitSenseCase('n.苹果'), { pos: 'n.', body: '苹果' })
+check('splitSense：结尾括号词性（CET-6 形态）', splitSenseCase('期待得到的东西 (n.)'), { pos: 'n.', body: '期待得到的东西' })
+check('splitSense：连着写的第二个词性', splitSenseCase('vt. &vi. 插入'), { pos: 'vt. & vi.', body: '插入' })
+
+const splitSensesCase = renderTest.splitSenses
+check('splitSenses：分号拆条目', splitSensesCase('取消，撤销；删去').length, 2)
+check('splitSenses：一条里两个词性切两刀', splitSensesCase('n. 档案,公文箱 vt. 列队行进,归档').length, 2)
+check('splitSenses：空串没有条目', splitSensesCase('').length, 0)
+check('splitSenses：每条都带 pos/body 字段',
+  splitSensesCase('n. 苹果').every((item) => 'pos' in item && 'body' in item), true)
+check('sensesOf：旧缓存只有 zh 也能降级', renderTest.sensesOf({ zh: 'n. 苹果；v. 跑' }).length, 2)
+check('sensesOf：带了 senses 字段就直接用', renderTest.sensesOf({ senses: ['n. 苹果', 'v. 跑'] }).length, 2)
+check('lookup 的命中带出 senses', Array.isArray(renderTest.lookup('cancel')?.senses), true)
+
+// 多释义：5 条 → 面板只铺 3 条 + 「+2」
+renderTest.saveCustomDict('sense-probe', [
+  { name: 'zapple', trans: ['n. 苹果', 'v. 跑', 'adj. 红的', 'adv. 快地', 'prep. 在'] },
+])
+await renderTest.loadDictWords(`${CUSTOM_PREFIX}sense-probe`)
+const multiPanel = renderTest.components.Trainer({ words: ['zapple'], variant: 'panel', showMeta: true, ctx: ctxStub })
+check('多释义渲染成多条 .qat-sense', countClass(multiPanel, 'qat-sense'), 3)
+check('超过三条收成 +N 提示', gatherText(multiPanel).includes('+2'), true)
+check('词性单独用 .qat-pos 前置', countClass(multiPanel, 'qat-pos'), 3)
+check('词性从正文里剥出去', (function () {
+  const body = findNodeWithClass(multiPanel, 'qat-sense-body')
+  return body ? gatherText(body) : ''
+})(), '苹果')
+const multiCommand = renderTest.components.Trainer({ words: ['zapple'], variant: 'command', showMeta: true, ctx: ctxStub })
+check('跟打条释义不铺成多条（.qat-sense 数量 ≤ 1）', countClass(multiCommand, 'qat-sense') <= 1, true)
+check('跟打条释义仍是拼好的一行', gatherText(multiCommand).includes('n. 苹果；v. 跑'), true)
+
+// 空释义：只有 notation 的假名词库不画空的 .qat-sense
+renderTest.saveCustomDict('sense-empty', [{ name: 'zblank', trans: [], notation: 'あ' }])
+await renderTest.loadDictWords(`${CUSTOM_PREFIX}sense-empty`)
+const blankPanel = renderTest.components.Trainer({ words: ['zblank'], variant: 'panel', showMeta: true, ctx: ctxStub })
+check('空释义不渲染 .qat-sense', countClass(blankPanel, 'qat-sense'), 0)
+check('空释义不画空的释义容器', countClass(blankPanel, 'qat-gloss-zh'), 0)
+check('空释义仍然显示假名副行', countClass(blankPanel, 'qat-gloss-notation'), 1)
+renderTest.removeCustomDict('sense-empty')
+renderTest.removeCustomDict('sense-probe')
+
+// —— 面板排版之三：样式表跟着走 ——
+check('样式表有释义条目规则', /\.qat-sense\{/.test(source), true)
+check('样式表有词性小字规则', /\.qat-pos\{/.test(source), true)
+check('样式表有 +N 提示规则', /\.qat-sense-more\{/.test(source), true)
+check('样式表有面板卡片头部标签规则', /\.qat-headtag\{/.test(source), true)
+check('面板音标比释义小一号', /\[data-variant="panel"\] \.qat-gloss-ipa\{font-size:13px/.test(source), true)
+check('跟打条释义保持单行', /\[data-variant="command"\] \.qat-gloss-zh\{white-space:nowrap/.test(source), true)
+check('释义条目限宽居中不溢出', /\.qat-sense\{[^}]*max-width:30em[^}]*overflow-wrap:break-word/.test(source), true)
+check('释义样式不用写死颜色', /\.qat-(sense|pos|headtag)\{[^}]*#[0-9a-fA-F]{3,6}/.test(source), false)
 
 await recordFlow
 
