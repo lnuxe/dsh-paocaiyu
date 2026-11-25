@@ -1538,6 +1538,8 @@ window.__ModuleLoader__.load({
         accent_us: '美音',
         accent_uk: '英音',
         settingVoiceHint: '换词时自动读一遍（有道音频，离线退回系统语音）',
+        settingReadMeaning: '译义朗读',
+        settingReadMeaningHint: '打完一个词后把释义也读一遍（先单词后释义，日语释义走 ja-JP）',
         settingDictation: '默写形态',
         settingDictationHint: '默认遮住哪些字母，练习时仍可临时切换',
         reviewMistakes: '重练这些词',
@@ -1646,6 +1648,8 @@ window.__ModuleLoader__.load({
         accent_us: 'US',
         accent_uk: 'UK',
         settingVoiceHint: 'Read each new word aloud (Youdao audio, TTS fallback)',
+        settingReadMeaning: 'Read the meaning',
+        settingReadMeaningHint: 'After a word is typed, read its meaning too (word first, then meaning; Japanese glosses use ja-JP)',
         settingDictation: 'Dictation',
         settingDictationHint: 'Which letters stay hidden by default',
         reviewMistakes: 'Review them',
@@ -2245,6 +2249,120 @@ window.__ModuleLoader__.load({
       }
     }
 
+    /* --------------------------------------------------------- 译义朗读 */
+
+    /** 释义开口的默认延迟：先让单词发音落地，释义再接上，两句不叠在一起 */
+    const MEANING_DELAY_MS = 620
+
+    /** 假名（平假名 + 片假名 + 小写变体）：命中就按日语读 */
+    const KANA_RE = /[\u3040-\u30ff\u31f0-\u31ff]/
+
+    /** 待读释义的定时器：新一轮开始要能撤掉上一轮 */
+    let MEANING_TIMER = null
+    let MEANING_SEQ = 0
+
+    /**
+     * 释义用哪种语言读：含假名按日语，其余（中文/汉字）按中文。
+     * @param zh - 释义原文。
+     * @returns 'zh-CN' | 'ja-JP'。
+     */
+    function meaningLang(zh) {
+      return KANA_RE.test(String(zh ?? '')) ? 'ja-JP' : 'zh-CN'
+    }
+
+    /**
+     * 这一刻该不该读释义。纯判定，不碰浏览器 API。
+     * @param enabled - 设置项 settings.readMeaning。
+     * @param done - 这个单词是不是刚打完（正确）。
+     * @param zh - 释义；空释义不读。
+     * @param lastWord - 上一次读过释义的词。
+     * @param word - 当前词，和 lastWord 相同就不重复读。
+     * @returns {boolean}
+     */
+    function shouldReadMeaning({ enabled, done, zh, lastWord, word } = {}) {
+      if (!enabled) return false
+      if (!done) return false
+      if (!String(zh ?? '').trim()) return false
+      const current = String(word ?? '').trim()
+      if (!current) return false
+      return String(lastWord ?? '').trim() !== current
+    }
+
+    function clearTimerHost(id) {
+      try {
+        if (typeof window !== 'undefined' && typeof window.clearTimeout === 'function') {
+          window.clearTimeout(id)
+          return true
+        }
+      } catch {
+        /* 没有 window：试全局 */
+      }
+      try {
+        if (typeof clearTimeout === 'function') {
+          clearTimeout(id)
+          return true
+        }
+      } catch {
+        /* 没有定时器：算了 */
+      }
+      return false
+    }
+
+    /**
+     * 撤掉还没读出口的释义（换新词、重开一轮、点发音时都先撤）。
+     * @returns {boolean} 是否撤掉了东西。
+     */
+    function cancelMeaning() {
+      MEANING_SEQ += 1
+      if (MEANING_TIMER === null) return false
+      const id = MEANING_TIMER
+      MEANING_TIMER = null
+      clearTimerHost(id)
+      return true
+    }
+
+    /**
+     * 读完单词之后延迟读释义。走浏览器 TTS，没有 speechSynthesis 就静默失败。
+     * @param zh - 中文/日文释义。
+     * @param options - { lang: 'zh-CN'|'ja-JP', delay: 毫秒 }。
+     * @returns {boolean} 是否已开口（有 delay 时表示已排上）。
+     */
+    function speakMeaning(zh, options) {
+      const text = String(zh ?? '').trim()
+      if (!text) return false
+      const wanted = options?.lang
+      const lang = wanted === 'zh-CN' || wanted === 'ja-JP' ? wanted : meaningLang(text)
+      const type = lang === 'ja-JP' ? 'ja' : 'zh'
+      const rawDelay = options?.delay
+      const delay = Number.isFinite(rawDelay) ? Math.max(0, rawDelay) : MEANING_DELAY_MS
+      // 新一轮先撤上一轮：释义永远只有一句在排
+      cancelMeaning()
+      if (delay <= 0) return speakWithTts(text, type)
+      const seq = MEANING_SEQ
+      const run = () => {
+        MEANING_TIMER = null
+        if (seq !== MEANING_SEQ) return false
+        return speakWithTts(text, type)
+      }
+      try {
+        if (typeof window !== 'undefined' && typeof window.setTimeout === 'function') {
+          MEANING_TIMER = window.setTimeout(run, delay)
+          return true
+        }
+      } catch {
+        /* 没有 window 定时器：往下走 */
+      }
+      try {
+        if (typeof setTimeout === 'function') {
+          MEANING_TIMER = setTimeout(run, delay)
+          return true
+        }
+      } catch {
+        /* 没有定时器：直接读 */
+      }
+      return speakWithTts(text, type)
+    }
+
     const SETTING_DEFAULTS = {
       dictation: 'none',
       caseSensitive: false,
@@ -2255,6 +2373,8 @@ window.__ModuleLoader__.load({
       accent: 'us',
       sound: true,
       autoNext: true,
+      // 打完一个词后，把中文/日文释义读一遍（上游 isTransRead）
+      readMeaning: false,
     }
     const SETTING_PREFIX = 'qwerty-autotype:setting:'
 
@@ -2456,8 +2576,29 @@ window.__ModuleLoader__.load({
         setState((prev) => ({ ...prev, typed: value }))
       }, [])
 
+      /** 上一次读过释义的词：同一个词（含循环重打）不重复读 */
+      const meaningRef = useRef('')
+      /** 词刚打完 / 点发音时读释义；开关关着就什么都不做 */
+      const readMeaning = useCallback((rawWord) => {
+        const word = String(rawWord ?? '').trim()
+        const zh = lookup(word)?.zh ?? ''
+        const live = getSettings()
+        const shouldRead = shouldReadMeaning({
+          enabled: live.readMeaning,
+          done: true,
+          zh,
+          lastWord: meaningRef.current,
+          word,
+        })
+        if (!shouldRead) return false
+        meaningRef.current = word
+        return speakMeaning(zh)
+      }, [])
+
       const advance = useCallback(() => {
         const snapshot = stateRef.current
+        // 刚打完这个词（正确）：单词在前，释义延迟接上
+        readMeaning(words[snapshot.index] ?? '')
         // 循环单词：原地重打，不推进进度、不写记录
         if (loop) {
           live.current = { ...live.current, typed: '' }
@@ -2518,7 +2659,7 @@ window.__ModuleLoader__.load({
           index: next,
           finishedAt: finished ? at : null,
         }))
-      }, [chapter, dictId, loop, onFinish, options, variant, words])
+      }, [chapter, dictId, loop, onFinish, options, readMeaning, variant, words])
 
       const accept = useCallback((value) => {
         if (live.current.locked) return
@@ -2589,6 +2730,9 @@ window.__ModuleLoader__.load({
         live.current = { index: 0, typed: '', locked: false, timer: null }
         wrongRef.current = 0
         lettersRef.current = {}
+        // 重开一轮：上一轮排着的释义撤掉，同一个词可以重新读
+        meaningRef.current = ''
+        cancelMeaning()
         setMistakes([])
         if (variant === 'panel') clearSession()
         setAuto(false)
@@ -2702,7 +2846,12 @@ window.__ModuleLoader__.load({
                 gloss ? h('div', { className: 'qat-gloss-zh' }, gloss) : null,
                 current && voiceOn
                   ? h('span', {
-                    ...pressable(() => speak(current)),
+                    ...pressable(() => {
+                      // 点发音：先读单词，释义延迟接上（新一轮先撤上一轮）
+                      cancelMeaning()
+                      speak(current)
+                      readMeaning(current)
+                    }),
                     className: 'qat-speak',
                     title: t('speak'),
                     'aria-label': t('speak'),
@@ -2978,6 +3127,8 @@ window.__ModuleLoader__.load({
         if (!current) return
         if (spokenRef.current.word === current && spokenRef.current.index === state.index) return
         spokenRef.current = { word: current, index: state.index }
+        // 新词开口就把上一轮没读完的释义撤掉，两句绝不抢
+        cancelMeaning()
         speak(current)
       }, [current, isOpen, settings.voice, state.index])
       const done = false
@@ -2991,7 +3142,28 @@ window.__ModuleLoader__.load({
       const ipa = entry?.ipa ?? ''
       const meaning = entry?.zh ?? ''
 
+      /** 上一次读过释义的词：同一个词不重复读 */
+      const meaningRef = useRef('')
+      /** 词刚打完时读释义；开关关着就什么都不做 */
+      const readMeaning = useCallback((rawWord) => {
+        const word = String(rawWord ?? '').trim()
+        const zh = lookup(word)?.zh ?? ''
+        const live = getSettings()
+        const shouldRead = shouldReadMeaning({
+          enabled: live.readMeaning,
+          done: true,
+          zh,
+          lastWord: meaningRef.current,
+          word,
+        })
+        if (!shouldRead) return false
+        meaningRef.current = word
+        return speakMeaning(zh)
+      }, [])
+
       const advance = useCallback(() => {
+        // 刚打完这个词（正确）：单词在前，释义延迟接上
+        readMeaning(wordsRef.current[stateRef.current.index] ?? '')
         // 循环当前词：原地重打
         if (loopRef.current) {
           setState((prev) => ({ ...prev, typed: '', flash: false, hits: prev.hits + 1 }))
@@ -3007,7 +3179,7 @@ window.__ModuleLoader__.load({
           index: next,
           finishedAt: null,
         }))
-      }, [])
+      }, [readMeaning])
 
       const loopRef = useRef(false)
       const pausedRef = useRef(false)
@@ -3338,6 +3510,9 @@ window.__ModuleLoader__.load({
         startedAt.current = Date.now()
         lockRef.current = { locked: false, timer: null }
         setAuto(false)
+        // 重开一轮：上一轮排着的释义撤掉，同一个词可以重新读
+        meaningRef.current = ''
+        cancelMeaning()
         setRound((value) => value + 1)
         setState({ index: 0, typed: '', flash: false, hits: 0, retries: 0, finishedAt: null })
       }, [])
@@ -3671,6 +3846,12 @@ window.__ModuleLoader__.load({
           label: t('settingVoice'),
           hint: t('settingVoiceHint'),
           control: toggle('voice'),
+        }),
+        h(SettingRow, {
+          t,
+          label: t('settingReadMeaning'),
+          hint: t('settingReadMeaningHint'),
+          control: toggle('readMeaning'),
         }),
         h(SettingRow, {
           t,
@@ -4221,7 +4402,7 @@ window.__ModuleLoader__.load({
         keyboardHeat, KEY_ROWS, cacheStats, clearDictCache,
         parseCustomFile, serializeCustomDict, splitCsvLine, toCustomWord, downloadText, withSlashes,
         stepIndex, toWordList, isRoundDone, pronunciationSrc, pronunciationType, speakWithTts,
-        speak,
+        speak, speakMeaning, cancelMeaning, meaningLang, shouldReadMeaning, MEANING_DELAY_MS,
       },
       inject: ['slots', 'locale'],
       apply(ctx) {
