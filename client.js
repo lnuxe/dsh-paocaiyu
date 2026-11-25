@@ -1819,8 +1819,6 @@ window.__ModuleLoader__.load({
         tipFirstLetter: '首字母提示 {pattern}',
         tipTwoLetters: '再给两个字母 {pattern}',
         tipReveal: '只剩最后一个字母 {pattern}',
-        auto: '自动打',
-        autoStop: '停止自动',
         restart: '重开',
         close: '收起',
         barHint: '焦点放在下面的输入框，照着单词打；打错整词重打，回车不会发送。',
@@ -1962,8 +1960,6 @@ window.__ModuleLoader__.load({
         tipFirstLetter: 'First letter {pattern}',
         tipTwoLetters: 'First two letters {pattern}',
         tipReveal: 'All but the last letter {pattern}',
-        auto: 'Auto type',
-        autoStop: 'Stop auto',
         restart: 'Restart',
         close: 'Hide',
         barHint: 'Focus the composer below and type along; a wrong letter restarts the word, and Enter never sends.',
@@ -3168,7 +3164,6 @@ window.__ModuleLoader__.load({
       const [state, setState] = useState({
         index: 0, typed: '', flash: false, hits: 0, retries: 0, wordWrong: 0, finishedAt: null,
       })
-      const [auto, setAuto] = useState(false)
       const inputRef = useRef(null)
       const live = useRef({ index: 0, typed: '', locked: false, timer: null })
       /** 当前这个词这一轮打错了几次（写记录用） */
@@ -3510,32 +3505,6 @@ window.__ModuleLoader__.load({
         }, 320)
       }, [advance, options, setTyped, words])
 
-      // 自动打：把目标词逐字打进同一个输入框，行为和手打一致（不伪造通过）
-      useEffect(() => {
-        if (!auto || done || total === 0) return undefined
-        const id = setInterval(() => {
-          const snapshot = stateRef.current
-          const goal = effectiveTarget(words[snapshot.index] ?? '', options)
-          if (!goal || live.current.locked) return
-          if (!goal.startsWith(snapshot.typed)) {
-            setTyped('')
-            return
-          }
-          if (snapshot.typed.length >= goal.length) return
-          const next = goal.slice(0, snapshot.typed.length + 1)
-          setTyped(next)
-          if (next === goal) {
-            live.current.locked = true
-            live.current.timer = setTimeout(() => {
-              live.current.timer = null
-              live.current.locked = false
-              advance()
-            }, 220)
-          }
-        }, 120)
-        return () => clearInterval(id)
-      }, [advance, auto, done, options, setTyped, total, words])
-
       // 面板里输入框已经隐形，挂载时主动把焦点交给它，用户不用先点哪儿
       useEffect(() => {
         if (variant !== 'panel') return
@@ -3558,7 +3527,6 @@ window.__ModuleLoader__.load({
         if (typeof onLiveWpm === 'function') onLiveWpm(0)
         setMistakes([])
         if (variant === 'panel') clearSession()
-        setAuto(false)
         setState({ index: 0, typed: '', flash: false, hits: 0, retries: 0, wordWrong: 0, finishedAt: null })
         const input = inputRef.current
         if (input) input.focus()
@@ -3719,11 +3687,6 @@ window.__ModuleLoader__.load({
               onKeyUp: (event) => event.stopPropagation(),
             }),
             h('div', { className: 'qat-row' },
-              h('span', {
-                ...pressable(() => setAuto((value) => !value)),
-                className: 'qat-btn',
-                'data-active': auto ? 'true' : 'false',
-              }, auto ? t('autoStop') : t('auto')),
               h('span', {
                 ...pressable(restart),
                 className: 'qat-btn',
@@ -4023,7 +3986,6 @@ window.__ModuleLoader__.load({
         index: resumeIndex(readBarProgress(), readDictId(), toWordList(wordsSync(readDictId())).length),
         typed: '', flash: false, hits: 0, retries: 0, wordWrong: 0, finishedAt: null,
       }))
-      const [auto, setAuto] = useState(false)
       const [barWidth, setBarWidth] = useState(null)
       /** 我们自己写进 composer 的那句中文（关闭时要原样撤掉） */
       const wroteDraftRef = useRef('')
@@ -4507,19 +4469,6 @@ window.__ModuleLoader__.load({
         }
       }, [done, draft, inputActions, isOpen, meaning])
 
-      // 自动打：逐字走同一条 feed，行为和手打一致
-      useEffect(() => {
-        if (!auto || done || total === 0) return undefined
-        const id = setInterval(() => {
-          const word = wordsRef.current[stateRef.current.index] ?? ''
-          if (!word || lockRef.current.locked) return
-          const next = word[stateRef.current.typed.length]
-          if (next === undefined) return
-          feed(next)
-        }, 120)
-        return () => clearInterval(id)
-      }, [auto, done, feed, total])
-
       const restart = useCallback(() => {
         startedAt.current = Date.now()
         lockRef.current = { locked: false, timer: null }
@@ -4527,7 +4476,6 @@ window.__ModuleLoader__.load({
         liveChars.current = 0
         speedSamples.current = []
         setLiveWpm(0)
-        setAuto(false)
         // 重开一轮：上一轮排着的释义撤掉，同一个词可以重新读
         meaningRef.current = ''
         cancelMeaning()
@@ -4546,7 +4494,6 @@ window.__ModuleLoader__.load({
         liveChars.current = 0
         speedSamples.current = []
         setLiveWpm(0)
-        setAuto(false)
         setState({ index: 0, typed: '', flash: false, hits: 0, retries: 0, wordWrong: 0, finishedAt: null })
       }, [])
 
