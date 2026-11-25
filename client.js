@@ -1243,6 +1243,193 @@ window.__ModuleLoader__.load({
       })))
     }
 
+    /* -------------------------------------------------- 指法图示（纯 SVG） */
+
+    /** 八根手指，顺序从左小指到右小指（指法图的固定顺序） */
+    const FINGER_IDS = [
+      'leftPinky', 'leftRing', 'leftMiddle', 'leftIndex',
+      'rightIndex', 'rightMiddle', 'rightRing', 'rightPinky',
+    ]
+
+    /** 分区配色：从左到右一条彩虹，只做「哪根手指」的低调提示 */
+    const FINGER_COLORS = {
+      leftPinky: '#8f9dff',
+      leftRing: '#5fb8d8',
+      leftMiddle: '#5fc4a0',
+      leftIndex: '#8cc94f',
+      rightIndex: '#e2b53f',
+      rightMiddle: '#e2903f',
+      rightRing: '#e06d6d',
+      rightPinky: '#c96de0',
+    }
+
+    /** fingerOf 的返回值 → 文案 key（中英各一份） */
+    const FINGER_LABELS = {
+      leftPinky: 'fingerLeftPinky',
+      leftRing: 'fingerLeftRing',
+      leftMiddle: 'fingerLeftMiddle',
+      leftIndex: 'fingerLeftIndex',
+      rightIndex: 'fingerRightIndex',
+      rightMiddle: 'fingerRightMiddle',
+      rightRing: 'fingerRightRing',
+      rightPinky: 'fingerRightPinky',
+    }
+
+    /**
+     * 标准指法：每个字母固定交给一根手指。
+     * f / j 是左右食指的基准键；`;` 只进映射、不上键盘（键盘只画 26 个字母键）。
+     */
+    const FINGER_MAP = {
+      q: 'leftPinky', a: 'leftPinky', z: 'leftPinky',
+      w: 'leftRing', s: 'leftRing', x: 'leftRing',
+      e: 'leftMiddle', d: 'leftMiddle', c: 'leftMiddle',
+      r: 'leftIndex', t: 'leftIndex', f: 'leftIndex', g: 'leftIndex', v: 'leftIndex', b: 'leftIndex',
+      y: 'rightIndex', u: 'rightIndex', h: 'rightIndex', j: 'rightIndex', n: 'rightIndex', m: 'rightIndex',
+      i: 'rightMiddle', k: 'rightMiddle',
+      o: 'rightRing', l: 'rightRing',
+      p: 'rightPinky', ';': 'rightPinky',
+    }
+
+    /**
+     * 字母 → 手指 id。空格、连字符、数字这些不在主键盘字母区，返回 null。
+     * @param {string} letter
+     * @returns {string|null}
+     */
+    function fingerOf(letter) {
+      const key = String(letter ?? '').trim().toLowerCase()
+      if (key.length !== 1) return null
+      return FINGER_MAP[key] ?? null
+    }
+
+    /** 字母 → 三行键盘里的坐标；不在这 26 个字母里就返回 null */
+    function keyPosition(letter) {
+      const key = String(letter ?? '').trim().toLowerCase()
+      if (key.length !== 1) return null
+      for (let row = 0; row < KEY_ROWS.length; row += 1) {
+        const col = KEY_ROWS[row].indexOf(key)
+        if (col >= 0) return { row, col }
+      }
+      return null
+    }
+
+    /**
+     * 当前该按哪个键：取「下一个待打字母」。
+     * 词打完了、typed 超出词长、空词，都返回 null。
+     * @param {{word?: string, typed?: string}} input
+     * @returns {{letter: string, finger: string, row: number, col: number}|null}
+     */
+    function keyHighlight({ word, typed } = {}) {
+      const target = String(word ?? '')
+      const done = String(typed ?? '').length
+      if (!target || done < 0 || done >= target.length) return null
+      const letter = target[done].toLowerCase()
+      const pos = keyPosition(letter)
+      // 空格 / 标点 / 数字：知道手指也没键可高亮，整块不画
+      if (!pos) return null
+      return { letter, finger: FINGER_MAP[letter], row: pos.row, col: pos.col }
+    }
+
+    /** SVG 键盘尺寸：三行 10/9/7 键，整体 320×102（不超过 320×110） */
+    const FINGER_KEY = { w: 26, h: 26, gap: 4, top: 8, width: 320, height: 102 }
+
+    /** 单个键帽的几何：每一行居中，行高固定 */
+    function keyGeom(row, col) {
+      const keys = KEY_ROWS[row] || ''
+      const { w, h, gap, top, width } = FINGER_KEY
+      const rowWidth = keys.length * w + Math.max(0, keys.length - 1) * gap
+      const x = Math.round(((width - rowWidth) / 2 + col * (w + gap)) * 10) / 10
+      return { x, y: top + row * (h + gap), w, h }
+    }
+
+    /**
+     * 画键盘：26 个键帽（rect）+ 26 个字母（text），命中的那个键用该手指的色块填充。
+     * 纯渲染函数，不读设置、不读 locale，方便单测。
+     * @param {{active?: string, label?: string}} input
+     */
+    function fingerKeyboardNode({ active = '', label = '' } = {}) {
+      const hit = String(active ?? '').trim().toLowerCase()
+      const children = []
+      KEY_ROWS.forEach((row, rowIndex) => {
+        [...row].forEach((letter, colIndex) => {
+          const geom = keyGeom(rowIndex, colIndex)
+          const finger = FINGER_MAP[letter] ?? ''
+          const on = letter === hit
+          // f / j 基准键：键帽下沿一个小点，位置提示
+          const bump = letter === 'f' || letter === 'j'
+            ? h('circle', {
+              key: `${letter}-bump`,
+              className: 'qat-fkeybump',
+              cx: geom.x + geom.w / 2,
+              cy: geom.y + geom.h - 5,
+              r: 1.6,
+            })
+            : null
+          children.push(h('g', {
+            key: letter,
+            className: 'qat-fkey',
+            'data-finger': finger,
+            'data-on': on ? 'true' : 'false',
+          },
+            h('rect', {
+              className: 'qat-fkeycap',
+              x: geom.x,
+              y: geom.y,
+              width: geom.w,
+              height: geom.h,
+              rx: 5,
+              ry: 5,
+              style: on ? { fill: FINGER_COLORS[finger] } : undefined,
+            }),
+            h('text', {
+              className: 'qat-fkeylabel',
+              x: geom.x + geom.w / 2,
+              y: geom.y + geom.h / 2 + 4,
+              'text-anchor': 'middle',
+            }, letter.toUpperCase()),
+            bump,
+          ))
+        })
+      })
+      return h('svg', {
+        className: 'qat-fingerkbd',
+        viewBox: `0 0 ${FINGER_KEY.width} ${FINGER_KEY.height}`,
+        width: FINGER_KEY.width,
+        height: FINGER_KEY.height,
+        role: 'img',
+        'aria-label': label || 'keyboard',
+        focusable: 'false',
+      }, children)
+    }
+
+    /**
+     * 指法提示条：键盘 + 「该用哪根手指」（色块 + 手名）。
+     * 设置里的 showFinger 关掉时由调用方直接不渲染。
+     */
+    function FingerHint({ word = '', typed = '', ctx }) {
+      const t = useT(ctx)
+      const hit = keyHighlight({ word, typed })
+      const fingerName = hit ? t(FINGER_LABELS[hit.finger]) : ''
+      return h('div', {
+        className: 'qat-finger',
+        'data-on': hit ? 'true' : 'false',
+        'data-finger': hit?.finger ?? '',
+      },
+        fingerKeyboardNode({
+          active: hit?.letter ?? '',
+          label: hit
+            ? t('fingerAria', { finger: fingerName, letter: hit.letter.toUpperCase() })
+            : t('fingerIdle'),
+        }),
+        h('span', { className: 'qat-fingerlabel' },
+          h('span', {
+            className: 'qat-fingerdot',
+            style: hit ? { background: FINGER_COLORS[hit.finger] } : undefined,
+          }),
+          h('span', null, hit ? t('fingerUse', { finger: fingerName }) : t('fingerIdle')),
+        ),
+      )
+    }
+
     /** 错词本筛选：按词库 + 关键词 + 排序方式 */
     function filterWrongWords(rows, filters) {
       const { query, dictId, sort, mastered, showMastered = false } = filters || {}
@@ -1497,6 +1684,19 @@ window.__ModuleLoader__.load({
         settingSoundHint: '打对/打错时给一声轻提示',
         settingAutoNext: '自动继续',
         settingAutoNextHint: '打完 20 个自动接下一章，不用手动点',
+        settingFinger: '指法提示',
+        settingFingerHint: '卡片下方画一张键盘，高亮下一个要按的键和该用的手指',
+        fingerLeftPinky: '左小指',
+        fingerLeftRing: '左无名指',
+        fingerLeftMiddle: '左中指',
+        fingerLeftIndex: '左食指',
+        fingerRightIndex: '右食指',
+        fingerRightMiddle: '右中指',
+        fingerRightRing: '右无名指',
+        fingerRightPinky: '右小指',
+        fingerUse: '用 {finger}',
+        fingerAria: '指法：{finger} 按 {letter}',
+        fingerIdle: '当前字符不在字母区',
         hotkeysTitle: '快捷键',
         announceWrong: '打错了，请整词重打 {word}',
         announceDone: '本轮完成，共 {n} 个词',
@@ -1605,6 +1805,19 @@ window.__ModuleLoader__.load({
         settingSoundHint: 'A soft click on hit or miss',
         settingAutoNext: 'Auto-continue',
         settingAutoNextHint: 'Roll into the next chapter instead of stopping at 20',
+        settingFinger: 'Finger guide',
+        settingFingerHint: 'Draw a keyboard under the card and light up the next key with the finger to use',
+        fingerLeftPinky: 'Left pinky',
+        fingerLeftRing: 'Left ring',
+        fingerLeftMiddle: 'Left middle',
+        fingerLeftIndex: 'Left index',
+        fingerRightIndex: 'Right index',
+        fingerRightMiddle: 'Right middle',
+        fingerRightRing: 'Right ring',
+        fingerRightPinky: 'Right pinky',
+        fingerUse: 'Use {finger}',
+        fingerAria: 'Finger guide: press {letter} with {finger}',
+        fingerIdle: 'No key on the letter rows',
         hotkeysTitle: 'Shortcuts',
         announceWrong: 'Mistyped — retype the whole word {word}',
         announceDone: 'Round finished, {n} words',
@@ -1829,6 +2042,16 @@ window.__ModuleLoader__.load({
 .qat-side[data-active="true"]{border-color:var(--dsw-alias-brand-primary);color:var(--dsw-alias-brand-primary)}
 .qat-side-icon{display:inline-block;width:16px;height:16px;line-height:1;background-color:currentColor;-webkit-mask-image:var(--qat-ink);mask-image:var(--qat-ink);-webkit-mask-size:contain;mask-size:contain;-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center}
 .qat-svg{display:block;flex:none;overflow:visible}
+/* 指法图示：低调的纯 SVG 键盘，命中键用该手指的色块点亮 */
+.qat-finger{display:flex;align-items:center;justify-content:center;gap:10px;margin:2px 0 6px;opacity:.9}
+.qat-fingerkbd{display:block;width:320px;max-width:100%;height:auto;flex:none}
+.qat-fkeycap{fill:var(--dsw-alias-bg-layer-2);stroke:var(--dsw-alias-border-l1);stroke-width:1}
+.qat-fkeylabel{font-size:11px;font-weight:600;fill:var(--dsw-alias-label-tertiary);font-family:inherit}
+.qat-fkeybump{fill:var(--dsw-alias-label-tertiary);opacity:.6}
+.qat-fkey[data-on="true"] .qat-fkeycap{stroke:var(--dsw-alias-label-primary);stroke-width:1.4}
+.qat-fkey[data-on="true"] .qat-fkeylabel{fill:var(--dsw-alias-bg-base)}
+.qat-fingerlabel{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--dsw-alias-label-secondary);white-space:nowrap}
+.qat-fingerdot{display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--dsw-alias-border-l2);flex:none}
 `
 
     /* ---------------------------------------------------------------- locale */
@@ -2255,6 +2478,7 @@ window.__ModuleLoader__.load({
       accent: 'us',
       sound: true,
       autoNext: true,
+      showFinger: false,
     }
     const SETTING_PREFIX = 'qwerty-autotype:setting:'
 
@@ -2336,7 +2560,10 @@ window.__ModuleLoader__.load({
       const [helpOpen, setHelpOpen] = useState(false)
       /** 读屏播报：只在状态变化时更新，避免每敲一键都朗读 */
       const [announce, setAnnounce] = useState('')
-      const voiceOn = useSyncExternalStore(subscribeSettings, getSettings, getSettings).voice
+      const settingsNow = useSyncExternalStore(subscribeSettings, getSettings, getSettings) || {}
+      const voiceOn = settingsNow.voice
+      /** 指法图示：默认关，设置里打开后只在面板卡片下方出现 */
+      const fingerOn = settingsNow.showFinger === true
       /** 本轮打错时"该打却没打对"的字母计数 */
       const lettersRef = useRef({})
       const pausedRef = useRef(false)
@@ -2758,6 +2985,10 @@ window.__ModuleLoader__.load({
               }, t('restart')),
             ),
             h('div', { className: 'qat-hint' }, t('hint')),
+            // 指法图示：面板卡片才有位置放，跟打条/指令卡保持紧凑
+            variant === 'panel' && fingerOn
+              ? h(FingerHint, { word: target, typed: state.typed, ctx })
+              : null,
           ),
       )
     }
@@ -3697,6 +3928,12 @@ window.__ModuleLoader__.load({
         }),
         h(SettingRow, {
           t,
+          label: t('settingFinger'),
+          hint: t('settingFingerHint'),
+          control: toggle('showFinger'),
+        }),
+        h(SettingRow, {
+          t,
           label: t('settingDictation'),
           hint: t('settingDictationHint'),
           control: h('select', {
@@ -4211,7 +4448,7 @@ window.__ModuleLoader__.load({
         dictSourceList, DICT_PIN, activeMs, resolveHotkey, calcWpm, calcAccuracy, shouldStartOnTab, saveSession, readSession, clearSession, sameSession,
         setOpen, getOpen, readDictId, writeDictId, releaseStuckComposer, ACCENTS, resolveAccent, shouldBlockSend, isSendTrigger, shouldClearDraft,
         ICONS, GLYPH, Icon,
-        components: { Trainer, PracticePanel, PanelGlyph, ComposerTrainer, SidebarButton, DictPicker, WrongBookPanel, StatsPanel, SettingsSection, SettingRow },
+        components: { Trainer, PracticePanel, PanelGlyph, ComposerTrainer, SidebarButton, DictPicker, WrongBookPanel, StatsPanel, SettingsSection, SettingRow, FingerHint },
         collectWrongWords, heatmapWeeks, heatLevel, filterWrongWords, DICT,
         serializeBackup, parseBackup, BACKUP_VERSION, BACKUP_LIMITS, playClick, pressable,
         topWrongLetters, readMastered, writeMastered, toggleMastered, masteredKey, MASTERED_KEY,
@@ -4219,6 +4456,8 @@ window.__ModuleLoader__.load({
         customWords, isCustomId, CUSTOM_PREFIX, CUSTOM_LIMIT, dictionaryById, chapterCount,
         exportBackup, importData, clearData, readMirror, writeMirror, MIRROR_KEY,
         keyboardHeat, KEY_ROWS, cacheStats, clearDictCache,
+        fingerOf, keyHighlight, keyPosition, keyGeom, fingerKeyboardNode,
+        FINGER_MAP, FINGER_IDS, FINGER_LABELS, FINGER_COLORS, FINGER_KEY,
         parseCustomFile, serializeCustomDict, splitCsvLine, toCustomWord, downloadText, withSlashes,
         stepIndex, toWordList, isRoundDone, pronunciationSrc, pronunciationType, speakWithTts,
         speak,
