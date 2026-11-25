@@ -9,6 +9,15 @@
 
 无
 
+## [0.5.1] - 2026-11-25
+
+### Changed · 插件图标换回矢量
+
+`icon.svg`（插件管理页里显示的那个）之前内嵌了 25KB 的 base64 位图，跟 `client.js` 里被删掉的水墨图是同一张。
+
+- 改成纯矢量：深色圆角底 + 键盘（同一套 iconify path）+ 右下角绿色对勾，**823 B**
+- `package.json` 的 `files` 去掉已经没人用的 `assets/panel-icon.png`
+
 ## [0.5.0] - 2026-11-25
 
 ### Fixed · 侧栏「跟打」图标是空白
@@ -305,7 +314,8 @@ v0.4.1 在 composer 上写死过 `inputmode="latin"` / `data-qat-ime` / `ime-mod
 - 隐藏焦点守卫：练习期间输入框区域的回车 / 制表符 / `Cmd+Enter` 与发送按钮点击全部被吃掉，草稿发不出去
 - 45 条测试（`test-client-logic.mjs`）：判定 / `pushChar` / 词库 / 渲染冒烟（一次性 React 桩真的调一遍组件），不需要浏览器
 
-[Unreleased]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.6...v0.5.0
 [0.4.6]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.5...v0.4.6
 [0.4.5]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.4...v0.4.5
