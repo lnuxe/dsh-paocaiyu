@@ -9,6 +9,24 @@
 
 无
 
+## [0.4.4] - 2026-11-25
+
+### Fixed · 跟打条「打不开 / 按了没反应」
+
+三个原因叠加，全都出在上一轮加的门禁上：
+
+1. **空词库把条自己关掉了**：`if (isOpen && words.length === 0) setOpen(false)`。词库是异步加载的，
+   自定义词库或没缓存的网络词库首帧就是空数组——条刚打开就被自己关回去，看起来就是「按 Tab 没反应」
+2. **Tab 只在输入框绝对为空时才生效**：`shouldStartOnTab` 要求 `draft` 为空。之前一次没清干净的提示语
+   （或被冻结态拒绝改写）会让 Tab 永久失效。现在 `ownDraft` 判定：残留的若正是我们自己写的那句，当作空处理
+3. **空词库时还去改用户草稿**：没有词可提示时 `desired === ''`，会把用户刚写的消息抹掉。现在没有提示语就不动草稿
+
+另外：`isOpen && 词库为空` 不再静默返回 `null`，而是画一条「词库加载中…」的占位条（带 ×），
+按了有反应、随时能关。`liveBarRef` 改为渲染期同步计算 `isOpen && total > 0 && current`，
+只有真有当前词时才接管键盘。
+
+测试：407 → **419 条**（`shouldStartOnTab` 九种情形 + 空词库仍渲染 + 空词库给出提示）。
+
 ## [0.4.3] - 2026-11-25
 
 ### Fixed · 输入框打不进字了（v0.4.1 的输入法改动导致）
@@ -191,7 +209,8 @@
 - 隐藏焦点守卫：练习期间输入框区域的回车 / 制表符 / `Cmd+Enter` 与发送按钮点击全部被吃掉，草稿发不出去
 - 45 条测试（`test-client-logic.mjs`）：判定 / `pushChar` / 词库 / 渲染冒烟（一次性 React 桩真的调一遍组件），不需要浏览器
 
-[Unreleased]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.3...HEAD
+[Unreleased]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.4...HEAD
+[0.4.4]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.0...v0.4.1

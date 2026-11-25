@@ -1554,6 +1554,7 @@ window.__ModuleLoader__.load({
         dictTitle: 'Choose a dictionary',
         doneShort: '{total} done · {sec}s',
         autoTitle: 'Auto type',
+        loading: 'Loading dictionary…',
         doneTitle: 'Round complete',
         doneBody: '{total}/{total} done in {sec}s — {hits} hits, {retries} retries',
         again: 'Go again',
@@ -1561,7 +1562,6 @@ window.__ModuleLoader__.load({
         allCategories: 'All',
         recent: 'Recent',
         searchResult: 'Results',
-        loading: 'Loading dictionary…',
         loadFailed: 'Dictionary failed to load — using the built-in one',
         chapterTitle: 'Chapter',
         speak: 'Read aloud',
@@ -1651,6 +1651,7 @@ window.__ModuleLoader__.load({
     const CSS = `
 .qat-bar{position:relative;display:flex;align-items:center;justify-content:center;padding:0 0 5px;background:transparent;border:0;box-sizing:border-box;font-size:12px;color:var(--dsw-alias-label-secondary);min-height:52px}
 .qat-bar .qat-word{font-size:34px;min-height:40px;gap:1px;letter-spacing:.01em}
+.qat-bar-empty{font-size:12px;color:var(--dsw-alias-label-tertiary)}
 .qat-bar-center{display:flex;align-items:center;justify-content:center;min-width:0;width:100%}
 .qat-bar-count{position:absolute;left:0;top:50%;transform:translateY(-50%);font-size:11px;color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums}
 .qat-bar-gloss{font-size:12px;color:var(--dsw-alias-label-tertiary);max-width:34%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -2009,12 +2010,15 @@ window.__ModuleLoader__.load({
      * 其余一律还给宿主（见文档 §3.6 的三分支裁决）。
      */
     function shouldStartOnTab(input) {
-      const { key, open, inComposer, draft, modifier } = input || {}
+      const { key, open, inComposer, draft, modifier, ownDraft } = input || {}
       if (key !== 'Tab') return false
       if (open) return false
       if (!inComposer) return false
       if (modifier) return false
-      return String(draft ?? '').trim() === ''
+      const text = String(draft ?? '')
+      if (text.trim() === '') return true
+      // 残留的是我们自己写进去的提示语，可以当空处理（否则一次没清干净就再也按不开）
+      return Boolean(ownDraft) && text === String(ownDraft)
     }
 
     const SESSION_KEY = 'qwerty-autotype:session'
@@ -3039,6 +3043,7 @@ window.__ModuleLoader__.load({
             open: getOpen(),
             inComposer,
             draft: draftRef.current,
+            ownDraft: wroteDraftRef.current,
             modifier: event.metaKey || event.ctrlKey || event.altKey || event.shiftKey,
           })
           if (!allow) return
@@ -3134,6 +3139,8 @@ window.__ModuleLoader__.load({
         if (!inputActions || typeof inputActions.setDraft !== 'function') return
         const desired = !done && meaning ? meaning : ''
         if (draft === desired) return
+        // 没有词可提示时（词库空）别去动用户已经写下的草稿
+        if (!desired && draft && draft !== wroteDraftRef.current) return
         wroteDraftRef.current = desired
         try {
           inputActions.setDraft(desired)
@@ -3173,7 +3180,30 @@ window.__ModuleLoader__.load({
         setState({ index: 0, typed: '', flash: false, hits: 0, retries: 0, finishedAt: null })
       }, [])
 
-      if (!isOpen || total === 0) return null
+      liveBarRef.current = isOpen && total > 0 && Boolean(current)
+
+      if (!isOpen) return null
+
+      // 词库还在加载 / 空词库：给一个可见的占位条，别看起来像「按了没反应」
+      if (total === 0) {
+        return h('div', {
+          className: 'qat-bar',
+          'data-qat': '',
+          style: barWidth === null ? undefined : { width: `${barWidth}px`, marginInline: 'auto' },
+        },
+          h(Styles),
+          h('span', { className: 'qat-bar-center' },
+            h('span', { className: 'qat-bar-empty' }, t('loading')),
+          ),
+          h('span', {
+            ...pressable(() => setOpen(false)),
+            className: 'qat-icon qat-bar-close',
+            'data-act': 'close',
+            title: t('close'),
+            'aria-label': t('close'),
+          }, '×'),
+        )
+      }
 
       // 位置按整本词库算：1 / 2607
       const position = (state.index % total) + 1
@@ -3976,7 +4006,7 @@ window.__ModuleLoader__.load({
         dayKey, aggregateDaily, summarize, lastDays, readProgress, readChapterRecords, readWordRecords,
         recordWord, recordChapter, saveProgress,
         dictSourceList, DICT_PIN, activeMs, resolveHotkey, calcWpm, calcAccuracy, shouldStartOnTab, saveSession, readSession, clearSession, sameSession,
-        setOpen, getOpen,
+        setOpen, getOpen, readDictId, writeDictId,
         ICON_PATHS, Icon,
         components: { Trainer, PracticePanel, PanelGlyph, ComposerTrainer, SidebarButton, DictPicker, WrongBookPanel, StatsPanel, SettingsSection, SettingRow },
         collectWrongWords, heatmapWeeks, heatLevel, filterWrongWords, DICT,

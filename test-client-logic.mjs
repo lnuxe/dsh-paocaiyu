@@ -185,6 +185,7 @@ const {
   customWords, isCustomId, CUSTOM_PREFIX, dictionaryById,
   parseCustomFile, serializeCustomDict, splitCsvLine, toCustomWord, downloadText, withSlashes,
   stepIndex, toWordList, isRoundDone, pronunciationSrc, pronunciationType,
+  writeDictId,
   topWrongLetters, readMastered, writeMastered, toggleMastered, masteredKey,
 } = plugin.__test
 
@@ -560,6 +561,18 @@ check('不再给 composer 设 ime-mode', CLIENT_SRC.includes('style.imeMode'), f
 check('不再写 data-qat-ime', CLIENT_SRC.includes('qatIme'), false)
 check('键盘接管有 liveBarRef 门禁', CLIENT_SRC.includes('liveBarRef.current'), true)
 check('上屏拦截用 beforeinput', CLIENT_SRC.includes("addEventListener('beforeinput'"), true)
+
+// —— Tab 启动的判定（含「残留的是自己写的提示语」） ——
+const tabBase = { key: 'Tab', open: false, inComposer: true, modifier: false }
+check('空的输入框按 Tab 能开', shouldStartOnTab({ ...tabBase, draft: '' }), true)
+check('只有空白也算空', shouldStartOnTab({ ...tabBase, draft: '   ' }), true)
+check('有用户文字不开', shouldStartOnTab({ ...tabBase, draft: '帮我看下这个' }), false)
+check('残留自己的提示语能开', shouldStartOnTab({ ...tabBase, draft: '取消', ownDraft: '取消' }), true)
+check('不是自己写的就不开', shouldStartOnTab({ ...tabBase, draft: '取消', ownDraft: '放弃' }), false)
+check('已打开不重复开', shouldStartOnTab({ ...tabBase, open: true, draft: '' }), false)
+check('不在输入框里不拦', shouldStartOnTab({ ...tabBase, inComposer: false, draft: '' }), false)
+check('带修饰键不拦', shouldStartOnTab({ ...tabBase, modifier: true, draft: '' }), false)
+check('别的键不管', shouldStartOnTab({ ...tabBase, key: 'Enter', draft: '' }), false)
 
 // —— 键盘热力图 ——
 check('键盘三行', KEY_ROWS.join('|'), 'qwertyuiop|asdfghjkl|zxcvbnm')
@@ -983,6 +996,25 @@ check('跟打条只有一个关闭按钮', collectClasses(bar).filter((name) => 
 check('跟打条不再有图标工具条', barClasses.includes('qat-acts'), false)
 check('跟打条不再有词库下拉', barClasses.includes('qat-select'), false)
 renderTest.setOpen(false)
+
+// —— 打开路径：空词库也要看得见 ——
+const emptyBar = (function () {
+  renderTest.setOpen(true)
+  renderTest.writeCustomDicts({ 'custom:空': [] })
+  writeDictId('custom:空')
+  const out = render('渲染：空词库的跟打条', () => renderTest.components.ComposerTrainer({
+    useInput: () => '',
+    inputActions: {},
+    ctx: ctxStub,
+  }))
+  writeDictId('cet4')
+  renderTest.writeCustomDicts({})   // 清掉临时词库，别污染后面的目录断言
+  renderTest.setOpen(false)
+  return out
+})()
+check('空词库时条仍然渲染', collectClasses(emptyBar).includes('qat-bar'), true)
+check('空词库时给出加载提示', gatherText(emptyBar).includes('loading') || collectClasses(emptyBar).includes('qat-bar-empty'), true)
+
 
 // —— 面板：章节下拉 & 词库选择器 ——
 function countTag(node, tag, out = { n: 0 }) {
