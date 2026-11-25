@@ -37,7 +37,7 @@
     "check": "node --check client.js",
     "index": "node scripts/build-index.mjs",
     "data": "node scripts/build-index.mjs && node scripts/build-dicts.mjs",
-    "index:inline": "node scripts/build-index.mjs --inline client.js",
+    "index:inline": "node scripts/build-index.mjs --count --inline client.js",
     "audit": "node scripts/audit-dicts.mjs",
     "verify": "node --check client.js && node test-client-logic.mjs"
   },

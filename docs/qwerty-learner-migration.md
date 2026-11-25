@@ -9,7 +9,7 @@
 | 项 | 值 |
 | --- | --- |
 | 迁移对象 | qwerty-learner（GPL-3.0）→ DSH 插件 `@local/qwerty-autotype-ui` |
-| 词库规模差距 | 现状 7 库 / 560 词 → 目标 **371 库 / 414,485 词 / 74MB** |
+| 词库规模差距 | 现状 7 库 / 560 词 → 目标 **371 库 / 414,469 词 / 74MB** |
 | 需求条目 | **97 条**（DICT 17 / ENGINE 30 / DATA 25 / UI 25） |
 | 阶段 | P0 地基 → P1 引擎 → P2 记录 → P3 统计设置 → P4 打磨，合计 **20–28 人日** |
 | 硬决策 | ① 许可改为 GPL-3.0（§6.1）；② 词库运行时按需拉 + IndexedDB 缓存（§2.1）；③ 不做云同步（§4.5） |
@@ -42,7 +42,7 @@
 | | 上游 qwerty-learner | 目标插件 qwerty-autotype-ui |
 | --- | --- | --- |
 | 形态 | 独立 React 18 SPA（Vite + jotai + Tailwind/headlessui + Dexie） | DSH Web 的 Cordis 插件，纯前端 `client.js`，只能用 `h()` 渲染，注册到宿主插槽 |
-| 数据 | 371 个词库 / 414,485 词 / `public/dicts` 共 74MB，运行时按词库拉 JSON | 7 个词库 / 560 词，**内联**进 `client.js`（当前 93,789 字节 / 1,009 行） |
+| 数据 | 371 个词库 / 414,469 词 / `public/dicts` 共 74MB，运行时按词库拉 JSON | 7 个词库 / 560 词，**内联**进 `client.js`（当前 93,789 字节 / 1,009 行） |
 | 输入 | 自带隐藏 `<textarea>` + 全局键盘监听 | 复用宿主**真实 composer**（`[data-composer-input]`，Lexical contenteditable），捕获阶段拦截 keydown；面板内另有一个真 `<input>` |
 | 记录 | IndexedDB（`src/utils/db/`），错词本 + 统计页 | 只有 `localStorage['qwerty-autotype:dict']`，无任何练习记录 |
 | 界面 | 独立站点（Typing / Analysis / ErrorBook / WordList / Mobile …） | 4 个插槽：`sidebar.panellist`、`main`、`conversation.input.dock`、`conversation.chat.commandview` |
@@ -70,7 +70,7 @@
 
 | 维度 | 上游 | 插件 | 差距 |
 | --- | --- | --- | --- |
-| 词库规模 | 371 库 / 414,485 词 / 10 个分类 / 6 种语言 | 7 库 / 560 词 | **~750×** 词量差距，必须换成运行时按需加载 |
+| 词库规模 | 371 库 / 414,469 词 / 10 个分类 / 6 种语言 | 7 库 / 560 词 | **~750×** 词量差距，必须换成运行时按需加载 |
 | 章节 | `CHAPTER_LENGTH` + `calcChapterCount`，按章练习、记进度 | 无 | 无章节概念，一轮随机 20 词 |
 | 练习模式 | 拼写 + 默写（全部隐藏 / 隐藏元音 / 隐藏辅音 / 随机隐藏） | 仅拼写 | 少 4 种默写形态 |
 | 循环与跳转 | 单曲循环、跳过、上一词/下一词、重复本章、下一章 | 仅"重开" | 少 6 类导航动作 |
@@ -125,14 +125,14 @@
 | 宿主版本会变 | 插槽 API 只走文档化字段，不私有 hack |
 ## 2. 词库数据层（DICT）
 
-当前插件把 7 个词库共 560 词内联在 `client.js` 里；上游是 **371 个词库 / 414,485 词 / 74MB** 的独立 JSON 文件。本章定义如何把这套数据搬到插件里而不把 `client.js` 撑爆。
+当前插件把 7 个词库共 560 词内联在 `client.js` 里；上游是 **371 个词库 / 414,469 词 / 74MB** 的独立 JSON 文件。本章定义如何把这套数据搬到插件里而不把 `client.js` 撑爆。
 
 **已核实的上游事实**
 
 | 事实 | 值 | 证据 |
 | --- | --- | --- |
 | 词库数 | 371（去重后；原始 373 条含 2 个重复 id：`frequently_used_words03`、`Oxford5000`）（`id/name/description/category/tags/url/length/language/languageCategory`） | `src/resources/dictionary.ts` 全文 |
-| 词条总数 | 414,485（`length` 字段求和，去重后），平均 1,131，最大 20,199 | 同文件 `length` 字段 |
+| 词条总数 | 414,469（`length` 字段求和，去重后），平均 1,131，最大 20,199 | 同文件 `length` 字段 |
 | 文件总量 | 380 个 JSON / 74MB | `public/dicts/` |
 | 单库体积 | 最大 `coca20000.json` 4.4MB，最小若干代码词库 4KB | `ls -S` |
 | 词条结构 | 裸数组，`{ name, trans: string[], usphone, ukphone }` | `public/dicts/CET4_T.json`（2607 条） |

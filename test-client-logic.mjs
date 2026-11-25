@@ -272,7 +272,12 @@ check('占位替换', format('进度 {done}/{total}', { done: 3, total: 12 }), '
 // —— 全量词库目录（P0 数据层）——
 check('目录是全量 371 个词库', catalogSize(), 371)
 check('目录条目带 url 与语言', catalog().every((d) => typeof d.url === 'string' && d.url.endsWith('.json') && !!d.languageCategory), true)
-check('目录总词数与上游一致', catalog().reduce((sum, d) => sum + Number(d.length || 0), 0), 414485)
+// 414,469 = 371 个库里真实条数之和。上游 dictionary.ts 手写的 length 有 8 个日语库虚高
+// （japanese002…006 去重前计数），`build-index.mjs --count` 已按 public/dicts 实数校正
+check('目录总词数与上游一致', catalog().reduce((sum, d) => sum + Number(d.length || 0), 0), 414469)
+check('日语库的 length 已按真实条数校正', [
+  dictionaryById('japanese006').length, dictionaryById('japanese002').length,
+], [3473, 669])
 check('最大词库 coca_20000', catalog().slice().sort((a, b) => b.length - a.length)[0].id, 'coca_20000')
 
 // —— 章节模型：20 词一章 ——

@@ -67,7 +67,7 @@
 
 | 上游 | 状态 | 我们这边 |
 | --- | --- | --- |
-| 371 词库 / 414,485 词 | 已实现 | `dicts.index.json` + 按需拉取 |
+| 371 词库 / 414,469 词 | 已实现 | `dicts.index.json` + 按需拉取 |
 | 词库缓存 | 已实现 | IndexedDB `dicts` + 设置页清理 |
 | 搜索 / 分类 / 最近使用 | 已实现 | `searchCatalog` / `readRecent` |
 | `DictChapterButton` 章节 | 已实现 | 20 词一章，`chapterCount` |

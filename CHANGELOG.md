@@ -28,6 +28,10 @@
   等也进了测试，口径本身有断言钉住
 - 复盘：剩下的 180 条（0.043%）是 `empty` 3 条（上游 name 缺失或只有空格，如 `{"trans":["v. 拒绝"]}`）
   + `noZh` 177 条（既无释义也无假名，如 `TOEIC` 47、`Oxford5000` 41）
+- **目录条数校正**：上游 `dictionary.ts` 手写的 `length` 有 8 个日语库虚高（`japanese006` 声明 3477、实际 3473，
+  `japanese002` 670/669，`japanese003` 635/634，`japanese005` 1836/1834，加各自 `-zh` 一份），
+  合计比真实条数多 16。`build-index.mjs` 加 `--count`：直接数 `public/dicts` 的真实条数并覆盖声明值，
+  现在目录总数 **414,469** 与实际逐条数出来的完全一致（章节数、进度、总词数都挂在这个字段上）
 - 详见 [`docs/dict-audit.md`](docs/dict-audit.md)
 
 ### Feat · 音标按口音分美音 / 英音
@@ -374,7 +378,8 @@ v0.4.1 在 composer 上写死过 `inputmode="latin"` / `data-qat-ime` / `ime-mod
 
 ### Added
 
-- **全量词库**：内联 371 个词库的元数据索引（`dicts.index.json`，62KB，414,485 词），词条按需拉取并缓存
+- **全量词库**：内联 371 个词库的元数据索引（`dicts.index.json`，62KB，414,485 词 —— 上游手写 `length` 之和，
+  实际条目 414,469，见 0.7.0 的条数校正），词条按需拉取并缓存
   - 加载链：内存 → 内置 7 库 → IndexedDB（`qwerty-autotype` / store `dicts`）→ jsDelivr → raw.githubusercontent
   - 归一化 `normalizeWord`：`ukphone` 优先、多音取第一支、`'` → `ˈ`、`trans[]` 合并清洗；`code` 词库不生成音标；日语假名保留
 - **章节模型**：`CHAPTER_LENGTH = 20`、`chapterCount`、`wordsOfChapter`，面板可选章（`1 / 131`）

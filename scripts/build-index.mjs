@@ -24,7 +24,7 @@ const DEFAULT_OUT = path.resolve(HERE, '../dicts.index.json')
 const DEFAULT_CLIENT = path.resolve(HERE, '../client.js')
 
 function parseArgs(argv) {
-  const out = { repo: DEFAULT_REPO, out: DEFAULT_OUT, pin: '', inline: '' }
+  const out = { repo: DEFAULT_REPO, out: DEFAULT_OUT, pin: '', inline: '', count: false }
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i]
     if (a === '--repo') out.repo = path.resolve(argv[++i])
@@ -33,6 +33,8 @@ function parseArgs(argv) {
     else if (a.startsWith('--pin=')) out.pin = a.slice('--pin='.length).trim()
     else if (a === '--inline') out.inline = path.resolve(argv[++i] || DEFAULT_CLIENT)
     else if (a === '--inline=') out.inline = path.resolve(a.slice('--inline='.length))
+    // --count：不信上游 dictionary.ts 里手写的 length，直接数 public/dicts 的真实条数
+    else if (a === '--count') out.count = true
   }
   return out
 }
@@ -94,6 +96,36 @@ function inlineClient(file, payload) {
   console.log('已内联到:', file, `(${(fs.statSync(file).size / 1024).toFixed(1)} KB)`)
 }
 
+/**
+ * 上游 dictionary.ts 的 `length` 是手写的，实测有 8 个库跟真实条数差 1–2 条。
+ * 章节数、进度、"总词数" 全挂在这个字段上，所以按 --count 直接数一遍 JSON。
+ * 数不到（文件不在本地）就沿用声明值，并单独报出来。
+ */
+function recount(repo, dicts) {
+  const dir = path.join(repo, 'public/dicts')
+  const diffs = []
+  let missing = 0
+  for (const dict of dicts) {
+    const file = path.join(dir, path.basename(dict.url))
+    let rows = null
+    try {
+      rows = JSON.parse(fs.readFileSync(file, 'utf8'))
+    } catch {
+      missing += 1
+      continue
+    }
+    if (!Array.isArray(rows)) {
+      missing += 1
+      continue
+    }
+    if (rows.length !== dict.length) {
+      diffs.push({ id: dict.id, declared: dict.length, real: rows.length })
+      dict.length = rows.length
+    }
+  }
+  return { diffs, missing }
+}
+
 function main() {
   const { file, list } = loadMeta(ARGS.repo)
   if (!list.length) throw new Error('没解析出任何词库，检查 dictionary.ts 格式')
@@ -108,6 +140,14 @@ function main() {
     }
     seen.add(item.id)
     dicts.push(item)
+  }
+
+  if (ARGS.count) {
+    const { diffs, missing } = recount(ARGS.repo, dicts)
+    console.log('校对条数：修正', diffs.length, '个库', missing ? `/ ${missing} 个库文件不在本地，沿用声明值` : '')
+    for (const item of diffs) {
+      console.log(`  ${item.id}: 声明 ${item.declared} → 实际 ${item.real}（差 ${item.real - item.declared}）`)
+    }
   }
 
   const payload = {

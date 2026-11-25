@@ -40,7 +40,7 @@ Host 半边在 `../qwerty-autotype/`；本仓库只有 UI，`index.js` 是空 `a
 
 ## 词库
 
-目录 **371 个词库 / 414,485 词 / 10 分类 / 6 语言**，由 `scripts/build-index.mjs` 从上游 `src/resources/dictionary.ts` 生成（`dicts.index.json`，内联进 `client.js` 只占 62KB 元数据）。
+目录 **371 个词库 / 414,469 词 / 10 分类 / 6 语言**，由 `scripts/build-index.mjs --count` 从上游 `src/resources/dictionary.ts` 生成、并用 `public/dicts` 的真实条数校正（上游手写的 `length` 有 8 个日语库虚高；`dicts.index.json` 内联进 `client.js` 只占 62KB 元数据）。
 
 词条按需加载：**内存 → IndexedDB(`dicts`) → 钉住的 commit（jsDelivr → raw.githubusercontent）→ master → 内置兜底**。上游没有 release tag，所以钉 SHA，拿不到自动回退 `master`。
 
