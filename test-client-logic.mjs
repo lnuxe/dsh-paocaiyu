@@ -5,6 +5,11 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import vm from 'node:vm'
+// 审计脚本的纯函数部分（不碰文件系统）：统计口径也要有断言
+import {
+  auditRows, mergeStats, emptyStats, ratio, formatPct, formatRow, formatHead, formatReport,
+  parseArgs, dictFilePath, REASON_KEYS,
+} from './scripts/audit-dicts.mjs'
 
 const file = path.join(import.meta.dirname, 'client.js')
 const source = fs.readFileSync(file, 'utf8')
@@ -277,13 +282,14 @@ check('首章 20 词', wordsOfChapter(Array.from({ length: 2607 }, (_, i) => ({ 
 check('空词库也有一章', chapterCount({ length: 0 }), 1)
 
 // —— 词条归一化 ——
+// 形状变了：`ipa` 之外还多了 `us` / `uk`（音标按口音分开存），ipa 是「默认展示」那一支
 check('归一化 en', normalizeWord({ name: 'cancel', trans: ['取消， 撤销； 删去'], ukphone: "'kænsl", usphone: "'kænsl" }, 'en'),
-  { w: 'cancel', ipa: '/ˈkænsl/', zh: '取消，撤销；删去' })
-check('归一化优先后 ukphone', normalizeWord({ name: 'go', trans: ['去'], ukphone: 'gəu', usphone: 'goʊ' }, 'en').ipa, '/gəu/')
+  { w: 'cancel', ipa: '/ˈkænsl/', us: '/ˈkænsl/', uk: '/ˈkænsl/', zh: '取消，撤销；删去' })
+check('ipa 取默认口音（us）那一支', normalizeWord({ name: 'go', trans: ['去'], ukphone: 'gəu', usphone: 'goʊ' }, 'en').ipa, '/goʊ/')
 check('代码词库不生成音标', normalizeWord({ name: 'SELECT', trans: ['查询'], usphone: 'silekt' }, 'code').ipa, '')
 check('日语词条保留假名', normalizeWord({ name: 'たべる', trans: ['吃'], ukphone: 'taberu' }, 'ja').w, 'たべる')
 check('空释义被丢弃', normalizeWord({ name: 'ghost', trans: [] }, 'en'), null)
-check('超长词条被丢弃', normalizeWord({ name: 'x'.repeat(41), trans: ['长'] }, 'en'), null)
+check('超长词条被丢弃（>200 字符）', normalizeWord({ name: 'x'.repeat(201), trans: ['长'] }, 'en'), null)
 check('批量归一化去重', normalizeWords([{ name: 'a', trans: ['甲'] }, { name: 'A', trans: ['乙'] }], 'en').length, 1)
 check('英文词条转小写', normalizeWord({ name: 'Cancel', trans: ['取消'] }, 'en').w, 'cancel')
 check('代码词条保留大小写', normalizeWord({ name: 'SELECT', trans: ['查询'] }, 'code').w, 'SELECT')
@@ -2256,6 +2262,188 @@ check('清空自定义词表目录里就没了', renderTest.catalog().some((item
   check('两份字典都有徽标 aria 文案',
     [DICT.zh.dictBadgeTitle, DICT.en.dictBadgeTitle].every((text) => typeof text === 'string' && text.includes('{name}')), true)
 }
+
+/* ------------------------------------------------------------------ */
+/* D1 数据：长句子 / 假名入库 + 音标按口音分开 + 审计脚本纯函数          */
+/* ------------------------------------------------------------------ */
+
+// 单独解构：上面那一大段是多个子任务共用的，能不动就不动
+const {
+  inspectWord, phoneticOf, MAX_WORD_LENGTH, LONG_WORD_CHARS, DROP_REASONS,
+} = plugin.__test
+
+// 上游全库最长的一条 name 是 177 字符（雅思口语句子），所以边界定在 200
+const WORD_177 = `${'x'.repeat(176)}.`
+const WORD_200 = 'y'.repeat(200)
+const WORD_201 = 'z'.repeat(201)
+
+// —— 长度上限 40 → 200 ——
+check('长度上限是 200', MAX_WORD_LENGTH, 200)
+check('177 字符句子能入库', normalizeWord({ name: WORD_177, trans: ['长句'] }, 'en').w.length, 177)
+check('200 字符正好在边界内', normalizeWord({ name: WORD_200, trans: ['长'] }, 'en').w.length, 200)
+check('201 字符仍被丢弃', normalizeWord({ name: WORD_201, trans: ['长'] }, 'en'), null)
+check('41 字符（旧上限外）词组能入库', normalizeWord({ name: 'a'.repeat(41), trans: ['词组'] }, 'en').w.length, 41)
+check('60 字符词组能入库', normalizeWord({ name: 'ab cd '.repeat(10).trim(), trans: ['词组'] }, 'en') !== null, true)
+check('超长原因记为 tooLong', inspectWord({ name: WORD_201, trans: ['长'] }, 'en').reason, 'tooLong')
+check('没名字的词条原因记为 empty', inspectWord({ trans: ['无名'] }, 'en').reason, 'empty')
+check('既无中文也无假名原因记为 noZh', inspectWord({ name: 'ghost', trans: [] }, 'en').reason, 'noZh')
+check('合法词条没有丢弃原因', inspectWord({ name: 'cat', trans: ['猫'] }, 'en').reason, '')
+check('丢弃原因是固定四档 + 兜底',
+  DROP_REASONS.slice().sort().join(','), 'badChars,empty,noZh,tooLong')
+
+// —— 长句子不破坏判定 / 遮罩 / 逐字比对 ——
+check('长句子逐字打对判 done', judgeTyping(WORD_177, WORD_177).state, 'done')
+check('长句子只打对前缀判 ok', judgeTyping(WORD_177, WORD_177.slice(0, 120)).state, 'ok')
+check('长句子中途打错判 bad', judgeTyping(WORD_177, `${WORD_177.slice(0, 120)}Z`).state, 'bad')
+check('长句子打超长判 over', judgeTyping(WORD_177, `${WORD_177}x`).state, 'over')
+check('长句子最后一个字符用 pushChar 收尾', pushChar(WORD_177, WORD_177.slice(0, 176), '.').result, 'done')
+check('长句子遮罩长度跟目标一致', maskLetters(WORD_177, 'hideAll', 0).length, 177)
+check('长句子遮罩确实全遮住', maskLetters(WORD_177, 'hideAll', 0).every(Boolean), true)
+check('长句子判定目标不被截断', effectiveTarget(WORD_177).length, 177)
+// 章节切分（20 词一章）不受长度影响
+check('长句子词表仍按 20 词一章切', wordsOfChapter(Array.from({ length: 900 }, (_, i) => ({ w: `${WORD_177}${i}` })), 0).length, 20)
+check('900 条长句子 = 45 章', chapterCount({ length: 900 }), 45)
+check('长句子占满最后一章', wordsOfChapter(Array.from({ length: 900 }, (_, i) => ({ w: `w${i}` })), 44).length, 20)
+
+// —— 空 trans + 有 notation 的假名词库 ——
+const kanaWord = normalizeWord({ name: 'aiueo', trans: [], notation: 'あいうえお' }, 'ja')
+check('空 trans + 有 notation 能入库', kanaWord !== null, true)
+check('假名词条保留假名', kanaWord?.notation, 'あいうえお')
+check('假名词库练的是 romaji（name）', kanaWord?.w, 'aiueo')
+check('假名词条没有中文释义', kanaWord?.zh, '')
+check('假名不做中文清洗、不改大小写', normalizeWord({ name: 'aiueo', trans: [], notation: 'アイ ウ' }, 'ja')?.notation, 'アイ ウ')
+check('空 trans 且无 notation 仍被丢弃', normalizeWord({ name: 'aoeui', trans: [] }, 'ja'), null)
+check('自定义词表仍可只给单词', normalizeWord({ name: 'solo', trans: [] }, 'en', { allowNoZh: true })?.w, 'solo')
+check('内置词库不放行「只给单词」', normalizeWord({ name: 'solo', trans: [] }, 'en'), null)
+
+// —— 音标按口音分开：normalizeWord 产出 us / uk / ipa ——
+const bothPhones = normalizeWord({ name: 'go', trans: ['去'], ukphone: 'gəu', usphone: 'goʊ' }, 'en')
+check('us / uk 各存一支', [bothPhones.us, bothPhones.uk], ['/goʊ/', '/gəu/'])
+check('ipa 默认取 us（取不到才 uk）', bothPhones.ipa, '/goʊ/')
+check('传 accent=uk 时 ipa 取 uk', normalizeWord({ name: 'go', trans: ['去'], ukphone: 'gəu', usphone: 'goʊ' }, 'en', { accent: 'uk' }).ipa, '/gəu/')
+check('只有 usphone 时 uk 空着', (function (w) { return [w.us, w.uk, w.ipa] })(normalizeWord({ name: 'go', trans: ['去'], usphone: 'goʊ' }, 'en')),
+  ['/goʊ/', '', '/goʊ/'])
+check('只有 ukphone 时 us 空着', (function (w) { return [w.us, w.uk, w.ipa] })(normalizeWord({ name: 'go', trans: ['去'], ukphone: 'gəu' }, 'en')),
+  ['', '/gəu/', '/gəu/'])
+check('只有上游 ipa 时不伪造口音', (function (w) { return [w.us, w.uk, w.ipa] })(normalizeWord({ name: 'cancel', trans: ['取消'], ipa: 'kænsl' }, 'en')),
+  ['', '', '/kænsl/'])
+check('代码词库三支音标都为空', (function (w) { return [w.us, w.uk, w.ipa] })(normalizeWord({ name: 'SELECT', trans: ['查询'], usphone: 'silekt', ukphone: 'silekt' }, 'code')),
+  ['', '', ''])
+
+// —— phoneticOf：按口音挑显示哪一支 ——
+check('accent=us 显示 AmE', phoneticOf({ us: '/goʊ/', uk: '/gəu/' }, 'us'), { text: 'AmE: /goʊ/', label: 'AmE' })
+check('accent=uk 显示 BrE', phoneticOf({ us: '/goʊ/', uk: '/gəu/' }, 'uk'), { text: 'BrE: /gəu/', label: 'BrE' })
+check('accent=us 但缺美音 → 退回英音', phoneticOf({ uk: '/gəu/' }, 'us'), { text: 'BrE: /gəu/', label: 'BrE' })
+check('accent=uk 但缺英音 → 退回美音', phoneticOf({ us: '/goʊ/' }, 'uk'), { text: 'AmE: /goʊ/', label: 'AmE' })
+check('两支都没有 → 退回老缓存的 ipa（不编口音）', phoneticOf({ ipa: '/ˈkænsl/' }, 'uk'), { text: '/ˈkænsl/', label: '' })
+check('什么都没有 → 空文本，UI 不渲染', phoneticOf({}, 'us'), { text: '', label: '' })
+check('undefined 也不炸', phoneticOf(undefined, 'us'), { text: '', label: '' })
+check('不会显示空括号', phoneticOf({ us: '/goʊ/' }, 'us').text.includes('[]'), false)
+check('非法 accent 按 us 处理', phoneticOf({ us: '/goʊ/', uk: '/gəu/' }, 'xx').label, 'AmE')
+check('日文/无口音词条不走 AmE 前缀', phoneticOf(normalizeWord({ name: 'aiueo', trans: [], notation: 'あいうえお' }, 'ja'), 'us').text, '')
+
+// —— 老缓存兼容：只有 ipa 的老结构照样能显示 ——
+const legacyCacheWord = { w: 'cancel', ipa: '/ˈkænsl/', zh: '取消' }
+check('老缓存只有 ipa 时 phoneticOf 能显示', phoneticOf(legacyCacheWord, 'us').text, '/ˈkænsl/')
+check('老缓存只有 ipa 时换口音也不炸', phoneticOf(legacyCacheWord, 'uk').text, '/ˈkænsl/')
+check('lookup 把 us / uk / notation 带出去', (function (hit) {
+  return [hit.word, hit.ipa, typeof hit.us, typeof hit.notation]
+})(lookup('cancel')), ['cancel', '/ˈkænsl/', 'undefined', 'undefined'])
+check('内置词条只有 ipa 时面板显示原样音标', phoneticOf(lookup('cancel'), 'us').text, '/ˈkænsl/')
+
+// —— 长句子的排版标记（卡片 / 跟打条缩字号）——
+function findNodeWithClass(node, className) {
+  if (node === null || node === undefined || typeof node !== 'object') return null
+  if (Array.isArray(node)) {
+    for (const item of node) {
+      const hit = findNodeWithClass(item, className)
+      if (hit) return hit
+    }
+    return null
+  }
+  if (typeof node.type === 'function') return findNodeWithClass(node.type(node.props ?? {}), className)
+  if (hasClass([String(node.props?.className ?? '')], className)) return node
+  return findNodeWithClass(node.children, className) || findNodeWithClass(node.props?.children, className)
+}
+check('长句子上限阈值是 20 字', LONG_WORD_CHARS, 20)
+check('长句子卡片挂 data-long',
+  findNodeWithClass(renderTest.components.Trainer({ words: [WORD_177], variant: 'panel', showMeta: true, ctx: ctxStub }), 'qat-word')?.props?.['data-long'],
+  'true')
+check('短词不挂 data-long',
+  findNodeWithClass(renderTest.components.Trainer({ words: ['cat'], variant: 'panel', showMeta: true, ctx: ctxStub }), 'qat-word')?.props?.['data-long'],
+  'false')
+check('样式表里有长句子缩排规则', /\[data-long="true"\]/.test(source), true)
+check('样式表里有假名副行样式', /\.qat-gloss-notation\{/.test(source), true)
+// 假名副行：用自定义词表把假名词条塞进缓存再渲染卡片（用完删掉，不留状态）
+renderTest.saveCustomDict('kana-probe', [{ name: 'aiueo', trans: [], notation: 'あいうえお' }])
+await renderTest.loadDictWords(`${CUSTOM_PREFIX}kana-probe`)
+check('假名词条把 notation 渲染成副行', (function () {
+  const node = findNodeWithClass(
+    renderTest.components.Trainer({ words: ['aiueo'], variant: 'panel', showMeta: true, ctx: ctxStub }),
+    'qat-gloss-notation',
+  )
+  return node ? gatherText(node) : ''
+})(), 'あいうえお')
+check('假名词条不再画中文行', collectClasses(
+  renderTest.components.Trainer({ words: ['aiueo'], variant: 'panel', showMeta: true, ctx: ctxStub }),
+).includes('qat-gloss-zh'), false)
+renderTest.removeCustomDict('kana-probe')
+
+// 面板音标的端到端接线：词条带 us / uk 时，显示哪一支跟 options.accent 走
+renderTest.saveCustomDict('accent-probe', [{ name: 'go', trans: ['去'], usphone: 'goʊ', ukphone: 'gəu' }])
+await renderTest.loadDictWords(`${CUSTOM_PREFIX}accent-probe`)
+function panelIpaText(accent) {
+  const node = findNodeWithClass(
+    renderTest.components.Trainer({ words: ['go'], variant: 'panel', showMeta: true, options: { accent }, ctx: ctxStub }),
+    'qat-gloss-ipa',
+  )
+  return node ? gatherText(node) : ''
+}
+check('面板按 accent=us 显示 AmE', panelIpaText('us'), 'AmE: /goʊ/')
+check('面板按 accent=uk 显示 BrE', panelIpaText('uk'), 'BrE: /gəu/')
+renderTest.removeCustomDict('accent-probe')
+
+// —— 审计脚本：统计纯函数 ——
+const auditNormalize = (raw) => (raw.ok ? { w: raw.ok, ipa: raw.ipa || '', us: '', uk: '', zh: raw.zh || '' } : null)
+const auditInspect = (raw) => ({ ok: Boolean(raw.ok), reason: raw.reason || 'other' })
+const auditSample = [
+  { ok: 'cat', ipa: '/kæt/', zh: '猫' },
+  { ok: 'dog', zh: '狗' },
+  { ok: '', reason: 'noZh' },
+  { ok: '', reason: 'tooLong' },
+  { ok: '', reason: 'weird' },
+]
+const auditResult = auditRows(auditSample, auditNormalize, auditInspect)
+check('审计：原始 / 保留 / 丢弃', [auditResult.raw, auditResult.kept, auditResult.dropped], [5, 2, 3])
+check('审计：原因分布', [auditResult.reasons.noZh, auditResult.reasons.tooLong, auditResult.reasons.other], [1, 1, 1])
+check('审计：有音标只按保留词条算', auditResult.withIpa, 1)
+check('审计：有释义条数', auditResult.withZh, 2)
+check('审计：没给 inspect 时全记 other', auditRows([{ ok: '' }, { ok: '' }], auditNormalize).reasons.other, 2)
+check('审计：空输入不炸', auditRows([], auditNormalize).dropped, 0)
+check('空桶结构', Object.keys(emptyStats().reasons).sort().join(','), REASON_KEYS.slice().sort().join(','))
+const mergedStats = mergeStats([auditResult, auditRows([{ ok: 'fox', ipa: '/f/' }], auditNormalize)])
+check('合并统计：原始相加', mergedStats.raw, 6)
+check('合并统计：保留相加', mergedStats.kept, 3)
+check('合并统计：原因相加', mergedStats.reasons.noZh, 1)
+check('比例不会除以零', ratio(3, 0), 0)
+check('比例算得对', ratio(1, 4), 0.25)
+check('百分比三位小数', formatPct(0.000426, 3), '0.043%')
+check('报表表头带 noZh 列', formatHead().includes('noZh'), true)
+check('报表行含词库名与音标比例', formatRow({ name: 'a.json', ...emptyStats() }).includes('a.json'), true)
+check('报表有总计段', formatReport([{ name: 'a.json', ...auditRows(auditSample, auditNormalize, auditInspect) }]).includes('—— 总计 ——'), true)
+check('报表按丢词数排序（丢得多的在前）',
+  formatReport([
+    { name: 'keep.json', ...auditRows([{ ok: 'a', zh: '甲' }], auditNormalize, auditInspect) },
+    { name: 'drop.json', ...auditRows(auditSample, auditNormalize, auditInspect) },
+  ]).indexOf('drop.json') < formatReport([
+    { name: 'keep.json', ...auditRows([{ ok: 'a', zh: '甲' }], auditNormalize, auditInspect) },
+    { name: 'drop.json', ...auditRows(auditSample, auditNormalize, auditInspect) },
+  ]).indexOf('keep.json'), true)
+check('--top 只打印前 N 个', formatReport([{ name: 'a.json', ...emptyStats() }], { top: 0 }).includes('a.json'), true)
+check('参数默认 top=0（全打）', parseArgs(['node', 'x']).top, 0)
+check('参数能改上游目录', parseArgs(['node', 'x', '--upstream', '/tmp/u']).upstream, '/tmp/u')
+check('清单里 /dicts/x.json 映射到本地文件', dictFilePath('/up', '/dicts/x.json'), path.join('/up', 'x.json'))
+check('清单里 ./dicts/x.json 也认', dictFilePath('/up', './dicts/x.json'), path.join('/up', 'x.json'))
 
 await recordFlow
 
