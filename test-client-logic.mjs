@@ -349,7 +349,7 @@ check('重新读到已存的设置', readSettings().dictation, 'hideVowel')
 setSetting('dictation', 'none')
 
 // —— 新增三项（字号 / 发音倍速 / 按键音音量）：老存档缺 key 时回落默认，且不弄丢别的项 ——
-check('设置键总数 16（14 项 + 悬停提示 / 选择文本）', Object.keys(SETTING_DEFAULTS).length, 16)
+check('设置键总数 18（原 11 + 字号/倍速/音量 + 悬停/选中 + 乱序/默写来源）', Object.keys(SETTING_DEFAULTS).length, 18)
 check('新设置项默认值',
   [SETTING_DEFAULTS.wordScale, SETTING_DEFAULTS.voiceRate, SETTING_DEFAULTS.clickVolume], ['auto', 1, 100])
 check('显示类两项默认值（悬停开 / 选中关）',
@@ -1231,7 +1231,9 @@ check('跟打条显示实时速度', barClasses.includes('qat-bar-speed'), true)
 check('跟打条中间块单独一层（好居中）', barClasses.includes('qat-bar-center'), true)
 check('进度和关闭绝对定位在两侧', renderTest.CSS.includes('.qat-bar{position:relative'), true)
 // 条上只留一个按钮（×），其余操作走快捷键
-check('跟打条只有一个关闭按钮', collectClasses(bar).filter((name) => name.includes('qat-icon')).length, 1)
+check('跟打条只有一个关闭按钮', collectClasses(bar).filter((name) => name.includes('qat-bar-close')).length, 1)
+// 跟打条的重开：常驻小按钮（不是 hover 浮出），和关闭按钮分开摆
+check('跟打条有重开按钮', findByAct(bar, 'restart') !== null, true)
 check('跟打条不再有图标工具条', barClasses.includes('qat-acts'), false)
 check('跟打条不再有词库下拉', barClasses.includes('qat-select'), false)
 renderTest.setOpen(false)
@@ -1440,7 +1442,14 @@ check('样式里有读屏隐藏类', collectCss(cardA11y).join('').includes('.qa
 
 // —— 渲染冒烟：设置页 ——
 const settingsCase = render('渲染：设置页', () => renderTest.components.SettingsSection({}))
-check('设置页有十五个设置行（新增默写悬停提示、允许选中文本）', collectClasses(settingsCase).filter((name) => name === 'qat-setrow').length, 15)
+check('设置页有十六个设置行（+ 悬停提示 / 允许选中文本 / 章内乱序）', collectClasses(settingsCase).filter((name) => name === 'qat-setrow').length, 16)
+check('设置页含章内乱序开关', (function find(node) {
+  if (!node || typeof node !== 'object') return false
+  if (Array.isArray(node)) return node.some(find)
+  if (typeof node.type === 'function') return find(node.type(node.props ?? {}))
+  if (node.props?.['data-setting'] === 'shuffle') return true
+  return find(node.children) || find(node.props?.children)
+})(settingsCase), true)
 check('设置页有字号/倍速/音量三个新控件', ['wordScale', 'voiceRate', 'clickVolume'].map((key) => {
   const hit = (function find(node) {
     if (!node || typeof node !== 'object') return null
@@ -3288,6 +3297,213 @@ check('设置页有默写悬停提示开关', settingNode('answerOnHover')?.prop
 check('设置页有允许选中文本开关', settingNode('textSelectable')?.props?.['aria-checked'], 'false')
 check('两行新设置的文案中英成对', ['settingAnswerOnHover', 'settingAnswerOnHoverHint', 'settingTextSelectable', 'settingTextSelectableHint']
   .filter((key) => !DICT.zh[key] || !DICT.en[key]).join(), '')
+
+/* ================================================================== *
+ * 章内乱序（N12，上游 Setting/AdvancedSetting.tsx + StartButton）
+ * 中途 Restart（N19，上游 StartButton）
+ * 默写 openBy=auto（N26，上游 ResultScreen + WordDictationSwitcher）
+ * ================================================================== */
+
+// —— shuffleWords：纯函数，可注入随机源 ——
+const { shuffleWords, chapterWordList, nextDictation, applyDictation } = renderTest
+/** 固定序列的随机源：同一串值 → 同一结果，用来断言「可复现」 */
+const seqRandom = (values) => {
+  let cursor = 0
+  return () => values[cursor++ % values.length]
+}
+const WORDS_5 = ['alpha', 'bravo', 'charlie', 'delta', 'echo']
+check('洗牌：同一串随机值 → 同一顺序（可复现）',
+  shuffleWords(WORDS_5, seqRandom([0.1, 0.9, 0.4, 0.7])).join(','),
+  shuffleWords(WORDS_5, seqRandom([0.1, 0.9, 0.4, 0.7])).join(','))
+check('洗牌：换一串随机值 → 顺序变了（确实在洗）',
+  shuffleWords(WORDS_5, seqRandom([0.1, 0.9, 0.4, 0.7])).join(',')
+  !== shuffleWords(WORDS_5, seqRandom([0.9, 0.1, 0.8, 0.2])).join(','), true)
+check('洗牌：不改传入数组', (function () {
+  const source = WORDS_5.slice()
+  shuffleWords(source, seqRandom([0.3, 0.6]))
+  return source.join(',')
+})(), WORDS_5.join(','))
+check('洗牌：返回新数组', (function () {
+  const source = WORDS_5.slice()
+  return shuffleWords(source, seqRandom([0.3, 0.6])) !== source
+})(), true)
+check('洗牌：洗后集合与原来相等', shuffleWords(WORDS_5, seqRandom([0.2, 0.55, 0.31, 0.94])).slice().sort().join(','),
+  WORDS_5.slice().sort().join(','))
+check('洗牌：0 个词原样', shuffleWords([], seqRandom([0.5])), [])
+check('洗牌：1 个词原样', shuffleWords(['solo'], seqRandom([0.5])), ['solo'])
+check('洗牌：非数组当空处理', shuffleWords(null, seqRandom([0.5])), [])
+
+// —— chapterWordList：只在「取新一批词」那一刻洗 ——
+const chapterPool = Array.from({ length: 60 }, (_, index) => ({ w: `w${index}` }))
+const plainChapter = chapterWordList(chapterPool, 0, 0, {})
+const shuffledChapter = chapterWordList(chapterPool, 0, 0, { shuffle: true, random: seqRandom([0.42, 0.13, 0.77]) })
+check('取新词：关乱序时保持章内原序', plainChapter.slice(0, 3).join(','), 'w0,w1,w2')
+check('取新词：开乱序时长度不变', shuffledChapter.length, plainChapter.length)
+check('取新词：开乱序后词集合不变', shuffledChapter.slice().sort().join(','), plainChapter.slice().sort().join(','))
+check('取新词：开乱序后顺序变了', shuffledChapter.join(',') !== plainChapter.join(','), true)
+check('取新词：round>0 取 20 个', chapterWordList(chapterPool, 0, 1, { shuffle: true }).length, 20)
+check('取新词：空词库给空数组', chapterWordList([], 3, 1, { shuffle: true }), [])
+
+// —— 渲染层守卫：同一章连续渲染两次，只洗一次（不然边打边变） ——
+// 用带缓存的 useMemo 桩模拟「同一实例重渲染」，再数 vm 里 Math.random 的抽样次数
+const memoSlots = new Map()
+let memoCursor = 0
+const memoReact = {
+  ...reactForRender,
+  useMemo: (fn, deps) => {
+    const key = memoCursor
+    memoCursor += 1
+    const prev = memoSlots.get(key)
+    if (prev && Array.isArray(deps) && deps.length === prev.deps.length
+      && deps.every((value, index) => value === prev.deps[index])) return prev.value
+    const value = fn()
+    memoSlots.set(key, { deps: Array.isArray(deps) ? deps.slice() : [], value })
+    return value
+  },
+}
+const memoPlugin = factory((name) => {
+  if (name === 'react') return memoReact
+  throw new Error(`unexpected require: ${name}`)
+})
+const memoTest = memoPlugin.__test
+const vmMath = vm.runInContext('Math', sandbox)
+const realRandom = vmMath.random
+const randomDraws = (fn) => {
+  let draws = 0
+  vmMath.random = () => {
+    draws += 1
+    return 0
+  }
+  try {
+    const tree = fn()
+    collectClasses(tree)
+    gatherText(tree)
+    return { tree, draws }
+  } finally {
+    vmMath.random = realRandom
+  }
+}
+const firstWordOf = (tree) => {
+  const word = findNodesByClass(tree, 'qat-word')[0]
+  return word ? gatherText(word) : ''
+}
+memoCursor = 0
+const shuffledOff = randomDraws(() => memoTest.components.PracticePanel({ ctx: ctxStub }))
+check('渲染：乱序关着时一次都不抽样', shuffledOff.draws, 0)
+memoTest.setSetting('shuffle', true)
+memoSlots.clear()
+memoCursor = 0
+const shuffledFirst = randomDraws(() => memoTest.components.PracticePanel({ ctx: ctxStub }))
+// 20 个词的 Fisher–Yates 正好抽 19 次：一次渲染只洗一遍
+check('渲染：乱序开着时 20 词只洗一遍（19 次抽样）', shuffledFirst.draws, 19)
+const firstOrder = firstWordOf(shuffledFirst.tree)
+memoCursor = 0
+const shuffledSecond = randomDraws(() => memoTest.components.PracticePanel({ ctx: ctxStub }))
+check('渲染：同一章再渲染一次不再抽样', shuffledSecond.draws, 0)
+check('渲染：同一章连续两次词序相同', firstWordOf(shuffledSecond.tree), firstOrder)
+check('面板头部有重开按钮（data-act=restart）', findByAct(shuffledFirst.tree, 'restart') !== null, true)
+check('面板有「默写本章节」入口（openBy=auto）', findByAct(shuffledFirst.tree, 'dictation-auto') !== null, true)
+// 依赖表里必须有洗牌代次、且不许把 Math.random() 塞进去
+check('洗牌代次进 useMemo 依赖', /\[all, chapter, round, settings\.shuffle, shuffleGen\]/.test(source), true)
+check('useMemo 依赖里没有 Math.random',
+  /useMemo\(\s*\(\) => chapterWordList[\s\S]{0,160}?\]\s*,?\s*\)/.test(source)
+  && !/\[all, chapter, round, settings\.shuffle, shuffleGen[^\]]*Math\.random/.test(source), true)
+memoTest.setSetting('shuffle', false)
+
+// —— nextDictation：五条分支 ——
+check('默写状态机：手动改形态 → openBy=user',
+  nextDictation({ dictation: 'none', openBy: 'user' }, { type: 'user', value: 'hideAll' }),
+  { dictation: 'hideAll', openBy: 'user' })
+check('默写状态机：auto 入口 → openBy=auto',
+  nextDictation({ dictation: 'none', openBy: 'user' }, { type: 'auto', value: 'hideVowel' }),
+  { dictation: 'hideVowel', openBy: 'auto' })
+check('默写状态机：换章时 auto 自动关掉并复位',
+  nextDictation({ dictation: 'hideAll', openBy: 'auto' }, { type: 'chapter' }),
+  { dictation: 'none', openBy: 'user' })
+check('默写状态机：换章时 user 原样保留',
+  nextDictation({ dictation: 'hideAll', openBy: 'user' }, { type: 'chapter' }),
+  { dictation: 'hideAll', openBy: 'user' })
+check('默写状态机：非法 action 原样返回',
+  nextDictation({ dictation: 'hideAll', openBy: 'auto' }, { type: 'nope', value: 'hideAll' }),
+  { dictation: 'hideAll', openBy: 'auto' })
+check('默写状态机：非法形态原样返回',
+  nextDictation({ dictation: 'hideAll', openBy: 'auto' }, { type: 'user', value: 'halfHide' }),
+  { dictation: 'hideAll', openBy: 'auto' })
+check('默写状态机：没有 action 也不炸',
+  nextDictation({ dictation: 'hideVowel', openBy: 'auto' }, null), { dictation: 'hideVowel', openBy: 'auto' })
+check('默写状态机：脏存档收敛成 none/user', nextDictation({ dictation: 'bogus', openBy: 'nope' }, {}),
+  { dictation: 'none', openBy: 'user' })
+
+// —— applyDictation：把状态机结果落到设置里（两个 key 一起写） ——
+renderTest.setSetting('dictation', 'none')
+renderTest.setSetting('dictationOpenBy', 'user')
+check('设置落库：手动改形态记 user', (function () {
+  applyDictation({ type: 'user', value: 'hideConsonant' })
+  const live = renderTest.getSettings()
+  return [live.dictation, live.dictationOpenBy].join(',')
+})(), 'hideConsonant,user')
+check('设置落库：「默写本章节」记 auto', (function () {
+  applyDictation({ type: 'auto', value: 'hideAll' })
+  const live = renderTest.getSettings()
+  return [live.dictation, live.dictationOpenBy].join(',')
+})(), 'hideAll,auto')
+check('设置落库：换章把 auto 的那份关掉', (function () {
+  applyDictation({ type: 'chapter' })
+  const live = renderTest.getSettings()
+  return [live.dictation, live.dictationOpenBy].join(',')
+})(), 'none,user')
+check('设置落库：换章不动 user 的那份', (function () {
+  applyDictation({ type: 'user', value: 'hideVowel' })
+  applyDictation({ type: 'chapter' })
+  const live = renderTest.getSettings()
+  return [live.dictation, live.dictationOpenBy].join(',')
+})(), 'hideVowel,user')
+check('默写来源默认 user', SETTING_DEFAULTS.dictationOpenBy, 'user')
+
+// —— 中途 Restart：卡片按钮真的把 index/错词/计时归零 ——
+const restartUpdates = []
+const recordReact = {
+  ...reactForRender,
+  useState: (value) => {
+    const initial = typeof value === 'function' ? value() : value
+    // 卡片初始态改成「已经打到第 2 个词、已经错了几次」
+    if (initial && typeof initial === 'object' && 'index' in initial) {
+      return [{ ...initial, index: 1, typed: 'c', hits: 3, retries: 1 }, (next) => restartUpdates.push(next)]
+    }
+    return [initial, (next) => restartUpdates.push(next)]
+  },
+}
+const recordPlugin = factory((name) => {
+  if (name === 'react') return recordReact
+  throw new Error(`unexpected require: ${name}`)
+})
+const restartCase = render('渲染：卡片的中间重开', () => recordPlugin.__test.components.Trainer({
+  words: ['cancel', 'govern', 'arrow'],
+  variant: 'panel',
+  showMeta: true,
+  dictId: 'cet4',
+  chapter: 0,
+  chapterTotal: 3,
+  onReview: () => {},
+  onRetryWrong: () => {},
+  onNextChapter: () => {},
+  ctx: ctxStub,
+}))
+const restartNode = findByAct(restartCase, 'restart')
+check('卡片有 data-act=restart 的重开按钮', Boolean(restartNode), true)
+restartNode?.props?.onClick?.()
+const resetCall = restartUpdates.find((value) => value && typeof value === 'object' && value.index === 0)
+check('重开：index 归 0', resetCall?.index, 0)
+check('重开：半截输入清空', resetCall?.typed, '')
+check('重开：hits/retries/wrongCount 归零', [resetCall?.hits, resetCall?.retries, resetCall?.wordWrong].join(','), '0,0,0')
+check('重开：本轮 mistakes 清空',
+  restartUpdates.some((value) => Array.isArray(value) && value.length === 0), true)
+check('重开：不弹确认、不调 submit / 不发消息',
+  /const restart = useCallback[\s\S]{0,900}?\}, \[onLiveWpm\]\)/.test(source)
+  && !/const restartChapter[\s\S]{0,300}?submit\(/.test(source), true)
+renderTest.setSetting('dictation', 'none')
+renderTest.setSetting('dictationOpenBy', 'user')
+renderTest.setSetting('shuffle', false)
 
 await recordFlow
 
