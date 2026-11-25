@@ -9,6 +9,55 @@
 
 无
 
+## [0.5.0] - 2026-11-25
+
+### Fixed · 侧栏「跟打」图标是空白
+
+`PanelGlyph` 用 CSS 遮罩画图：`mask-image: var(--qat-ink)`，而定义 `--qat-ink` 的 `.qat-glyph` 样式
+只挂在面板/跟打条里（`h(Styles)`），**侧栏只有图标本身、没有样式**，遮罩变量为空 → 20×20 的透明方块。
+
+- 图标改成**内联 SVG**（直接用 path，`fill="currentColor"`），不依赖任何 CSS、不依赖图片加载
+- `.qat-glyph` 去掉 `mask-image` / `background-color: currentColor`，只留 `display/color/flex`
+- 顺手删掉内联的 25KB base64 PNG（水墨图），`client.js` 从 324,567 B 降到 295,816 B
+
+### Added · 图标资源全部迁移自上游
+
+上游用的是 `~icons/*`（iconify：tabler / heroicons / ic / bxs）。现在把这些图标的 **path data 原样内联**
+进 `ICONS`（22 个），名字用我们自己的短名：
+
+`prev / next / loop / loopOff / check / close / list / lang / langOff / caret / stats / gear /
+download / again / play / pause / speak / eye / eyeOff / keyboard / book / help`
+
+`Icon({ name, size })` 自动按图标类型选 `fill` 或 `stroke`，默认 24 格。
+
+### Changed · 面板排版对齐上游
+
+头部原来是一个塞了 10 个元素、会换行的 flex；现在拆成两行，跟上游 Typing 页的节奏一致：
+
+```
+跟打   CET-4 ▾   CET-4 · 2607 词 · 131 章            [错词本] [统计] [重来]
+[1 / 131 ▾]  [默写 ▾]                        今日 120 词 · 98% · 62 WPM
+```
+
+- 右上三个入口改成 26×26 的图标按钮（`qat-iconbtn`，带 `aria-label`，`data-on` 表示当前页）
+- 章节 / 默写选择器挪到第二行工具区（`qat-tools`），今日数据靠右
+- 图标全部用上面迁移来的 `book` / `stats` / `again`
+
+### Added · 发音口音可切（上游 `PronunciationSwitcher`）
+
+- 设置页新增「发音口音」：美音 / 英音，写入 `settings.accent`
+- `resolveAccent(word, { accent })`：中日文仍按文字判定（`le=jap` / `le=zh`），英文才吃设置；非法值回退美音
+- 7 条断言（默认值、两档、英音、非法值、假名与汉字不受影响）
+
+### Docs · 新增 `docs/parity-scan.md`
+
+对着上游 `src/pages/Typing/components/*` 与 `src/components/*` 逐项核了一遍：
+
+- 已实现 24 / 部分 4 / 缺 4 / 明确不做 6
+- 缺口：结算页错词清单（G1）、实时 WPM（G2）、词表抽屉（G3）、首字母提示（G4）、指法图示（G5）、译义朗读（G6）
+
+测试：438 → **456** 条。
+
 ## [0.4.6] - 2026-11-25
 
 ### Fixed · Esc 退出跟打后输入框打不了字（根因）
@@ -256,7 +305,8 @@ v0.4.1 在 composer 上写死过 `inputmode="latin"` / `data-qat-ime` / `ime-mod
 - 隐藏焦点守卫：练习期间输入框区域的回车 / 制表符 / `Cmd+Enter` 与发送按钮点击全部被吃掉，草稿发不出去
 - 45 条测试（`test-client-logic.mjs`）：判定 / `pushChar` / 词库 / 渲染冒烟（一次性 React 桩真的调一遍组件），不需要浏览器
 
-[Unreleased]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.6...HEAD
+[Unreleased]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.6...v0.5.0
 [0.4.6]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.5...v0.4.6
 [0.4.5]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.4...v0.4.5
 [0.4.4]: https://github.com/lnuxe/qwerty-autotype-ui/compare/v0.4.3...v0.4.4

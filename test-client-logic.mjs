@@ -957,21 +957,29 @@ function render(label, fn) {
   }
 }
 
-// —— 图标：水墨侧栏图 + 线性图标集 ——
-check('水墨图标内联进包', /^data:image\/png;base64,[A-Za-z0-9+/=]+$/.test(
-  (function () {
-    const node = render('取 mask', () => renderTest.components.PanelGlyph({ size: 18 }))
-    const url = String(node?.props?.style?.['--qat-ink'] ?? '')
-    const match = url.match(/^url\("(.+)"\)$/)
-    return match ? match[1] : ''
-  })(),
-), true)
-check('图标集覆盖所有控制项', Object.keys(renderTest.ICON_PATHS).sort().join(','),
-  'again,caret,check,close,download,help,loop,next,pause,play,prev,speak')
-check('每个图标都有路径', Object.values(renderTest.ICON_PATHS).every((d) => typeof d === 'string' && d.length > 4), true)
-check('play 用实心', (() => {
-  const node = renderTest.Icon({ name: 'play' })
+// —— 图标：全部内联 SVG（path data 取自上游同名 iconify 图标），不用图片、不依赖 CSS 遮罩 ——
+const glyph = render('渲染：侧栏图标', () => renderTest.components.PanelGlyph({ size: 16, active: true }))
+check('侧栏图标是 svg', glyph?.type, 'svg')
+check('侧栏图标走 currentColor', glyph?.props?.fill, 'currentColor')
+check('侧栏图标可调尺寸', [glyph?.props?.width, glyph?.props?.height].join('x'), '16x16')
+check('侧栏图标有 path', (glyph?.children ?? glyph?.props?.children ?? []).length > 0, true)
+check('侧栏图标不用 base64 图片', String(glyph?.props?.style?.['--qat-ink'] ?? ''), '')
+check('侧栏图标不再用 emoji 键盘', gatherText(glyph).includes('⌨'), false)
+check('侧栏图标样式不再依赖 mask', /\.qat-glyph\{[^}]*mask-image/.test(source), false)
+check('侧栏图标样式保留激活色', /\.qat-glyph\[data-active="true"\]/.test(source), true)
+
+check('激活状态写到 data-active', glyph?.props?.['data-active'], 'true')
+
+check('图标集覆盖所有控制项', Object.keys(renderTest.ICONS).sort().join(','),
+  'again,book,caret,check,close,download,eye,eyeOff,gear,help,keyboard,lang,langOff,list,loop,loopOff,next,pause,play,prev,speak,stats')
+check('每个图标都有 path', Object.values(renderTest.ICONS).every((icon) => Array.isArray(icon.d) && icon.d.every((d) => d.length > 4)), true)
+check('实心图标用 fill', (() => {
+  const node = renderTest.Icon({ name: 'speak' })
   return node.props.fill === 'currentColor' && node.props.stroke === 'none'
+})(), true)
+check('play 是线性播放键', (() => {
+  const node = renderTest.Icon({ name: 'play' })
+  return node.props.stroke === 'currentColor' && node.props.fill === 'none'
 })(), true)
 check('描边图标用 currentColor', (() => {
   const node = renderTest.Icon({ name: 'check' })
@@ -980,17 +988,26 @@ check('描边图标用 currentColor', (() => {
 check('图标尺寸可调', renderTest.Icon({ name: 'close', size: 13 }).props.width, 13)
 check('未知图标返回空', renderTest.Icon({ name: 'nope' }), null)
 check('图标默认 24 格', renderTest.Icon({ name: 'loop' }).props.viewBox, '0 0 24 24')
-
-const glyph = render('渲染：侧栏图标', () => renderTest.components.PanelGlyph({ size: 16, active: true }))
-check('侧栏图标用水墨图', glyph?.props?.className, 'qat-glyph')
-check('侧栏图标挂上 mask 变量', String(glyph?.props?.style?.['--qat-ink'] ?? '').startsWith('url("data:image/png;base64,'), true)
-check('侧栏图标不再用 emoji 键盘', gatherText(glyph).includes('⌨'), false)
+check('包里不再有 base64 图片', /data:image\/png;base64,/.test(source), false)
 
 const panel = render('渲染：跟打面板', () => renderTest.components.PracticePanel({ ctx: ctxStub }))
 const panelClasses = collectClasses(panel).join(' ')
 check('面板含词库下拉', panelClasses.includes('qat-select'), true)
 check('面板含跟打卡片', panelClasses.includes('qat-card'), true)
 check('面板卡片是 panel 变体', findPanelCard(panel), true)
+
+// —— 面板排版：头部一行、工具行一行、按钮用迁移过来的图标 ——
+check('面板头部存在', panelClasses.includes('qat-panel-head'), true)
+check('面板有工具行', panelClasses.includes('qat-tools'), true)
+check('错词/统计/重来都是图标按钮', (panelClasses.match(/qat-iconbtn/g) || []).length, 3)
+check('图标按钮都带 aria-label', (function walk(node, out = []) {
+  if (!node || typeof node !== 'object') return out
+  if (Array.isArray(node)) { node.forEach((item) => walk(item, out)); return out }
+  if (node.props?.className === 'qat-iconbtn') out.push(Boolean(node.props['aria-label']))
+  walk(node.children, out); walk(node.props?.children, out)
+  return out
+})(panel).every(Boolean), true)
+check('工具行的选择器仍在', (panelClasses.match(/qat-select/g) || []).length >= 2, true)
 
 const trainer = render('渲染：卡片（带音标中文）', () => renderTest.components.Trainer({ words: ['cancel'], variant: 'panel', showMeta: true, ctx: ctxStub }))
 const trainerClasses = collectClasses(trainer).join(' ')
@@ -1061,6 +1078,15 @@ check('挡住加入队列', shouldBlockSend('加入队列'), true)
 check('停止/打断永远放行', shouldBlockSend('停止生成'), false)
 check('空标签不管', shouldBlockSend(''), false)
 
+
+// —— 口音设置：美音 type=2 / 英音 type=1，中日文按文字判定 ——
+check('默认是美音', renderTest.SETTING_DEFAULTS.accent, 'us')
+check('口音只有两档', renderTest.ACCENTS.join(','), 'us,uk')
+check('英文按设置吃英音', renderTest.resolveAccent('cancel', { accent: 'uk' }), 'uk')
+check('英文默认美音', renderTest.resolveAccent('cancel', { accent: 'us' }), 'us')
+check('设置坏了回退美音', renderTest.resolveAccent('cancel', { accent: 'fr' }), 'us')
+check('假名不听设置', renderTest.resolveAccent('りんご', { accent: 'uk' }), 'ja')
+check('汉字不听设置', renderTest.resolveAccent('苹果', { accent: 'uk' }), 'zh')
 
 // —— 打开路径：空词库也要看得见 ——
 const emptyBar = (function () {
@@ -1222,7 +1248,7 @@ check('样式里有读屏隐藏类', collectCss(cardA11y).join('').includes('.qa
 
 // —— 渲染冒烟：设置页 ——
 const settingsCase = render('渲染：设置页', () => renderTest.components.SettingsSection({}))
-check('设置页有七个设置行（含自动继续与词库缓存）', collectClasses(settingsCase).filter((name) => name === 'qat-setrow').length, 7)
+check('设置页有八个设置行（含口音、自动继续与词库缓存）', collectClasses(settingsCase).filter((name) => name === 'qat-setrow').length, 8)
 check('设置页含大小写开关', (function find(node) {
   if (!node || typeof node !== 'object') return false
   if (Array.isArray(node)) return node.some(find)
