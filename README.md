@@ -49,6 +49,8 @@ pnpm --dir ~/.dsh/profiles/web add github:lnuxe/dsh-paocaiyu
 
 刷新页面后，侧栏左上角出现图标。
 
+> npm 上的包由 `npm run publish:npm` 发布（自检 → 查登录 → 发布 → 回读 registry 验证，51 项前置检查）。
+
 ### 最小使用
 
 点侧栏图标，或者在输入框为空时按 `Tab`：

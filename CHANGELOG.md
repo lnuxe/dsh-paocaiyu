@@ -7,6 +7,32 @@
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-11-26
+
+把「发到插件市场」压成一条命令，并且发布后真去 registry 回读，不听本地 stdout 的自我表扬。
+
+### Added
+
+- `scripts/publish-npm.mjs` + `npm run publish:npm`，四步：
+  1. 跑 `prepublish-check`（51 项），不过就不发
+  2. `npm whoami` 确认凭据；没登录直接以退出码 **2** 停下，并打印建 granular token 的位置与
+     scope 要求（`@lnuxe` 必须包含在 Packages and scopes 里）
+  3. `npm publish --access public`
+  4. 轮询 `npm view <包名> version` 直到 registry 报出这个版本号，才算发布成功
+- `npm run publish:npm -- --dry`：只跑到凭据检查，看包内容用 `npm pack --dry-run`
+
+### Docs
+
+- [docs/publish-checklist.md](./docs/publish-checklist.md) 的 B 段从「三条手动命令」换成 `npm run publish:npm`，
+  并写清它每一步在做什么
+- 中英 README 的快速开始各加一行：npm 包由 `npm run publish:npm` 发出
+
+### 状态（未变）
+
+- npm registry 上还没有这个包：本机 `~/.npmrc` 的 `_authToken` 为空，`npm whoami` 401、
+  `PUT /@lnuxe%2fpaocaiyu` 回 404，这一步必须账号本人登录一次
+- 已可安装的通道：`github:lnuxe/dsh-paocaiyu` 与每个 release 的 `.tgz`
+
 ## [1.0.4] - 2026-11-26
 
 README 换成 tdesign-flutter 那种写法：顶部居中标识 + 徽章、emoji 小节、粗体一句话简介。

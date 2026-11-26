@@ -37,19 +37,22 @@ pnpm --dir ~/.dsh/profiles/web add github:lnuxe/dsh-paocaiyu
 
 ### B. 发到公共 registry（`@lnuxe/paocaiyu`）
 
-名字已经改好，发布只需要一次登录 + 一条命令：
+名字已经改好，一条命令走完「自检 → 查登录 → 发布 → 回读 registry 验证」：
 
 ```bash
-npm login                 # 或 export NODE_AUTH_TOKEN=<token>
-npm run prepublish-check  # 38 项自检
-npm pack --dry-run        # 看真发布时会带哪些文件
-npm publish --access public
+npm login            # 或 export NODE_AUTH_TOKEN=<granular access token>
+npm run publish:npm
 ```
 
-装的时候：
+`scripts/publish-npm.mjs` 做四件事：跑 `prepublish-check`（51 项）→ `npm whoami` 确认凭据 →
+`npm publish --access public` → 轮询 `npm view` 直到 registry 真的报出这个版本号。
+没登录时它直接以退出码 2 停下，并打印建令牌的位置与 scope 要求，不会把半个包推上去。
+
+只想看包内容不发布：
 
 ```bash
-pnpm --dir ~/.dsh/profiles/web add @lnuxe/paocaiyu
+npm run publish:npm -- --dry
+npm pack --dry-run
 ```
 
 > 改包名时 `package.json` 的 `name`、`cordis.patch.yml` 的 `name`、`client.js` 的

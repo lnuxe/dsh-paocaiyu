@@ -1,6 +1,6 @@
 {
   "name": "@lnuxe/paocaiyu",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "type": "module",
   "description": "泡菜鱼（Paocaiyu）：在 DSH 对话输入框里练英文打字 —— /qwerty-autotype 起一张跟打卡片，371 本词库 41 万词。",
   "license": "GPL-3.0-only",
@@ -43,7 +43,8 @@
     "verify": "node --check client.js && node test-client-logic.mjs && node scripts/smoke-apply.mjs && node scripts/check-size.mjs",
     "smoke": "node scripts/smoke-apply.mjs",
     "size": "node scripts/check-size.mjs",
-    "prepublish-check": "node scripts/publish-preflight.mjs"
+    "prepublish-check": "node scripts/publish-preflight.mjs",
+    "publish:npm": "node scripts/publish-npm.mjs"
   },
   "dsh": {
     "bundle": {

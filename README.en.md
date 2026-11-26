@@ -49,6 +49,8 @@ pnpm --dir ~/.dsh/profiles/web add github:lnuxe/dsh-paocaiyu
 
 Refresh the page and the icon shows up at the top-left of the sidebar.
 
+> The npm package ships via `npm run publish:npm` (preflight → auth check → publish → read back from the registry, 51 checks up front).
+
 ### Minimal Usage
 
 Click that icon, or press `Tab` while the composer is empty:
