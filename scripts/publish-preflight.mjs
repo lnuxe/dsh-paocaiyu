@@ -49,6 +49,11 @@ add('index.js 的 plugin name 是包名末段',
 for (const readme of ['README.md', 'README.en.md']) {
   add(`${readme} 存在`, exists(readme))
   add(`${readme} 没有目录`, !read(readme).includes('## 目录') && !read(readme).includes('## Table of Contents'))
+  add(`${readme} 有语言切换`, read(readme).includes('README.en.md') || read(readme).includes('README.md'))
+  add(`${readme} 顶部居中标` + '识块', read(readme).includes('<p align="center">'))
+  add(`${readme} 致谢不提 React / Iconify / CDN`,
+    !/React|Iconify|jsDelivr/.test(read(readme)),
+    '致谢只留词库来源与宿主平台')
 }
 
 // 3) 市场卡片：标题/描述/图标

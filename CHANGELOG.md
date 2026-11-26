@@ -7,6 +7,28 @@
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-11-26
+
+README 换成 tdesign-flutter 那种写法：顶部居中标识 + 徽章、emoji 小节、粗体一句话简介。
+
+### Docs
+
+- 版式对齐 [tdesign-flutter](https://github.com/lnuxe/tdesign-flutter)：顶部 `<p align="center">`
+  放图标与三枚徽章（License / Version / CI），下面一行 `English | 简体中文` 语言切换，
+  再一段粗体开头的简介，正文全部用 emoji 小节（🎉 特性 / 📱 预览 / 🚀 快速开始 /
+  ⌨️ 快捷键 / 📚 文档 / 🛠 开发 / 🤝 贡献 / 🙏 致谢 / 📄 开源协议）
+- 特性改成 8 条短句清单，先讲能干什么再讲细节
+- 快速开始加「最小使用」小节，只写装完之后怎么打开、怎么打、怎么关
+- 新增 📚 文档 小节，把 docs/ 下五篇（发布、迁移、审计、音标缺口、对齐扫描）串成入口
+- **致谢只留两项**：Qwerty Learner（词库与跟打形态）与 DSH（宿主平台）。
+  React / Iconify / jsDelivr 不再单独致谢——它们是实现细节与运行时服务，不是贡献来源
+- 去掉维护者、参与贡献里的长段落，压成两三句
+
+### Added
+
+- `npm run prepublish-check` 增到 **51 项**：两份 README 要有语言切换、要有顶部居中块、
+  致谢里不许再出现 React / Iconify / jsDelivr（防止下次手抖写回去）
+
 ## [1.0.3] - 2026-11-26
 
 README 去掉目录，改成中英两版，写法收紧成口语、能扫完的那种。

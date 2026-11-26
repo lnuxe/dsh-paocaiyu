@@ -1,36 +1,64 @@
-# Paocaiyu · 泡菜鱼
+<p align="center">
+  <img alt="Paocaiyu" width="120" src="./icon.svg" />
+</p>
 
-[![npm](https://img.shields.io/npm/v/@lnuxe/paocaiyu?label=npm&color=cb3837)](https://www.npmjs.com/package/@lnuxe/paocaiyu)
-[![license](https://img.shields.io/badge/license-GPL--3.0--only-blue)](./LICENSE)
-[![CI](https://github.com/lnuxe/dsh-paocaiyu/actions/workflows/verify.yml/badge.svg)](https://github.com/lnuxe/dsh-paocaiyu/actions/workflows/verify.yml)
+<p align="center">
+  <a href="https://github.com/lnuxe/dsh-paocaiyu/blob/main/LICENSE">
+    <img src="https://img.shields.io/badge/license-GPL--3.0--only-blue" alt="License">
+  </a>
+  <a href="https://www.npmjs.com/package/@lnuxe/paocaiyu">
+    <img src="https://img.shields.io/npm/v/@lnuxe/paocaiyu?color=cb3837" alt="Version">
+  </a>
+  <a href="https://github.com/lnuxe/dsh-paocaiyu/actions/workflows/verify.yml">
+    <img src="https://github.com/lnuxe/dsh-paocaiyu/actions/workflows/verify.yml/badge.svg" alt="CI">
+  </a>
+</p>
 
-[中文](./README.md) · English
+English | [简体中文](./README.md)
 
-A DSH plugin. A word shows up above your composer — you type it out. That's the whole thing.
+**Paocaiyu** is a typing-practice plugin for DSH. A word appears above your composer and you type it out in that same composer — right letters turn green, a wrong one makes you start the word over. Words, phonetics, meanings, chapters and stats all live in the chat UI: no popup page, keyboard focus never leaves the real input.
+
+## 🎉 Features
+
+- Type-along: the word sits above, you type it in the real composer, correct letters turn green live
+- Dictation: meaning only, with letters hidden entirely, vowels only, consonants only, or random
+- 371 dictionaries, ~410k words — only the one you pick gets downloaded, 7 ship inside for offline
+- Bring your own list (`word 中文`, one per line, or txt / csv / json)
+- Chapters of 20 words with a summary screen; missed words collect into a drill list
+- Stats: 14-day bar chart, 12-week heatmap, the letter you fumble most
+- Enter never sends and nothing lands in the draft — practise inside any conversation
+- Everything is stored locally in the browser; nothing is uploaded
+
+## 📱 Preview
 
 ![demo](./assets/demo.gif)
 
-## Install
+## 🚀 Quick Start
+
+Install into your DSH web profile. No extra server:
 
 ```bash
 pnpm --dir ~/.dsh/profiles/web add @lnuxe/paocaiyu
 ```
 
-Refresh the page and the icon appears at the top-left of the sidebar. Not into npm? This works too:
+Not into npm? Install straight from the repo or a release tarball:
 
 ```bash
 pnpm --dir ~/.dsh/profiles/web add github:lnuxe/dsh-paocaiyu
 ```
 
-## Use
+Refresh the page and the icon shows up at the top-left of the sidebar.
 
-Click the sidebar icon, or press `Tab` while the composer is empty. A word pops up above it with its phonetics; the composer shows the Chinese meaning as a hint.
+### Minimal Usage
 
-Now just type it. Correct letters turn green, finishing the word moves you on. Get one wrong and it goes red, shakes, clears, and you start that word over.
+Click that icon, or press `Tab` while the composer is empty:
 
-`Esc` puts it away. Come back later and you pick up on the same word.
+1. A word appears above with its phonetics; the composer shows the Chinese meaning
+2. Type it — finishing the word moves you on
+3. One wrong letter: red, shake, clear, start that word over
+4. `Esc` closes it; reopen and you continue on the same word
 
-Want dictation instead — only the meaning, recall the spelling — switch "默写形态" in settings to hide letters: all, vowels only, consonants only, or random.
+## ⌨️ Shortcuts
 
 | Key | Does |
 | --- | --- |
@@ -39,59 +67,40 @@ Want dictation instead — only the meaning, recall the spelling — switch "默
 | `⌘J` / `CtrlJ` | repeat this word |
 | `⌘P` / `CtrlP` | pause / resume |
 | `Esc` | close |
-| `?` | forgot the keys? press this |
+| `?` | shortcut hints |
 | `⌘/Ctrl+Alt+Q` | panic stop, works from any state |
 
-No keyboard person? There's a button on each side of the word: "previous / restart" and "next / close".
+No shortcut person? There's a button on each side of the word: previous / restart and next / close.
 
-## Dictionaries
+## 📚 Documentation
 
-371 dictionaries, ~410k words — CET-4/6, grad school, TOEFL, IELTS, business, code, Japanese. Only the one you pick gets downloaded, and 7 small ones ship inside so offline still works.
+- [Publishing to the plugin marketplace](./docs/publish-checklist.md)
+- [Dictionary migration and normalization](./docs/qwerty-learner-migration.md)
+- [Dictionary audit](./docs/dict-audit.md), [phonetic gaps](./docs/phonetic-gaps.md), [parity scan](./docs/parity-scan.md)
+- [Changelog](./CHANGELOG.md)
 
-Bring your own list: "＋ 导入" at the bottom of the dictionary list. Paste `word 中文`, one per line, or feed it txt / csv / json.
-
-## Progress
-
-All of it lives in your browser. Nothing gets uploaded.
-
-20 words make a chapter. Finish one and you get a summary: speed, accuracy, time, which words you missed — retry it or move on.
-
-Missed words collect themselves into a mistake list you can drill on its own. Stats give you a 14-day bar chart, a 12-week heatmap, and the letter you fumble most.
-
-Miss the same word 3, 4, 5 times and the hints escalate: first letter, then the answer.
-
-## Settings
-
-`Settings → 跟打`. Besides the dictation mode above: case sensitivity, ignore punctuation, show meaning, show phonetics, pronunciation, accent, key sounds, auto-advance chapters, read the definition, finger guide — plus backup export/import and a reset.
-
-## One nice thing
-
-Enter never sends. What you type never touches the draft. So you can practise inside any conversation without leaving a trace in the chat.
-
-## Develop
+## 🛠 Development
 
 ```bash
-npm run verify             # syntax + 1525 tests + smoke + size gate
+npm run verify             # syntax + 1525 tests + assembly smoke + size gate
 npm test                   # tests only, no browser needed
-npm run prepublish-check   # 40 pre-release checks
+npm run prepublish-check   # 45 pre-release metadata checks
+npm run index              # rebuild the dictionary index
 ```
 
-Two files do the work: `client.js` (everything, single file, no build step) and `test-client-logic.mjs`.
+Two files do the work: `client.js` (everything, single file, no build step) and `test-client-logic.mjs` (renders the components for real with stubs). `client.js` has a hard ceiling of 480,000 bytes.
 
-`client.js` has a hard ceiling of 480,000 bytes (currently 452,145 — 94.2%).
+## 🤝 Contributing
 
-## Thanks
+Issues and PRs are welcome. Run `npm run verify` before submitting. Touching dictionary logic? Run `npm run audit` to check the drop rate.
 
-None of this exists without them:
+## 🙏 Acknowledgements
 
-- [Qwerty Learner](https://github.com/RealKai42/qwerty-learner) — where the "type-along" idea comes from, and **all 371 dictionaries with phonetics and Chinese meanings come from it** (GPL-3.0)
-- [DSH / DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) — the host: slots, composer, theme tokens, plugin runtime
-- [React](https://react.dev) — the whole UI is hand-written `createElement`, MIT
-- [Iconify](https://iconify.design) sets (tabler / heroicons / ic / bxs) — every SVG in the bar and the panel
-- [jsDelivr](https://www.jsdelivr.com) and raw.githubusercontent — they deliver dictionaries to your browser on demand
+- [Qwerty Learner](https://github.com/RealKai42/qwerty-learner) — where the type-along idea comes from; this project's dictionary data (371 books, ~410k words with phonetics and Chinese meanings) derives from it
+- [DSH / DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) — the host: slot system, composer, theme, plugin runtime
 
-How the dictionary data derives is spelled out in [NOTICE](./NOTICE); changes live in [CHANGELOG.md](./CHANGELOG.md).
+How the dictionary data derives and redistributes is documented in [NOTICE](./NOTICE).
 
-## License
+## 📄 License
 
-[GPL-3.0-only](./LICENSE) © 2026 lnuxe. It ships dictionary data derived from Qwerty Learner, so the whole project follows GPL-3.0.
+Paocaiyu is licensed under [GPL-3.0-only](./LICENSE). It ships dictionary data derived from Qwerty Learner, so the whole project follows GPL-3.0.
