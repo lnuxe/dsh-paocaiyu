@@ -1323,8 +1323,8 @@ const wideGroups = barSideButtonGroups({ sides: true, total: 12 })
 check('宽条只有左右两组', wideGroups.map((group) => group.side).join(','), 'left,right')
 check('宽条左组 = 上一个 + 重开', wideGroups[0].acts.join(','), 'prev,restart')
 check('宽条右组 = 下一个 + 关闭', wideGroups[1].acts.join(','), 'skip,close')
-check('宽条：进度归左组、速度归右组',
-  [wideGroups[0].texts.join(','), wideGroups[1].texts.join(',')].join('|'), 'count|speed')
+check('宽条：两侧组只放按钮，文字回条内',
+  [wideGroups[0].texts.join(','), wideGroups[1].texts.join(',')].join('|'), '|')
 const loadingGroups = barSideButtonGroups({ sides: true, total: 0 })
 check('词库还没来：左组只剩重开', loadingGroups[0].acts.join(','), 'restart')
 check('词库还没来：右组只剩关闭', loadingGroups[1].acts.join(','), 'close')
@@ -1377,14 +1377,15 @@ check('条高变量挂在条上（和宽度同一处）', String(wideBar?.props?
 check('宽条仍按 composer 宽度对齐', wideBar?.props?.style?.width, '900px')
 check('左组按钮 = 上一个 + 重开', actsIn(sideNode(wideBar, 'left')).join(','), 'prev,restart')
 check('右组按钮 = 下一个 + 关闭', actsIn(sideNode(wideBar, 'right')).join(','), 'skip,close')
-check('进度搬进左组（是文字，不是按钮）',
-  [gatherText(sideNode(wideBar, 'left')).includes('/'), actsIn(sideNode(wideBar, 'left')).includes('count')].join(','), 'true,false')
-check('速度搬进右组', gatherText(sideNode(wideBar, 'right')).includes('liveSpeed'), true)
+check('两侧组里只有按钮，没有文字',
+  [gatherText(sideNode(wideBar, 'left')).trim(), gatherText(sideNode(wideBar, 'right')).trim()].join('|'), '|')
 const barDirectClasses = (wideBar?.children ?? []).flat().map((child) => String(child?.props?.className ?? ''))
 check('条内不再直接放关闭按钮', barDirectClasses.some((name) => name.includes('qat-bar-close')), false)
 check('条内不再直接放重开按钮', barDirectClasses.some((name) => name.includes('qat-bar-restart')), false)
-check('条内不再直接放进度 / 速度',
-  barDirectClasses.some((name) => name.includes('qat-bar-count') || name.includes('qat-bar-speed')), false)
+// 进度 / 速度留在条内两端：文字不占条外空间，也不挡输入框（pointer-events:none）
+check('进度 / 速度留在条内两端',
+  [barDirectClasses.some((name) => name.includes('qat-bar-count')),
+    barDirectClasses.some((name) => name.includes('qat-bar-speed'))].join(','), 'true,true')
 check('关闭按钮在右侧组里', findByAct(sideNode(wideBar, 'right'), 'close') !== null, true)
 check('重开按钮在左侧组里', findByAct(sideNode(wideBar, 'left'), 'restart') !== null, true)
 check('条内只剩单词 / 音标 / 提示', collectClasses(wideBar).includes('qat-bar-center'), true)
@@ -1442,10 +1443,21 @@ check('上一个 / 下一个都不改热键表',
 navPlugin.__test.setOpen(false)
 
 // —— 样式：条外两组贴在输入框边框外面，窄条整体隐藏，颜色只走变量 ——
-check('条外两组从条的下沿往下排', /\.qat-bar-side\{[^}]*top:100%/.test(source), true)
+check('条外两组从条的下沿 + 量到的间隙往下排',
+  /\.qat-bar-side\{[^}]*top:calc\(100% \+ var\(--qat-ct/.test(source), true)
 check('条外两组的高度读条高变量（垂直居中靠它）', /\.qat-bar-side\{[^}]*height:var\(--qat-ch/.test(source), true)
-check('左组落在输入框左边框外', /\.qat-bar-side\[data-side="left"\]\{left:-38px\}/.test(source), true)
-check('右组落在输入框右边框外', /\.qat-bar-side\[data-side="right"\]\{right:-38px\}/.test(source), true)
+// 左组右对齐到条的左边框（= 输入框左边框），只压 4px：按钮整体在输入区外面
+// 左组：贴到「输入框左偏移」处再整体左移一整个自身宽度（只留 4px 压边）
+check('左组整组落在输入框左边框外',
+  /\.qat-bar-side\[data-side="left"\]\{left:var\(--qat-dl,0px\);transform:translateX\(calc\(-100% \+ 4px\)\)\}/.test(source), true)
+// 右组：贴到「输入框左偏移 + 输入框宽度」处（= 右边框），只压 4px
+check('右组整组落在输入框右边框外',
+  /\.qat-bar-side\[data-side="right"\]\{left:calc\(var\(--qat-dl,0px\) \+ var\(--qat-dw,100%\)\);transform:translateX\(-4px\)\}/.test(source), true)
+check('四个版式变量都挂在条上（同处 inline style）',
+  ['--qat-ch', '--qat-ct', '--qat-dl', '--qat-dw'].every((key) => source.includes(`'${key}':`)), true)
+// 条与输入框不同 x 时也不靠 100% 推算：偏移走实测值
+check('两侧摆位不再用 100% 推算',
+  source.includes('right:calc(100% - 4px)') || source.includes('left:calc(100% - 4px)'), false)
 check('组内元素回到普通流（不吃条内绝对摆位）', /\.qat-bar-side > \*\{[^}]*position:static/.test(source), true)
 check('窄条：上一个插在进度右边（左边距 56）', /\.qat-bar\[data-sides="false"\] \.qat-bar-prev\{[^}]*left:56px/.test(source), true)
 check('窄条：下一个插在重开左边（右边距 46）', /\.qat-bar\[data-sides="false"\] \.qat-bar-skip\{[^}]*right:46px/.test(source), true)
