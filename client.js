@@ -2409,6 +2409,8 @@ window.__ModuleLoader__.load({
     loading: '正在加载词库…',
     loadFailed: '词库加载失败，先用内置词库继续',
     chapterTitle: '选择章节',
+    barChapter: '第 {n}/{total} 章',
+    barChapterJump: '跳到第 {n} 章',
     panelHeadChapter: '第 {n} 章',
     panelHeadReview: '复练 {n} 词',
     reviewExit: '退出复习',
@@ -2593,6 +2595,8 @@ window.__ModuleLoader__.load({
     searchResult: 'Results',
     loadFailed: 'Dictionary failed to load — using the built-in one',
     chapterTitle: 'Chapter',
+    barChapter: 'Ch. {n}/{total}',
+    barChapterJump: 'Jump to chapter {n}',
     panelHeadChapter: 'Chapter {n}',
     panelHeadReview: 'Review {n} words',
     reviewExit: 'Exit review',
@@ -2760,6 +2764,13 @@ window.__ModuleLoader__.load({
 .qat-card[data-variant="panel"] .qat-done{width:100%;align-items:center}
 .qat-bar-empty{font-size:12px;color:var(--dsw-alias-label-tertiary)}
 .qat-bar-center{flex:1;display:flex;align-items:center;justify-content:center;min-width:0}
+.qat-bar-chapterwrap{position:relative;flex:none;display:flex;align-items:center}
+.qat-bar-chapter{cursor:pointer;pointer-events:auto;padding:2px 6px;border-radius:6px;font-size:11px;line-height:1.2;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-tertiary)}
+.qat-bar-chapter:hover,.qat-bar-chapter[data-open="true"]{background:var(--dsw-alias-interactive-hover);color:var(--dsw-alias-label-primary)}
+.qat-chap-pop{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);z-index:6;display:grid;grid-template-columns:repeat(5,26px);gap:2px;max-height:184px;overflow:auto;padding:6px;border-radius:10px;background:var(--dsw-alias-bg-elevated);box-shadow:0 0 0 1px var(--dsw-alias-border-secondary)}
+.qat-chap-item{cursor:pointer;pointer-events:auto;display:flex;align-items:center;justify-content:center;height:22px;border-radius:6px;font-size:11px;font-variant-numeric:tabular-nums;color:var(--dsw-alias-label-secondary)}
+.qat-chap-item:hover{background:var(--dsw-alias-interactive-hover);color:var(--dsw-alias-label-primary)}
+.qat-chap-item[data-active="true"]{background:var(--dsw-alias-interactive-bg);color:var(--dsw-alias-label-primary);font-weight:600}
 .qat-bar-count{flex:none;position:static;transform:none;font-size:11px;color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums}
 .qat-bar-speed{flex:none;position:static;transform:none;font-size:11px;color:var(--dsw-alias-label-tertiary);opacity:.75;font-variant-numeric:tabular-nums;pointer-events:none}
 /* 重开 / 关闭 / 上一个 / 下一个：都是列里的普通按钮，只留透明度反馈 */
@@ -3401,6 +3412,9 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       // 带 shift 才是「跳词」（上游 WordPanel）；不带 shift 还是本地的上一个 / 跳过
       if (key === 'ArrowLeft' && mod) return shift ? 'prev-word' : 'prev'
       if (key === 'ArrowRight' && mod) return shift ? 'next-word' : 'skip'
+      // ⌘↑ / ⌘↓ 换章（条上的章号按钮是同一个动作）
+      if (key === 'ArrowUp' && mod && !shift) return 'prev-chapter'
+      if (key === 'ArrowDown' && mod && !shift) return 'next-chapter'
       if ((key === 'j' || key === 'J') && mod && !shift) return 'loop'
       if ((key === 'p' || key === 'P') && mod && !shift) return 'pause'
       // Ctrl+V 开关默写，Ctrl+Shift+V 换下一档（上游 WordDictationSwitcher）
@@ -3427,6 +3441,25 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       if (action === 'prev-word') return 'prev'
       if (action === 'next-word') return 'skip'
       return action
+    }
+
+    /**
+     * 章节浮层的数据：一格一章，标出当前章。
+     * 渲染只负责画，选哪章、高亮谁全由这里决定（好测、好改）。
+     */
+    function chapterItems(total, current) {
+      const count = Math.max(0, Math.floor(Number(total)) || 0)
+      const at = Math.max(0, Math.floor(Number(current)) || 0)
+      return Array.from({ length: count }, (_, index) => ({
+    index,
+    label: String(index + 1),
+    active: index === at,
+      }))
+    }
+
+    /** 换章动作只认条上那两个（面板有自己的 <select>） */
+    function isChapterAction(action) {
+      return action === 'prev-chapter' || action === 'next-chapter'
     }
 
     /**
@@ -5554,13 +5587,29 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const draft = useInput((snapshot) => snapshot?.draft ?? '')
       const [dictId, setDictId] = useState(readDictId)
       const [round, setRound] = useState(0)
-      // 跟打条是「一本词库顺着往下打」，不是抽 20 个就结束
+      // 跟打条按「章」打：整本词库还是全量拿着，练的只是当前这一章的 20 个词
       const [words, setWords] = useState(() => toWordList(wordsSync(dictId)))
+      /** 首帧要用的三个数一次算完：章号（接着上次）、本章词表、本章第几个词 */
+      const [boot] = useState(() => {
+    const id = readDictId()
+    const all = toWordList(wordsSync(id))
+    const size = chapterCount({ length: all.length })
+    const chapter = resumeChapter(readChapterPos(), id, size)
+    const list = wordsOfChapter(all, chapter, CHAPTER_LENGTH)
+    const index = Math.min(resumeIndex(readBarProgress(), id, list.length), Math.max(0, list.length - 1))
+    return { chapter, index }
+      })
+      const [chapter, setChapter] = useState(boot.chapter)
+      /** 章节选择器（条上的章号按钮）开没开 */
+      const [chapterOpen, setChapterOpen] = useState(false)
       const [state, setState] = useState(() => ({
     // 首帧就接上次那个词（异步加载词库不会闪现第一个词）
-    index: resumeIndex(readBarProgress(), readDictId(), toWordList(wordsSync(readDictId())).length),
+    index: boot.index,
     typed: '', flash: false, hits: 0, retries: 0, wordWrong: 0, finishedAt: null,
       }))
+      /** 本章的词（换章只换这一片，词库本身不重新加载） */
+      const practice = useMemo(() => wordsOfChapter(words, chapter, CHAPTER_LENGTH), [words, chapter])
+      const chapterTotal = chapterCount({ length: words.length })
       const [barWidth, setBarWidth] = useState(null)
       /** composer 输入框的高度：两侧按钮组按它垂直居中（量不到就用默认 36） */
       const barRef = useRef(null)
@@ -5580,6 +5629,11 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const peekNow = peeking || peekStart === true
       const stateRef = useRef(state)
       const wordsRef = useRef(words)
+      /** 整本词库（章节总数要按它算）与本章词表（判定要按它算）各留一份 */
+      const wordsAllRef = useRef(words)
+      const chapterRef = useRef(chapter)
+      const chapterOpenRef = useRef(false)
+      const autoNextRef = useRef(false)
       const lockRef = useRef({ locked: false, timer: null })
       const draftRef = useRef('')
       const startedAt = useRef(Date.now())
@@ -5627,7 +5681,9 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     if (!state.typed && state.index >= 0) writeBarProgress(dictId, state.index)
       }, [dictId, state.index, state.typed])
       useEffect(() => { draftRef.current = draft }, [draft])
-      useEffect(() => { wordsRef.current = words }, [words])
+      useEffect(() => { wordsAllRef.current = words }, [words])
+      // 练的词表换了（换章 / 词库重载）→ 判定用的引用同步换掉
+      useEffect(() => { wordsRef.current = practice }, [practice])
       useEffect(() => () => {
     if (lockRef.current.timer !== null) clearTimeout(lockRef.current.timer)
       }, [])
@@ -5654,9 +5710,9 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     }
       }, [isOpen])
 
-      const total = words.length
-      // 跟打条是流水线：没有「完成」态，索引绕圈
-      const current = words[state.index % (total || 1)] ?? ''
+      const total = practice.length
+      // 跟打条是流水线：没有「完成」态，索引绕圈（绕的是本章）
+      const current = practice[state.index % (total || 1)] ?? ''
 
       // 换词自动发音：跟打条也读，原来只有按钮能点，摘掉按钮就没声了
       const spokenRef = useRef({ word: '', index: -1 })
@@ -5686,7 +5742,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     peeking: peekNow,
       }))
       // 上一个 / 下一个词预览（N4）：条窄，只给两个词、不带箭头
-      const neighbors = settings.showNeighbors === true ? neighborWords(words, state.index) : null
+      const neighbors = settings.showNeighbors === true ? neighborWords(practice, state.index) : null
       const entry = lookup(current)
       // 音标按口音显示（前缀 AmE / BrE 随 accent 设置实时变）；
       // 假名词条没音标：notation 走自己的位（不进音标行）
@@ -5716,6 +5772,49 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     return speakMeaning(zh)
       }, [])
 
+      useEffect(() => { chapterRef.current = chapter }, [chapter])
+      // 换词库 / 词库重载后章节数变小：章号夹回最后一章，别让本章空着
+      useEffect(() => {
+    const size = chapterCount({ length: words.length })
+    if (chapter > size - 1) {
+      const next = Math.max(0, size - 1)
+      chapterRef.current = next
+      setChapter(next)
+      writeChapterPos(readDictId(), next)
+      writeBarProgress(readDictId(), 0)
+      setState((prev) => ({ ...prev, index: 0, typed: '', flash: false, wordWrong: 0 }))
+    }
+      }, [chapter, words.length])
+      useEffect(() => { chapterOpenRef.current = chapterOpen }, [chapterOpen])
+      // 章节浮层开着：点条上以外的地方就收起（Esc 的处理在键盘路由里，先于关条）
+      useEffect(() => {
+    if (!chapterOpen) return undefined
+    const onDown = (event) => {
+      const target = event.target
+      if (target instanceof Element && target.closest('.qat-bar-chapterwrap')) return
+      setChapterOpen(false)
+    }
+    document.addEventListener('pointerdown', onDown, true)
+    return () => document.removeEventListener('pointerdown', onDown, true)
+      }, [chapterOpen])
+      useEffect(() => { autoNextRef.current = settings.autoNext === true }, [settings.autoNext])
+
+      /**
+       * 换章：章号进存档（和面板共用 `last-chapter`），本章从头开始，
+       * 顺带把跟打条的「第几个词」归零 —— 换了章再接着上一章的索引没有意义。
+       */
+      const goChapter = useCallback((target) => {
+    const total = chapterCount({ length: wordsAllRef.current.length })
+    const next = Math.max(0, Math.min(total - 1, Math.floor(Number(target)) || 0))
+    setChapterOpen(false)
+    if (next === chapterRef.current) return
+    chapterRef.current = next
+    setChapter(next)
+    writeChapterPos(readDictId(), next)
+    writeBarProgress(readDictId(), 0)
+    setState((prev) => ({ ...prev, index: 0, typed: '', flash: false, wordWrong: 0, finishedAt: null }))
+      }, [])
+
       const advance = useCallback(() => {
     // 刚打完这个词（正确）：单词在前，释义延迟接上
     readMeaning(wordsRef.current[stateRef.current.index] ?? '')
@@ -5724,8 +5823,15 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       setState((prev) => ({ ...prev, typed: '', flash: false, wordWrong: 0, hits: prev.hits + 1 }))
       return
     }
-    // 打完最后一个就绕回开头接着打，跟原版一样一直往下
+    // 打完本章最后一个：开了「自动下一章」就翻章，否则在本章里绕圈接着打
     const next = stepIndex(stateRef.current.index, wordsRef.current.length, 1)
+    if (next === 0 && autoNextRef.current) {
+      const total = chapterCount({ length: wordsAllRef.current.length })
+      if (chapterRef.current + 1 < total) {
+        goChapter(chapterRef.current + 1)
+        return
+      }
+    }
     setState((prev) => ({
       ...prev,
       typed: '',
@@ -5735,7 +5841,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       index: next,
       finishedAt: null,
     }))
-      }, [readMeaning])
+      }, [readMeaning, goChapter])
 
       const loopRef = useRef(false)
       const pausedRef = useRef(false)
@@ -5979,6 +6085,12 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       if (!(target instanceof Node)) return
       const region = composerRegion()
       // Esc 必须先于任何门禁生效：条卡住时这是唯一的逃生口
+      if (event.key === 'Escape' && chapterOpenRef.current) {
+        event.preventDefault()
+        event.stopPropagation()
+        setChapterOpen(false)
+        return
+      }
       if (event.key === 'Escape') {
         const near = (target instanceof HTMLElement
           && (target.isContentEditable
@@ -6021,6 +6133,10 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       }
       if (event.key === 'Escape' && (inComposer || (region && region.contains(target)))) {
         event.preventDefault()
+        if (chapterOpenRef.current) {
+          setChapterOpen(false)
+          return
+        }
         setOpen(false)
         return
       }
@@ -6037,6 +6153,8 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         event.stopPropagation()
         if (action === 'prev') goPrev()
         else if (action === 'skip') goSkip()
+        else if (action === 'prev-chapter') goChapter(chapterRef.current - 1)
+        else if (action === 'next-chapter') goChapter(chapterRef.current + 1)
         else if (action === 'loop') goLoop()
         else if (action === 'pause' || action === 'toggle') applyPaused(!pausedRef.current)
         else if (action === 'dictate') applyDictation({ type: 'user', value: toggleDictationMode(settings.dictation) })
@@ -6090,7 +6208,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       window.removeEventListener('pointerdown', onPointerDown, true)
       window.removeEventListener('blur', onBlur)
     }
-      }, [feed, isOpen])
+      }, [feed, goChapter, isOpen])
 
       // composer 里只放这一个词的中文：既当提示，又当"清场"——
       // 打进去的字永远不会留在输入框里（按键已被拦），所以回车没有东西可发。
@@ -6148,6 +6266,37 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       'aria-label': t(spec.label),
     }, h(Icon, { name: spec.icon, size: spec.size }))
       }
+      /**
+       * 条上的章号按钮：点开是章节列表（一格一章），选一格就换到那一章。
+       * 一本词库只有一章时整块不画。
+       */
+      const barChapterNode = () => (chapterTotal > 1
+    ? h('span', { className: 'qat-bar-chapterwrap', key: 'qat-chapter' },
+      h('span', {
+        ...pressable(() => setChapterOpen((open) => !open)),
+        className: 'qat-bar-chapter',
+        role: 'button',
+        tabIndex: 0,
+        'data-act': 'chapter',
+        'data-open': chapterOpen ? 'true' : 'false',
+        'aria-expanded': chapterOpen ? 'true' : 'false',
+        title: t('chapterTitle'),
+        'aria-label': t('chapterTitle'),
+      }, t('barChapter', { n: chapter + 1, total: chapterTotal })),
+      chapterOpen
+        ? h('span', { className: 'qat-chap-pop', role: 'listbox' },
+          chapterItems(chapterTotal, chapter).map((item) => h('span', {
+            ...pressable(() => goChapter(item.index)),
+            key: `qat-chap-${item.index}`,
+            className: 'qat-chap-item',
+            role: 'option',
+            'data-active': item.active ? 'true' : 'false',
+            'aria-selected': item.active ? 'true' : 'false',
+            title: t('barChapterJump', { n: item.index + 1 }),
+          }, item.label)))
+        : null)
+    : null)
+
       /** 条上的两处文字：进度 / 实时速度；宽条时分别搬进左右两组 */
       const barTextNode = (kind, position, barMs) => (kind === 'count'
     ? h('span', { className: 'qat-bar-count', title: t('dictTitle') }, `${position}/${total}`)
@@ -6167,6 +6316,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     const [left, right] = barSideButtonGroups({ total: has ? 1 : 0 })
     return {
       left: h('span', { className: 'qat-bar-side', 'data-side': 'left', key: 'qat-side-left' }, left.acts.map(barActNode)),
+      chapter: barChapterNode(),
       count: barTextNode('count', position, barMs),
       speed: barTextNode('speed', position, barMs),
       right: h('span', { className: 'qat-bar-side', 'data-side': 'right', key: 'qat-side-right' }, right.acts.map(barActNode)),
@@ -6186,6 +6336,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     },
       h(Styles),
       loading.left,
+      loading.chapter,
       loading.count,
       h('span', { className: 'qat-bar-center' },
         h('span', { className: 'qat-bar-empty' }, t('loading')),
@@ -6214,6 +6365,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     h(Styles),
     // 一条 flex 行：左列（上一个 / 重开）· 进度 · 单词 · 速度 · 右列（下一个 / 关闭）
     pieces.left,
+    pieces.chapter,
     pieces.count,
     h('span', { className: 'qat-bar-center' },
       h('span', { className: 'qat-wordblock', ...selectStyle(settings.textSelectable === true) },
@@ -7603,6 +7755,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     parseCustomFile, serializeCustomDict, splitCsvLine, toCustomWord, downloadText, withSlashes,
     stepIndex, toWordList, isRoundDone,
     barSideButtonGroups, barSidesFit, BAR_SIDES_MIN, BAR_MAX_WIDTH, BAR_ACT_SPEC,
+    chapterItems, isChapterAction, wordsOfChapter, CHAPTER_LENGTH,
     wrapWord, fitWordStyle, wordLines, FIT_SIZES, CHAR_RATIO,
     WORD_SCALES, WORD_SCALE_FACTOR, clampWordScale, scaleWordSizes, wordStyleFor,
     VOICE_RATES, CLICK_VOLUMES, clampVoiceRate, clampClickVolume,
