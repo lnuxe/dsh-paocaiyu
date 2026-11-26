@@ -7,6 +7,19 @@
 
 ## [Unreleased]
 
+## [1.0.7] - 2026-11-26
+
+README 跟上「已经发到 npm」这个事实。
+
+### Docs
+
+- 快速开始不再写「装到 profile 里即可」，直接说明已发布到 npm、指向
+  [www.npmjs.com/package/@lnuxe/paocaiyu](https://www.npmjs.com/package/@lnuxe/paocaiyu)，最新 1.0.6
+- 安装改成一张三行表：锁版本 / 从仓库装 / 从 release tgz 装，命令都能直接复制
+- 补一条 pnpm 11 `minimumReleaseAge` 提示：不带版本号时刚发布的版本不会被自动选中
+- 开发段把发布判据写清：本地 `+ pkg@ver` 不算数，必须匿名读元数据与 tarball 直连都 200
+  （就是 1.0.5 那次被 404 / E409 绕进去的原因）
+
 ## [1.0.6] - 2026-11-26
 
 ### 正式发到 npm

@@ -35,21 +35,23 @@
 
 ## 🚀 快速开始
 
-装到 DSH 的 web profile 里即可，无需额外起服务：
+已发布到 npm（[`@lnuxe/paocaiyu`](https://www.npmjs.com/package/@lnuxe/paocaiyu)，最新 1.0.7）。装进 DSH 的 web profile：
 
 ```bash
 pnpm --dir ~/.dsh/profiles/web add @lnuxe/paocaiyu
 ```
 
-不想走 npm，也可以直接从仓库或某个 release 的打包产物安装：
+三条备用通道，按需选：
 
-```bash
-pnpm --dir ~/.dsh/profiles/web add github:lnuxe/dsh-paocaiyu
-```
+| 想怎么装 | 命令 |
+| --- | --- |
+| 锁到某个版本 | `pnpm --dir ~/.dsh/profiles/web add @lnuxe/paocaiyu@1.0.7` |
+| 直接从仓库装 | `pnpm --dir ~/.dsh/profiles/web add github:lnuxe/dsh-paocaiyu` |
+| 从 release 的打包产物装 | `pnpm --dir ~/.dsh/profiles/web add https://github.com/lnuxe/dsh-paocaiyu/releases/download/v1.0.7/lnuxe-paocaiyu-1.0.7.tgz` |
 
 刷新页面后，侧栏左上角出现图标。
 
-> npm 上的包由 `npm run publish:npm` 发布（自检 → 查登录 → 发布 → 回读 registry 验证，51 项前置检查）。
+> 想装最新版却拿到旧版本？pnpm 11 默认有 `minimumReleaseAge`，刚发布几十秒的新版本不会自动被选中，带版本号装或者等冷却期过去即可。
 
 ### 最小使用
 
@@ -87,8 +89,17 @@ pnpm --dir ~/.dsh/profiles/web add github:lnuxe/dsh-paocaiyu
 npm run verify             # 语法检查 + 1525 条测试 + 装配冒烟 + 体积闸门
 npm test                   # 只跑测试，不需要浏览器
 npm run prepublish-check   # 发布前元信息自检（51 项）
-npm run publish:npm        # 一条命令发布，发完回读 registry
+npm run publish:npm        # 一条命令发布：自检 → 查登录 → 发布 → 回读 registry 验证
 npm run index              # 重新生成词库目录
+```
+
+发布后别信本地 `+ @lnuxe/paocaiyu@x.y.z` 那行就算成了。registry 的读写副本有几分钟不同步，
+期间 `npm view` 会 404、重发会撞 `E409 Cannot publish over previously staged version`。
+判断标准只有一个：**匿名**读元数据与 tarball 直连都返 200。
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' https://registry.npmjs.org/@lnuxe%2Fpaocaiyu
+curl -s -o /dev/null -w '%{http_code}\n' https://registry.npmjs.org/@lnuxe/paocaiyu/-/paocaiyu-<版本>.tgz
 ```
 
 主体只有两个文件：`client.js`（全部功能，单文件、无构建）与 `test-client-logic.mjs`（用桩把组件真渲染一遍）。`client.js` 有硬线：不得超过 480,000 字节。

@@ -35,21 +35,23 @@ English | [简体中文](./README.md)
 
 ## 🚀 Quick Start
 
-Install into your DSH web profile. No extra server:
+Published to npm ([`@lnuxe/paocaiyu`](https://www.npmjs.com/package/@lnuxe/paocaiyu), latest 1.0.7). Install into your DSH web profile:
 
 ```bash
 pnpm --dir ~/.dsh/profiles/web add @lnuxe/paocaiyu
 ```
 
-Not into npm? Install straight from the repo or a release tarball:
+Three alternates, pick what fits:
 
-```bash
-pnpm --dir ~/.dsh/profiles/web add github:lnuxe/dsh-paocaiyu
-```
+| How | Command |
+| --- | --- |
+| Pin a version | `pnpm --dir ~/.dsh/profiles/web add @lnuxe/paocaiyu@1.0.7` |
+| Straight from the repo | `pnpm --dir ~/.dsh/profiles/web add github:lnuxe/dsh-paocaiyu` |
+| From a release tarball | `pnpm --dir ~/.dsh/profiles/web add https://github.com/lnuxe/dsh-paocaiyu/releases/download/v1.0.7/lnuxe-paocaiyu-1.0.7.tgz` |
 
 Refresh the page and the icon shows up at the top-left of the sidebar.
 
-> The npm package ships via `npm run publish:npm` (preflight → auth check → publish → read back from the registry, 51 checks up front).
+> Got an older version when you wanted the latest? pnpm 11 ships `minimumReleaseAge`: a version published seconds ago won't be picked automatically. Install it with the explicit version, or wait out the cooldown.
 
 ### Minimal Usage
 
@@ -87,8 +89,17 @@ No shortcut person? There's a button on each side of the word: previous / restar
 npm run verify             # syntax + 1525 tests + assembly smoke + size gate
 npm test                   # tests only, no browser needed
 npm run prepublish-check   # 51 pre-release metadata checks
-npm run publish:npm        # one-command publish, then reads back from the registry
+npm run publish:npm        # one-command publish: preflight → auth check → publish → read back
 npm run index              # rebuild the dictionary index
+```
+
+Don't trust the local `+ @lnuxe/paocaiyu@x.y.z` line as proof. Registry read replicas lag for a few
+minutes: `npm view` 404s and a retry hits `E409 Cannot publish over previously staged version`.
+The only real check is an **anonymous** read of the metadata and a direct tarball fetch, both 200.
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' https://registry.npmjs.org/@lnuxe%2Fpaocaiyu
+curl -s -o /dev/null -w '%{http_code}\n' https://registry.npmjs.org/@lnuxe/paocaiyu/-/paocaiyu-<version>.tgz
 ```
 
 Two files do the work: `client.js` (everything, single file, no build step) and `test-client-logic.mjs` (renders the components for real with stubs). `client.js` has a hard ceiling of 480,000 bytes.
