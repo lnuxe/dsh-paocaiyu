@@ -1313,6 +1313,151 @@ const emptyBar = (function () {
 check('空词库时条仍然渲染', collectClasses(emptyBar).includes('qat-bar'), true)
 check('空词库时给出加载提示', gatherText(emptyBar).includes('loading') || collectClasses(emptyBar).includes('qat-bar-empty'), true)
 
+/* ================================================================== */
+/* N19 条外两侧：按钮搬到输入框左右边框外 + 上一个 / 下一个             */
+/* ================================================================== */
+
+// —— 分组纯函数：渲染的唯一真源（顺序也由它定，渲染只 map） ——
+const { barSideButtonGroups, barSidesFit, BAR_SIDES_MIN } = renderTest
+const wideGroups = barSideButtonGroups({ sides: true, total: 12 })
+check('宽条只有左右两组', wideGroups.map((group) => group.side).join(','), 'left,right')
+check('宽条左组 = 上一个 + 重开', wideGroups[0].acts.join(','), 'prev,restart')
+check('宽条右组 = 下一个 + 关闭', wideGroups[1].acts.join(','), 'skip,close')
+check('宽条：进度归左组、速度归右组',
+  [wideGroups[0].texts.join(','), wideGroups[1].texts.join(',')].join('|'), 'count|speed')
+const loadingGroups = barSideButtonGroups({ sides: true, total: 0 })
+check('词库还没来：左组只剩重开', loadingGroups[0].acts.join(','), 'restart')
+check('词库还没来：右组只剩关闭', loadingGroups[1].acts.join(','), 'close')
+check('词库还没来：不画上一个 / 下一个',
+  loadingGroups.flatMap((group) => group.acts).some((act) => act === 'prev' || act === 'skip'), false)
+check('词库还没来：没有进度和速度可写', loadingGroups.map((group) => group.texts.length).join(','), '0,0')
+const inlineGroups = barSideButtonGroups({ sides: false, total: 12 })
+check('窄条回退成条内单组', inlineGroups.length, 1)
+check('窄条单组 side=inline', inlineGroups[0].side, 'inline')
+check('窄条：上一个 / 重开 / 下一个 / 关闭全在条内', inlineGroups[0].acts.join(','), 'prev,restart,skip,close')
+check('窄条：进度和速度留在条内', inlineGroups[0].texts.join(','), 'count,speed')
+check('窄条没词时也不画上一个 / 下一个',
+  barSideButtonGroups({ sides: false, total: 0 })[0].acts.join(','), 'restart,close')
+check('窄条阈值 460', BAR_SIDES_MIN, 460)
+check('条宽够就走两侧', [barSidesFit(460), barSidesFit(1200)].join(','), 'true,true')
+check('条宽不够 / 首帧没量到都回退条内',
+  [barSidesFit(459), barSidesFit(380), barSidesFit(null), barSidesFit(undefined)].join(','), 'false,false,false,false')
+
+// —— 渲染：窄条（默认还没量到宽度）回退条内，四个按钮都在 ——
+check('默认走条内回退', bar?.props?.['data-sides'], 'false')
+check('窄条不画条外两组', findNodesByClass(bar, 'qat-bar-side').length, 0)
+check('窄条：重开仍在条内', findByAct(bar, 'restart') !== null, true)
+check('窄条：关闭仍在条内', findByAct(bar, 'close') !== null, true)
+check('窄条：上一个在条内', findByAct(bar, 'prev') !== null, true)
+check('窄条：下一个在条内', findByAct(bar, 'skip') !== null, true)
+check('窄条：进度和速度也在条内',
+  [collectClasses(bar).includes('qat-bar-count'), collectClasses(bar).includes('qat-bar-speed')].join(','), 'true,true')
+
+// —— 渲染：宽条（桩把 barWidth 的 null 初值换成 900） ——
+const wideReact = {
+  ...reactForRender,
+  // ComposerTrainer 里只有 barWidth 的初值是 null：换成量到的 900
+  useState: (value) => [typeof value === 'function' ? value() : (value === null ? 900 : value), () => {}],
+}
+const widePlugin = factory((name) => {
+  if (name === 'react') return wideReact
+  throw new Error(`unexpected require: ${name}`)
+})
+const sideNode = (tree, side) => findNodesByClass(tree, 'qat-bar-side')
+  .find((node) => node.props?.['data-side'] === side)
+const actsIn = (node) => findNodesByClass(node, 'qat-icon').map((child) => child.props?.['data-act'])
+widePlugin.__test.setOpen(true)
+const wideBar = render('渲染：宽条（按钮搬到输入框两侧）', () => widePlugin.__test.components.ComposerTrainer({
+  useInput: () => '', inputActions: {}, ctx: ctxStub,
+}))
+check('宽条标了 data-sides', wideBar?.props?.['data-sides'], 'true')
+check('宽条画出左右两组',
+  findNodesByClass(wideBar, 'qat-bar-side').map((node) => node.props?.['data-side']).join(','), 'left,right')
+check('条高变量挂在条上（和宽度同一处）', String(wideBar?.props?.style?.['--qat-ch'] ?? ''), '36px')
+check('宽条仍按 composer 宽度对齐', wideBar?.props?.style?.width, '900px')
+check('左组按钮 = 上一个 + 重开', actsIn(sideNode(wideBar, 'left')).join(','), 'prev,restart')
+check('右组按钮 = 下一个 + 关闭', actsIn(sideNode(wideBar, 'right')).join(','), 'skip,close')
+check('进度搬进左组（是文字，不是按钮）',
+  [gatherText(sideNode(wideBar, 'left')).includes('/'), actsIn(sideNode(wideBar, 'left')).includes('count')].join(','), 'true,false')
+check('速度搬进右组', gatherText(sideNode(wideBar, 'right')).includes('liveSpeed'), true)
+const barDirectClasses = (wideBar?.children ?? []).flat().map((child) => String(child?.props?.className ?? ''))
+check('条内不再直接放关闭按钮', barDirectClasses.some((name) => name.includes('qat-bar-close')), false)
+check('条内不再直接放重开按钮', barDirectClasses.some((name) => name.includes('qat-bar-restart')), false)
+check('条内不再直接放进度 / 速度',
+  barDirectClasses.some((name) => name.includes('qat-bar-count') || name.includes('qat-bar-speed')), false)
+check('关闭按钮在右侧组里', findByAct(sideNode(wideBar, 'right'), 'close') !== null, true)
+check('重开按钮在左侧组里', findByAct(sideNode(wideBar, 'left'), 'restart') !== null, true)
+check('条内只剩单词 / 音标 / 提示', collectClasses(wideBar).includes('qat-bar-center'), true)
+widePlugin.__test.setOpen(false)
+
+// —— 词库加载中（total=0）也照 data-sides 走两套 ——
+check('空词库的窄条也标 data-sides=false', emptyBar?.props?.['data-sides'], 'false')
+check('空词库的窄条只有重开 + 关闭',
+  [findByAct(emptyBar, 'restart') !== null, findByAct(emptyBar, 'skip') !== null].join(','), 'true,false')
+widePlugin.__test.writeCustomDicts({ 'custom:空': [] })
+writeDictId('custom:空')
+widePlugin.__test.setOpen(true)
+const wideEmptyBar = render('渲染：空词库的宽条', () => widePlugin.__test.components.ComposerTrainer({
+  useInput: () => '', inputActions: {}, ctx: ctxStub,
+}))
+writeDictId('cet4')
+widePlugin.__test.writeCustomDicts({})
+widePlugin.__test.setOpen(false)
+check('空词库的宽条标 data-sides=true', wideEmptyBar?.props?.['data-sides'], 'true')
+check('空词库的宽条：左组只剩重开', actsIn(sideNode(wideEmptyBar, 'left')).join(','), 'restart')
+check('空词库的宽条：右组只剩关闭', actsIn(sideNode(wideEmptyBar, 'right')).join(','), 'close')
+
+// —— 点按钮：上一个减一 / 下一个加一（复用 goPrev / goSkip，没有第二份实现） ——
+const navUpdates = []
+const navState = { index: 2, typed: '', flash: false, hits: 0, retries: 0, wordWrong: 0, finishedAt: null }
+const navReact = {
+  ...reactForRender,
+  useState: (initial) => {
+    const value = typeof initial === 'function' ? initial() : initial
+    if (value && typeof value === 'object' && 'index' in value) {
+      return [{ ...value, index: 2 }, (next) => navUpdates.push(typeof next === 'function' ? next(navState) : next)]
+    }
+    return [value, () => {}]
+  },
+}
+const navPlugin = factory((name) => {
+  if (name === 'react') return navReact
+  throw new Error(`unexpected require: ${name}`)
+})
+navPlugin.__test.setOpen(true)
+const navBar = render('渲染：上一个 / 下一个按钮', () => navPlugin.__test.components.ComposerTrainer({
+  useInput: () => '', inputActions: {}, ctx: ctxStub,
+}))
+const lastIndex = () => navUpdates
+  .filter((value) => value && typeof value === 'object' && 'index' in value)
+  .map((value) => value.index)
+  .at(-1)
+findByAct(navBar, 'prev')?.props?.onClick?.()
+check('点上一个：index 减一（2 → 1）', lastIndex(), 1)
+findByAct(navBar, 'skip')?.props?.onClick?.()
+check('点下一个：index 加一（2 → 3）', lastIndex(), 3)
+check('上一个 / 下一个都不改热键表',
+  [renderTest.resolveHotkey({ key: 'ArrowLeft', meta: true }), renderTest.resolveHotkey({ key: 'ArrowRight', meta: true, shift: true })].join(','),
+  'prev,next-word')
+navPlugin.__test.setOpen(false)
+
+// —— 样式：条外两组贴在输入框边框外面，窄条整体隐藏，颜色只走变量 ——
+check('条外两组从条的下沿往下排', /\.qat-bar-side\{[^}]*top:100%/.test(source), true)
+check('条外两组的高度读条高变量（垂直居中靠它）', /\.qat-bar-side\{[^}]*height:var\(--qat-ch/.test(source), true)
+check('左组落在输入框左边框外', /\.qat-bar-side\[data-side="left"\]\{left:-38px\}/.test(source), true)
+check('右组落在输入框右边框外', /\.qat-bar-side\[data-side="right"\]\{right:-38px\}/.test(source), true)
+check('组内元素回到普通流（不吃条内绝对摆位）', /\.qat-bar-side > \*\{[^}]*position:static/.test(source), true)
+check('窄条：上一个插在进度右边（左边距 56）', /\.qat-bar\[data-sides="false"\] \.qat-bar-prev\{[^}]*left:56px/.test(source), true)
+check('窄条：下一个插在重开左边（右边距 46）', /\.qat-bar\[data-sides="false"\] \.qat-bar-skip\{[^}]*right:46px/.test(source), true)
+check('窄条：速度给下一个让出位置（右边距 72）', /\.qat-bar-speed\{[^}]*right:72px/.test(source), true)
+check('窄条时条外两组整体隐藏', /\.qat-bar\[data-sides="false"\] \.qat-bar-side\{display:none\}/.test(source), true)
+check('条外按钮悬浮色走变量', /\.qat-bar-side \.qat-icon:hover\{[^}]*background:var\(--dsw-alias-/.test(source), true)
+check('条外那段样式不写死颜色', (function () {
+  const start = source.indexOf('.qat-bar-side{')
+  const block = source.slice(start, source.indexOf('.qat-bar[data-sides="false"] .qat-bar-side'))
+  return /#[0-9a-fA-F]{3,6}|rgb\(|:white|:black/.test(block)
+})(), false)
+
 
 // —— 面板：章节下拉 & 词库选择器 ——
 function countTag(node, tag, out = { n: 0 }) {
