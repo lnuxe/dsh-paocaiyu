@@ -45,6 +45,12 @@ add('index.js 的 plugin name 是包名末段',
   read('index.js').includes(`export const name = '${pkg.name.split('/').pop()}'`),
   pkg.name.split('/').pop())
 
+// 2c) 双语 README
+for (const readme of ['README.md', 'README.en.md']) {
+  add(`${readme} 存在`, exists(readme))
+  add(`${readme} 没有目录`, !read(readme).includes('## 目录') && !read(readme).includes('## Table of Contents'))
+}
+
 // 3) 市场卡片：标题/描述/图标
 add('导出 ./package.json（字段回退要用）', pkg.exports?.['./package.json'] === './package.json', pkg.exports?.['./package.json'] ?? '')
 add('导出 ./locale/*.json', pkg.exports?.['./locale/*.json'] === './locale/*.json', pkg.exports?.['./locale/*.json'] ?? '')
@@ -78,6 +84,7 @@ const need = [
   'icon.svg',
   'locale/*.json',
   'README.md',
+  'README.en.md',
   'LICENSE',
   'CHANGELOG.md',
   'NOTICE',

@@ -7,6 +7,24 @@
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-11-26
+
+README 去掉目录，改成中英两版，写法收紧成口语、能扫完的那种。
+
+### Docs
+
+- 删除目录（Table of Contents）：章节本来就是按使用顺序排的，多一层索引反而不如直接往下滑
+- 新增 `README.en.md`：英文版，抬头 `中文 · English` 互跳，两块内容同步维护
+- 全文改成口语短句：安装、用法、词库、记录、设置各节压到几段可扫完的长度；
+  快捷键表保留，示例命令保留，长解释删掉
+- 致谢保留五项并压成一句话一条：Qwerty Learner（词库与跟打形态）、DSH、React、Iconify、CDN
+- `package.json` 的 `files` 收进 `README.en.md`，别让英文版在发布时被落下
+
+### Added
+
+- `npm run prepublish-check` 增到 **45 项**：中英两份 README 都要在、都不能出现目录；
+  `files` 清单补 `README.en.md`
+
 ## [1.0.2] - 2026-11-26
 
 README 按 Standard Readme 结构重写，并补上完整的致谢与第三方许可说明。
