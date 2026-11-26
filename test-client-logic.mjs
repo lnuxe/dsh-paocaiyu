@@ -1450,10 +1450,13 @@ check('两侧组高度读文字行高（垂直居中靠它）',
 check('两侧组是竖排（两个按钮上下叠，不占横向空间）',
   /\.qat-bar-side\{[^}]*flex-direction:column/.test(source), true)
 // 左列：卡片左内沿 + 6px；右列：卡片左偏移 + 卡片宽 - 26px（20px 按钮 + 6px）
-check('左列贴在卡片左边框内沿（只让 2px）',
-  /\.qat-bar-side\[data-side="left"\]\{left:calc\(var\(--qat-cl,0px\) \+ 2px\)\}/.test(source), true)
-check('右列贴在卡片右边框内沿（只让 2px）',
-  /\.qat-bar-side\[data-side="right"\]\{left:calc\(var\(--qat-cl,0px\) \+ var\(--qat-cw,100%\) - 22px\)\}/.test(source), true)
+// 两侧列在卡片边框**外面**：左列整体左移「自身宽度 + 间距」，右列左沿 = 卡片右沿 + 间距
+check('左列在卡片左边框外',
+  /\.qat-bar-side\[data-side="left"\]\{left:calc\(var\(--qat-cl,0px\) - var\(--qat-side-w\) - var\(--qat-side-gap\)\)\}/.test(source), true)
+check('右列在卡片右边框外',
+  /\.qat-bar-side\[data-side="right"\]\{left:calc\(var\(--qat-cl,0px\) \+ var\(--qat-cw,100%\) \+ var\(--qat-side-gap\)\)\}/.test(source), true)
+check('列宽与贴边框的间距是变量（一个常量调手感）',
+  ['--qat-side-w:20px', '--qat-side-gap:4px'].every((frag) => source.includes(frag)), true)
 // 卡片识别优先认「有底色/有描边」的那层：宿主外壳透明，只按宽度找会摆太远
 check('pickCardRect：有底色的那层优先（跳过错过的透明宽壳）',
   pickCardRect([

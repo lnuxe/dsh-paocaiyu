@@ -2776,9 +2776,9 @@ window.__ModuleLoader__.load({
 .qat-bar[data-sides="false"] .qat-bar-skip:hover{opacity:.9}
 /* 条外摆位（宽条）：两组贴在输入框左右边框外面，top:100% 是条的下沿，
    height 取量到的输入框高度，按钮组就垂直居中在输入框那条高度区间里 */
-.qat-bar-side{position:absolute;top:calc(100% + var(--qat-et,0px));height:var(--qat-eh,24px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;z-index:3;pointer-events:none}
-.qat-bar-side[data-side="left"]{left:calc(var(--qat-cl,0px) + 2px)}
-.qat-bar-side[data-side="right"]{left:calc(var(--qat-cl,0px) + var(--qat-cw,100%) - 22px)}
+.qat-bar-side{--qat-side-w:20px;--qat-side-gap:4px;position:absolute;top:calc(100% + var(--qat-et,0px));height:var(--qat-eh,24px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;z-index:3;pointer-events:none}
+.qat-bar-side[data-side="left"]{left:calc(var(--qat-cl,0px) - var(--qat-side-w) - var(--qat-side-gap))}
+.qat-bar-side[data-side="right"]{left:calc(var(--qat-cl,0px) + var(--qat-cw,100%) + var(--qat-side-gap))}
 /* 组内一律回到普通流：条内那套绝对摆位不许跟进来 */
 .qat-bar-side > *{position:static;top:auto;left:auto;right:auto;transform:none;white-space:nowrap}
 .qat-bar-side .qat-icon{pointer-events:auto;flex:none;width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;opacity:.45}
