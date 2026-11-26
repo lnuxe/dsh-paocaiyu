@@ -2749,7 +2749,7 @@ window.__ModuleLoader__.load({
     }
 
     const CSS = `
-.qat-bar{position:relative;display:flex;align-items:center;justify-content:center;padding:0 0 5px;background:transparent;border:0;box-sizing:border-box;font-size:12px;color:var(--dsw-alias-label-secondary);min-height:52px}
+.qat-bar{position:relative;display:flex;align-items:center;justify-content:center;gap:8px;padding:0 0 5px;background:transparent;border:0;box-sizing:border-box;font-size:12px;color:var(--dsw-alias-label-secondary);min-height:52px}
 .qat-bar .qat-word{font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;font-size:52px;line-height:1.1;min-height:60px;gap:1px;letter-spacing:.01em;font-weight:400}
 .qat-card[data-variant="panel"] .qat-word{font-size:64px;min-height:74px}
 /* 面板按官方 Typing 页的骨架摆：顶部一行工具、中间单词居中、底部一行按钮 + 一行提示 */
@@ -2759,32 +2759,24 @@ window.__ModuleLoader__.load({
 .qat-card[data-variant="panel"] > .qat-hint{position:absolute;left:0;right:0;bottom:14px;text-align:center;margin:0}
 .qat-card[data-variant="panel"] .qat-done{width:100%;align-items:center}
 .qat-bar-empty{font-size:12px;color:var(--dsw-alias-label-tertiary)}
-.qat-bar-center{display:flex;align-items:center;justify-content:center;min-width:0;width:100%}
-.qat-bar-count{position:absolute;left:0;top:50%;transform:translateY(-50%);font-size:11px;color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums}
-.qat-bar-speed{position:absolute;right:72px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--dsw-alias-label-tertiary);opacity:.75;font-variant-numeric:tabular-nums;pointer-events:none}
-/* 跟打条的重开：夹在速度与关闭之间，常驻不浮动 */
-.qat-bar-restart{position:absolute;right:20px;top:50%;transform:translateY(-50%);opacity:.45;font-size:12px}
-.qat-bar-restart:hover{opacity:.9}
+.qat-bar-center{flex:1;display:flex;align-items:center;justify-content:center;min-width:0}
+.qat-bar-count{flex:none;position:static;transform:none;font-size:11px;color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums}
+.qat-bar-speed{flex:none;position:static;transform:none;font-size:11px;color:var(--dsw-alias-label-tertiary);opacity:.75;font-variant-numeric:tabular-nums;pointer-events:none}
+/* 重开 / 关闭 / 上一个 / 下一个：都是列里的普通按钮，只留透明度反馈 */
+.qat-bar-restart,.qat-bar-close,.qat-bar-prev,.qat-bar-skip{position:static;top:auto;left:auto;right:auto;transform:none;opacity:.45;font-size:12px}
+.qat-bar-restart:hover,.qat-bar-close:hover,.qat-bar-prev:hover,.qat-bar-skip:hover{opacity:.9}
 .qat-bar-gloss{font-size:12px;color:var(--dsw-alias-label-tertiary);max-width:34%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.qat-bar-close{position:absolute;right:0;top:50%;transform:translateY(-50%);opacity:.45;font-size:13px}
-.qat-bar-close:hover{opacity:.9}
-/* 条内摆位（窄条回退）：新增的上一个 / 下一个插进进度与速度之间，互不压；
-   横向占位从左到右 = 进度 0 / 上一个 56，右边 关闭 0 / 重开 20 / 下一个 46 / 速度 72 */
-.qat-bar[data-sides="false"] .qat-bar-prev{position:absolute;left:56px;top:50%;transform:translateY(-50%);opacity:.45;font-size:12px}
-.qat-bar[data-sides="false"] .qat-bar-prev:hover{opacity:.9}
-.qat-bar[data-sides="false"] .qat-bar-skip{position:absolute;right:46px;top:50%;transform:translateY(-50%);opacity:.45;font-size:12px}
-.qat-bar[data-sides="false"] .qat-bar-skip:hover{opacity:.9}
-/* 条外摆位（宽条）：两组贴在输入框左右边框外面，top:100% 是条的下沿，
-   height 取量到的输入框高度，按钮组就垂直居中在输入框那条高度区间里 */
-.qat-bar-side{--qat-side-w:20px;--qat-side-gap:4px;position:absolute;top:calc(100% + var(--qat-et,0px) + var(--qat-eh,24px) / 2);transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;overflow:visible;z-index:5;pointer-events:none}
-.qat-bar-side[data-side="left"]{left:calc(var(--qat-cl,0px) - var(--qat-side-w) - var(--qat-side-gap))}
-.qat-bar-side[data-side="right"]{left:calc(var(--qat-cl,0px) + var(--qat-cw,100%) + var(--qat-side-gap))}
-/* 组内一律回到普通流：条内那套绝对摆位不许跟进来 */
-.qat-bar-side > *{position:static;top:auto;left:auto;right:auto;transform:none;white-space:nowrap}
+.qat-bar-close{font-size:13px}
+/* 两侧按钮列：是条自己的 flex 子项 —— 不走绝对定位、不问宿主要几何，
+   所以永远压不到单词：单词区是 flex:1，位置不够它自己缩。
+   宽条每侧两颗竖排；窄条每侧两颗横排，并把速度让给单词。 */
+.qat-bar-side{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;order:0}
+.qat-bar-side[data-side="right"]{order:9}
+.qat-bar[data-sides="false"] .qat-bar-side{flex-direction:row}
+.qat-bar[data-sides="false"] .qat-bar-speed{display:none}
+.qat-bar-side > *{white-space:nowrap;position:static;top:auto;left:auto;right:auto;transform:none}
 .qat-bar-side .qat-icon{pointer-events:auto;flex:none;width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;opacity:.45}
 .qat-bar-side .qat-icon:hover{opacity:.95;background:var(--dsw-alias-interactive-hover,var(--dsw-alias-interactive-bg))}
-/* 窄条：条外那两组整体不渲染，CSS 再兜一层 */
-.qat-bar[data-sides="false"] .qat-bar-side{display:none}
 .qat-wordblock{display:inline-flex;flex-direction:column;align-items:center;gap:1px;line-height:1.15}
 .qat-ipa{font-size:13px;line-height:1.25;color:var(--dsw-alias-label-secondary);opacity:.7;letter-spacing:0;user-select:none}
 /* 假名词库的 notation 在跟打条里也占这个位置，但它是假名、不是音标，样式走正文字体 */
@@ -5518,46 +5510,19 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
      * @param {number} opts.total - 当前词库词数
      * @returns {Array<{side: string, acts: string[], texts: string[]}>}
      */
-    function barSideButtonGroups({ sides = true, total = 0 } = {}) {
+    function barSideButtonGroups({ total = 0 } = {}) {
       const has = Number(total) > 0
       const prev = has ? ['prev'] : []
       const skip = has ? ['skip'] : []
-      if (sides === false) {
-        return [{ side: 'inline', acts: [...prev, 'restart', ...skip, 'close'], texts: has ? ['count', 'speed'] : [] }]
-      }
+      // 永远左右两组：条宽够不够只影响 CSS 排列方向（竖排 / 横排），不影响分组；
+      // 也不再保留「条内绝对摆位」那套分支 —— 少一条分支就少一次和宿主对不上
       return [
-        // 两侧组只放按钮：进度 / 速度是文字，留在条内两端（pointer-events:none，不挡输入）
         { side: 'left', acts: [...prev, 'restart'], texts: [] },
         { side: 'right', acts: [...skip, 'close'], texts: [] },
       ]
     }
 
-    /**
-     * 从编辑器往上找「输入卡」那一层：卡片一定比文字区宽（左右各有内边距）、也比它高。
-     * @param {Array<object>} list - 祖先矩形（由近到远）
-     * @param {object} editorRect - 编辑器矩形
-     * @returns {number} 命中的下标；找不到给 -1（调用方退回用编辑器自己）
-     */
-    function pickCardRect(list, editorRect) {
-      const width = Number(editorRect?.width) || 0
-      const height = Number(editorRect?.height) || 0
-      if (!width) return -1
-      const rows = Array.isArray(list) ? list : []
-      const fits = (rect) => Boolean(rect)
-        && (Number(rect.width) || 0) >= width + 12
-        && (Number(rect.height) || 0) >= height + 4
-      // 先认「有底色 / 有描边」的那层：宿主 composer 外面还套着透明容器，
-      // 只按宽度找会挑到外壳，按钮就被摆到离边框很远的地方
-      for (let i = 0; i < rows.length; i += 1) {
-        if (rows[i]?.surface === true && fits(rows[i])) return i
-      }
-      for (let i = 0; i < rows.length; i += 1) {
-        if (fits(rows[i])) return i
-      }
-      return -1
-    }
-
-    /** 条外两侧按钮的动作表：class / 图标 / 文案 key 一处定义，渲染只按 act 取 */
+    /** 条内两侧按钮的动作表：class / 图标 / 文案 key 一处定义，渲染只按 act 取 */
     const BAR_ACT_SPEC = {
       prev: { cls: 'qat-bar-prev', icon: 'prev', size: 12, label: 'prevTip' },
       restart: { cls: 'qat-bar-restart', icon: 'again', size: 12, label: 'restart' },
@@ -5580,12 +5545,6 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       }))
       const [barWidth, setBarWidth] = useState(null)
       /** composer 输入框的高度：两侧按钮组按它垂直居中（量不到就用默认 36） */
-      const [composerH, setComposerH] = useState(36)
-      /** 条下沿到输入框顶的间隙（px）：两侧按钮组靠它对齐到输入框的垂直中心 */
-      const [composerGap, setComposerGap] = useState(0)
-      /** 输入框相对条左边缘的偏移 / 宽度：两侧按钮靠它们贴到输入框边框上 */
-      const [composerLeft, setComposerLeft] = useState(0)
-      const [composerBox, setComposerBox] = useState(0)
       const barRef = useRef(null)
       /** 我们自己写进 composer 的那句中文（关闭时要原样撤掉） */
       const wroteDraftRef = useRef('')
@@ -5655,60 +5614,16 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     if (lockRef.current.timer !== null) clearTimeout(lockRef.current.timer)
       }, [])
 
-      // 宽度对齐 composer 正文：之前 setBarWidth 从没被调用过，整条所以不居中
-      // 高度顺手一起量：条外的两组按钮要垂直居中在输入框那条高度里
+      // 只需要一个数：条宽对齐 composer 正文宽度；其余版式都是条内的 flex，不问宿主要几何
       useEffect(() => {
     if (!isOpen) return undefined
     const measure = () => {
       const node = document.querySelector('[data-composer-input]')
-      const rect = node?.getBoundingClientRect?.()
-      const width = rect?.width ?? 0
-      const height = rect?.height ?? 0
+      const width = node?.getBoundingClientRect?.().width ?? 0
       setBarWidth((prev) => {
         const next = width > 40 ? Math.round(width) : null
         return prev === next ? prev : next
       })
-      setComposerH((prev) => {
-        const next = height > 16 ? Math.round(height) : 36
-        return prev === next ? prev : next
-      })
-      // 两侧按钮要贴在「输入卡片」的左右内沿，而 [data-composer-input] 是卡片里的文字区：
-      // 往上找一层比文字区更宽更高的祖先才算卡片（宿主卡片有内边距，宽度差得很明显）
-      let cardRect = rect
-      if (node) {
-        const ancestors = []
-        let cursor = node.parentElement
-        for (let i = 0; i < 6 && cursor; i += 1) {
-          const box = cursor.getBoundingClientRect?.()
-          if (box) {
-            // 卡片 = 铺了底色或描边的那层；透明外壳不算
-            const style = typeof getComputedStyle === 'function' ? getComputedStyle(cursor) : null
-            const alpha = style ? Number((style.backgroundColor || '').match(/rgba?\([^)]*,\s*([\d.]+)\s*\)/)?.[1] ?? 1) : 0
-            ancestors.push({
-              left: box.left,
-              top: box.top,
-              width: box.width,
-              height: box.height,
-              surface: alpha > 0.05 || (style?.boxShadow ?? 'none') !== 'none',
-            })
-          }
-          cursor = cursor.parentElement
-        }
-        const hit = pickCardRect(ancestors, rect)
-        if (hit >= 0) cardRect = ancestors[hit]
-      }
-      const barRect = barRef.current?.getBoundingClientRect?.()
-      const rel = (value) => (Number.isFinite(value) ? Math.round(value) : 0)
-      // 文字区相对条下沿的偏移 / 高度：竖排按钮组垂直居中在文字行上（不压卡片底部那排按钮）
-      const top = rect && barRect ? Math.max(0, rel(rect.top - barRect.bottom)) : 0
-      setComposerGap((prev) => (prev === top ? prev : top))
-      const textH = rect && rect.height > 8 ? rel(rect.height) : 24
-      setComposerH((prev) => (prev === textH ? prev : textH))
-      // 卡片相对条左边缘的偏移与宽度：两侧按钮按这两个数摆，宿主的 padding 再厚也不会错位
-      const cardLeft = rect && cardRect && barRect ? rel(cardRect.left - barRect.left) : 0
-      setComposerLeft((prev) => (prev === cardLeft ? prev : cardLeft))
-      const cardWidth = cardRect && cardRect.width > 40 ? rel(cardRect.width) : 0
-      setComposerBox((prev) => (prev === cardWidth ? prev : cardWidth))
     }
     measure()
     const target = document.querySelector('[data-composer-input]')
@@ -6198,13 +6113,8 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       /** 条宽够不够把按钮搬到输入框两侧；首帧没量到、窄条都当不够 */
       const sidesOn = barSidesFit(barWidth)
       /** 版式变量挂一处：两侧按钮列靠 --qat-cl/--qat-cw 贴卡片内沿，靠 --qat-et/--qat-eh 对齐文字行 */
-      const sideVars = {
-    '--qat-eh': `${composerH}px`,
-    '--qat-et': `${composerGap}px`,
-    '--qat-cl': `${composerLeft}px`,
-    '--qat-cw': `${composerBox || barWidth || 0}px`,
-      }
-      const barStyle = barWidth === null ? sideVars : { width: `${barWidth}px`, marginInline: 'auto', ...sideVars }
+      // 版式全靠条内 flex：这里只给宽度（对齐 composer 正文），不再向宿主量任何几何
+      const barStyle = barWidth === null ? undefined : { width: `${barWidth}px`, marginInline: 'auto' }
 
       /** 按钮工厂：class/图标/文案一处定义，动作复用现成的 goPrev / goSkip / restart */
       const barActNode = (act) => {
@@ -6230,34 +6140,24 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
        * 宽条 → 左右两组，文字贴着单词、按钮朝外；
        * 窄条 → 组 span 不画，文字与按钮直接回条内，用 .qat-bar-* 那套绝对摆位。
        */
-      const barPieces = (groups, position, barMs) => {
-    const inline = groups.find((group) => group.side === 'inline')
-    if (inline) {
-      return {
-        inlineTexts: inline.texts.map((kind) => barTextNode(kind, position, barMs)),
-        inlineActs: inline.acts.map(barActNode),
-        sides: [],
-      }
-    }
+      /**
+       * 一条 bar 的分块：左列 | 进度 | 单词区 | 速度 | 右列 —— 全是同一条 flex 行的子项，
+       * 单词区 flex:1，位置不够它自己缩，按钮永远压不到单词。
+       */
+      const barPieces = (position, barMs, has) => {
+    const [left, right] = barSideButtonGroups({ total: has ? 1 : 0 })
     return {
-      // 宽条：文字留在条内两端（.qat-bar-count 左 / .qat-bar-speed 右），两侧组只放按钮
-      inlineTexts: [barTextNode('count', position, barMs), barTextNode('speed', position, barMs)],
-      inlineActs: [],
-      sides: groups.map((group) => {
-        const acts = group.acts.map(barActNode)
-        return h('span', {
-          className: 'qat-bar-side',
-          'data-side': group.side,
-          key: `qat-side-${group.side}`,
-        }, acts)
-      }),
+      left: h('span', { className: 'qat-bar-side', 'data-side': 'left', key: 'qat-side-left' }, left.acts.map(barActNode)),
+      count: barTextNode('count', position, barMs),
+      speed: barTextNode('speed', position, barMs),
+      right: h('span', { className: 'qat-bar-side', 'data-side': 'right', key: 'qat-side-right' }, right.acts.map(barActNode)),
     }
       }
 
       // 词库还在加载 / 空词库：给一个可见的占位条，别看起来像「按了没反应」
       // 没有词就没有上一个/下一个，也没有进度和速度，只剩重开与关闭（分组照样走同一套）
       if (total === 0) {
-    const loading = barPieces(barSideButtonGroups({ sides: sidesOn, total }), 0, 0)
+    const loading = barPieces(0, 0, false)
     return h('div', {
       className: 'qat-bar',
       'data-qat': '',
@@ -6266,12 +6166,13 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       style: barStyle,
     },
       h(Styles),
-      ...loading.inlineTexts,
+      loading.left,
+      loading.count,
       h('span', { className: 'qat-bar-center' },
         h('span', { className: 'qat-bar-empty' }, t('loading')),
       ),
-      ...loading.inlineActs,
-      ...loading.sides,
+      loading.speed,
+      loading.right,
     )
       }
 
@@ -6281,7 +6182,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       // 打错提示（跟打条）：3 / 4 / 5 次逐档揭示，打对后 wordWrong 归零
       const tip = tipState({ wrongCount: state.wordWrong, word: target, typed: state.typed })
 
-      const pieces = barPieces(barSideButtonGroups({ sides: sidesOn, total }), position, barMs)
+      const pieces = barPieces(position, barMs, true)
 
       return h('div', {
     className: 'qat-bar',
@@ -6292,9 +6193,9 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     style: barStyle,
       },
     h(Styles),
-    // 宽条：进度 / 实时速度 / 重开 / 关闭 / 上一个 / 下一个全在条外的两侧组里，
-    // 条内只剩单词、音标、提示；窄条：这些全部回条内绝对定位（旧摆位）
-    ...pieces.inlineTexts,
+    // 一条 flex 行：左列（上一个 / 重开）· 进度 · 单词 · 速度 · 右列（下一个 / 关闭）
+    pieces.left,
+    pieces.count,
     h('span', { className: 'qat-bar-center' },
       h('span', { className: 'qat-wordblock', ...selectStyle(settings.textSelectable === true) },
         // 上一个 / 下一个词：窄条只放两个词，箭头字符省略（词本身已经说清方向）
@@ -6310,7 +6211,8 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         masked,
         // 条宽要扣掉两侧按钮占的地方，剩下的才是单词能用的宽度；
         // 宽条按钮已经搬到条外，只扣一点点呼吸位
-        ...wordStyleFor(target, Math.max(200, (barWidth ?? 640) - (sidesOn ? 40 : 120)), { maxLines: 3, scale: settings.wordScale }),
+        // 两侧列 + 进度 + 速度要占横向空间，从条宽里扣掉，剩下的才是单词能用的
+        ...wordStyleFor(target, Math.max(180, (barWidth ?? 640) - (sidesOn ? 150 : 170)), { maxLines: 3, scale: settings.wordScale }),
         long: longWord,
         flash: state.flash,
         selectable: settings.textSelectable === true,
@@ -6326,8 +6228,8 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         h(TipLine, { tip, t, className: 'qat-bar-tip' }),
       ),
     ),
-    ...pieces.inlineActs,
-    ...pieces.sides,
+    pieces.speed,
+    pieces.right,
       )
     }
 
@@ -7681,7 +7583,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     FINGER_MAP, FINGER_IDS, FINGER_LABELS, FINGER_COLORS, FINGER_KEY,
     parseCustomFile, serializeCustomDict, splitCsvLine, toCustomWord, downloadText, withSlashes,
     stepIndex, toWordList, isRoundDone,
-    barSideButtonGroups, barSidesFit, pickCardRect, BAR_SIDES_MIN, BAR_ACT_SPEC,
+    barSideButtonGroups, barSidesFit, BAR_SIDES_MIN, BAR_ACT_SPEC,
     wrapWord, fitWordStyle, wordLines, FIT_SIZES, CHAR_RATIO,
     WORD_SCALES, WORD_SCALE_FACTOR, clampWordScale, scaleWordSizes, wordStyleFor,
     VOICE_RATES, CLICK_VOLUMES, clampVoiceRate, clampClickVolume,

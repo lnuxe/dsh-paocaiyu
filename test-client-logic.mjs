@@ -1318,26 +1318,23 @@ check('空词库时给出加载提示', gatherText(emptyBar).includes('loading')
 /* ================================================================== */
 
 // —— 分组纯函数：渲染的唯一真源（顺序也由它定，渲染只 map） ——
-const { barSideButtonGroups, barSidesFit, pickCardRect, BAR_SIDES_MIN } = renderTest
+const { barSideButtonGroups, barSidesFit, BAR_SIDES_MIN } = renderTest
 const wideGroups = barSideButtonGroups({ sides: true, total: 12 })
 check('宽条只有左右两组', wideGroups.map((group) => group.side).join(','), 'left,right')
 check('宽条左组 = 上一个 + 重开', wideGroups[0].acts.join(','), 'prev,restart')
 check('宽条右组 = 下一个 + 关闭', wideGroups[1].acts.join(','), 'skip,close')
 check('宽条：两侧组只放按钮，文字回条内',
   [wideGroups[0].texts.join(','), wideGroups[1].texts.join(',')].join('|'), '|')
-const loadingGroups = barSideButtonGroups({ sides: true, total: 0 })
+const loadingGroups = barSideButtonGroups({ total: 0 })
 check('词库还没来：左组只剩重开', loadingGroups[0].acts.join(','), 'restart')
 check('词库还没来：右组只剩关闭', loadingGroups[1].acts.join(','), 'close')
 check('词库还没来：不画上一个 / 下一个',
   loadingGroups.flatMap((group) => group.acts).some((act) => act === 'prev' || act === 'skip'), false)
 check('词库还没来：没有进度和速度可写', loadingGroups.map((group) => group.texts.length).join(','), '0,0')
-const inlineGroups = barSideButtonGroups({ sides: false, total: 12 })
-check('窄条回退成条内单组', inlineGroups.length, 1)
-check('窄条单组 side=inline', inlineGroups[0].side, 'inline')
-check('窄条：上一个 / 重开 / 下一个 / 关闭全在条内', inlineGroups[0].acts.join(','), 'prev,restart,skip,close')
-check('窄条：进度和速度留在条内', inlineGroups[0].texts.join(','), 'count,speed')
-check('窄条没词时也不画上一个 / 下一个',
-  barSideButtonGroups({ sides: false, total: 0 })[0].acts.join(','), 'restart,close')
+// 条宽窄不再改分组：永远是左右两组，只有 CSS 的排列方向（竖排 / 横排）跟着变
+check('分组不看条宽（窄条也还是左右两组）', barSideButtonGroups({ total: 12 }).map((g) => g.side).join(','), 'left,right')
+check('窄条两组动作不变', barSideButtonGroups({ total: 12 }).flatMap((g) => g.acts).join(','), 'prev,restart,skip,close')
+check('窄条没词时也不画上一个 / 下一个', barSideButtonGroups({ total: 0 }).flatMap((g) => g.acts).join(','), 'restart,close')
 check('窄条阈值 460', BAR_SIDES_MIN, 460)
 check('条宽够就走两侧', [barSidesFit(460), barSidesFit(1200)].join(','), 'true,true')
 check('条宽不够 / 首帧没量到都回退条内',
@@ -1345,7 +1342,7 @@ check('条宽不够 / 首帧没量到都回退条内',
 
 // —— 渲染：窄条（默认还没量到宽度）回退条内，四个按钮都在 ——
 check('默认走条内回退', bar?.props?.['data-sides'], 'false')
-check('窄条不画条外两组', findNodesByClass(bar, 'qat-bar-side').length, 0)
+check('窄条也画左右两组（CSS 换横排，不再整组隐藏）', findNodesByClass(bar, 'qat-bar-side').length, 2)
 check('窄条：重开仍在条内', findByAct(bar, 'restart') !== null, true)
 check('窄条：关闭仍在条内', findByAct(bar, 'close') !== null, true)
 check('窄条：上一个在条内', findByAct(bar, 'prev') !== null, true)
@@ -1373,25 +1370,30 @@ const wideBar = render('渲染：宽条（按钮搬到输入框两侧）', () =>
 check('宽条标了 data-sides', wideBar?.props?.['data-sides'], 'true')
 check('宽条画出左右两组',
   findNodesByClass(wideBar, 'qat-bar-side').map((node) => node.props?.['data-side']).join(','), 'left,right')
-check('文字行高变量挂在条上（和宽度同一处）', String(wideBar?.props?.style?.['--qat-eh'] ?? ''), '36px')
 check('宽条仍按 composer 宽度对齐', wideBar?.props?.style?.width, '900px')
+check('条上不再挂任何宿主几何变量（只留宽度）',
+  Object.keys(wideBar?.props?.style ?? {}).filter((key) => key.startsWith('--')).length, 0)
 check('左组按钮 = 上一个 + 重开', actsIn(sideNode(wideBar, 'left')).join(','), 'prev,restart')
 check('右组按钮 = 下一个 + 关闭', actsIn(sideNode(wideBar, 'right')).join(','), 'skip,close')
 check('两侧组里只有按钮，没有文字',
   [gatherText(sideNode(wideBar, 'left')).trim(), gatherText(sideNode(wideBar, 'right')).trim()].join('|'), '|')
-const barDirectClasses = (wideBar?.children ?? []).flat().map((child) => String(child?.props?.className ?? ''))
-check('条内不再直接放关闭按钮', barDirectClasses.some((name) => name.includes('qat-bar-close')), false)
-check('条内不再直接放重开按钮', barDirectClasses.some((name) => name.includes('qat-bar-restart')), false)
-// 进度 / 速度留在条内两端：文字不占条外空间，也不挡输入框（pointer-events:none）
-check('进度 / 速度留在条内两端',
-  [barDirectClasses.some((name) => name.includes('qat-bar-count')),
-    barDirectClasses.some((name) => name.includes('qat-bar-speed'))].join(','), 'true,true')
+// 渲染顺序 = 视觉顺序：左列 · 进度 · 单词区 · 速度 · 右列（flex 行，谁都不覆盖谁）
+const barKids = (wideBar?.children ?? []).flat().filter((child) => child && typeof child === 'object')
+check('条内一行：左列 | 进度 | 单词 | 速度 | 右列',
+  barKids.map((child) => {
+    const cls = String(child?.props?.className ?? '')
+    if (cls.includes('qat-bar-side')) return child.props['data-side']
+    if (cls.includes('qat-bar-count')) return 'count'
+    if (cls.includes('qat-bar-center')) return 'center'
+    if (cls.includes('qat-bar-speed')) return 'speed'
+    return cls || 'other'
+  }).filter((name) => ['left', 'right', 'count', 'speed', 'center'].includes(name)).join(','),
+  'left,count,center,speed,right')
 check('关闭按钮在右侧组里', findByAct(sideNode(wideBar, 'right'), 'close') !== null, true)
 check('重开按钮在左侧组里', findByAct(sideNode(wideBar, 'left'), 'restart') !== null, true)
-check('条内只剩单词 / 音标 / 提示', collectClasses(wideBar).includes('qat-bar-center'), true)
 widePlugin.__test.setOpen(false)
 
-// —— 词库加载中（total=0）也照 data-sides 走两套 ——
+// —— 词库加载中（total=0）：两侧列只剩重开 / 关闭 ——
 check('空词库的窄条也标 data-sides=false', emptyBar?.props?.['data-sides'], 'false')
 check('空词库的窄条只有重开 + 关闭',
   [findByAct(emptyBar, 'restart') !== null, findByAct(emptyBar, 'skip') !== null].join(','), 'true,false')
@@ -1442,70 +1444,28 @@ check('上一个 / 下一个都不改热键表',
   'prev,next-word')
 navPlugin.__test.setOpen(false)
 
-// —— 样式：两侧是竖排按钮列，贴在输入卡片左右内沿，垂直居中在文字行 ——
-check('两侧组从条的下沿 + 量到的文字行偏移往下排',
-  /\.qat-bar-side\{[^}]*top:calc\(100% \+ var\(--qat-et/.test(source), true)
-// 列高度 auto（不再在固定高度里溢出），垂直居中靠「文字行中心 + translateY(-50%)」
-check('两侧组垂直居中靠文字行中心 + translateY',
-  /\.qat-bar-side\{[^}]*top:calc\(100% \+ var\(--qat-et,0px\) \+ var\(--qat-eh,24px\) \/ 2\)/.test(source)
-  && /\.qat-bar-side\{[^}]*transform:translateY\(-50%\)/.test(source), true)
-check('两侧组高度 auto，不在固定高度里溢出（否则第二颗容易被裁）',
-  /\.qat-bar-side\{[^}]*overflow:visible/.test(source), true)
+// —— 样式：整条是一条 flex 行，两侧列是普通流子项（不再绝对定位、不量宿主） ——
+check('条自己是 flex 行（按钮和单词同一行）',
+  /\.qat-bar\{[^}]*display:flex/.test(source) && /\.qat-bar\{[^}]*gap:8px/.test(source), true)
+check('两侧列不再绝对定位（不再依赖宿主几何）',
+  /\.qat-bar-side\{[^}]*position:absolute/.test(source), false)
+check('两侧列是 flex 子项、窄条改横排',
+  /\.qat-bar-side\{[^}]*flex:none/.test(source)
+  && /\.qat-bar\[data-sides="false"\] \.qat-bar-side\{[^}]*flex-direction:row/.test(source), true)
+check('宽条：每侧两颗竖排',
+  /\.qat-bar-side\{[^}]*flex-direction:column/.test(source), true)
+check('单词区 flex:1 + min-width:0（位置不够自己缩，压不到单词）',
+  /\.qat-bar-center\{[^}]*flex:1/.test(source) && /\.qat-bar-center\{[^}]*min-width:0/.test(source), true)
+check('进度 / 速度是普通流子项（不再绝对摆位）',
+  [/\.qat-bar-count\{[^}]*position:static/.test(source), /\.qat-bar-speed\{[^}]*position:static/.test(source)].join(','), 'true,true')
+check('窄条把速度让给单词', /\.qat-bar\[data-sides="false"\] \.qat-bar-speed\{display:none\}/.test(source), true)
 // 回归锁：按钮带 key —— 同一 act 在不同组出现时，没 key 会复用错槽位（表现就是少一颗）
 check('两侧按钮都带 key（少 key 会少一颗按钮）',
   source.includes('key: `qat-act-${act}`'), true)
-check('两侧组是竖排（两个按钮上下叠，不占横向空间）',
-  /\.qat-bar-side\{[^}]*flex-direction:column/.test(source), true)
-// 左列：卡片左内沿 + 6px；右列：卡片左偏移 + 卡片宽 - 26px（20px 按钮 + 6px）
-// 两侧列在卡片边框**外面**：左列整体左移「自身宽度 + 间距」，右列左沿 = 卡片右沿 + 间距
-check('左列在卡片左边框外',
-  /\.qat-bar-side\[data-side="left"\]\{left:calc\(var\(--qat-cl,0px\) - var\(--qat-side-w\) - var\(--qat-side-gap\)\)\}/.test(source), true)
-check('右列在卡片右边框外',
-  /\.qat-bar-side\[data-side="right"\]\{left:calc\(var\(--qat-cl,0px\) \+ var\(--qat-cw,100%\) \+ var\(--qat-side-gap\)\)\}/.test(source), true)
-check('列宽与贴边框的间距是变量（一个常量调手感）',
-  ['--qat-side-w:20px', '--qat-side-gap:4px'].every((frag) => source.includes(frag)), true)
-// 卡片识别优先认「有底色/有描边」的那层：宿主外壳透明，只按宽度找会摆太远
-check('pickCardRect：有底色的那层优先（跳过错过的透明宽壳）',
-  pickCardRect([
-    { width: 900, height: 400, surface: false },
-    { width: 760, height: 96, surface: true },
-  ], { width: 600, height: 24 }), 1)
-// 回归锁：祖先矩形必须带 left/top —— 少了自己就会被当 0，列会飘进文字区（0.12.2 就踩过）
-check('祖先矩形带上 left / top（少了列会飘到文字里）',
-  ['left: box.left', 'top: box.top'].every((frag) => source.includes(frag)), true)
-check('pickCardRect：都没有底色时退回宽度启发',
-  pickCardRect([
-    { width: 700, height: 90, surface: false },
-  ], { width: 600, height: 24 }), 0)
-check('四个版式变量都挂在条上（同处 inline style）',
-  ['--qat-eh', '--qat-et', '--qat-cl', '--qat-cw'].every((key) => source.includes(`'${key}':`)), true)
-check('两侧摆位不再靠 100% 推算（卡片与文字区不同 x 也不会错位）',
-  source.includes('right:calc(100% - 4px)') || source.includes('left:calc(100% - 4px)'), false)
-
-// —— pickCardRect：从近到远找「比文字区更宽更高」的祖先当卡片 ——
-const edRect = { width: 600, height: 24, left: 100, top: 0 }
-check('pickCardRect：最近一层就够宽 → 选它',
-  pickCardRect([{ width: 640, height: 90 }, { width: 900, height: 400 }], edRect), 0)
-check('pickCardRect：第一层只有宽度相同 → 跳过，选下一层',
-  pickCardRect([{ width: 600, height: 24 }, { width: 640, height: 90 }], edRect), 1)
-check('pickCardRect：都不够宽 → -1（调用方退回用文字区）',
-  pickCardRect([{ width: 604, height: 20 }, { width: 610, height: 26 }], edRect), -1)
-check('pickCardRect：只高不宽也跳过',
-  pickCardRect([{ width: 600, height: 90 }], edRect), -1)
-check('pickCardRect：空 / 非数组 / 没有宽度 → -1',
-  [pickCardRect([], edRect), pickCardRect(null, edRect), pickCardRect([{ width: 999, height: 99 }], {})].join(','), '-1,-1,-1')
-check('组内元素回到普通流（不吃条内绝对摆位）', /\.qat-bar-side > \*\{[^}]*position:static/.test(source), true)
-check('窄条：上一个插在进度右边（左边距 56）', /\.qat-bar\[data-sides="false"\] \.qat-bar-prev\{[^}]*left:56px/.test(source), true)
-check('窄条：下一个插在重开左边（右边距 46）', /\.qat-bar\[data-sides="false"\] \.qat-bar-skip\{[^}]*right:46px/.test(source), true)
-check('窄条：速度给下一个让出位置（右边距 72）', /\.qat-bar-speed\{[^}]*right:72px/.test(source), true)
-check('窄条时条外两组整体隐藏', /\.qat-bar\[data-sides="false"\] \.qat-bar-side\{display:none\}/.test(source), true)
-check('条外按钮悬浮色走变量', /\.qat-bar-side \.qat-icon:hover\{[^}]*background:var\(--dsw-alias-/.test(source), true)
-check('条外那段样式不写死颜色', (function () {
-  const start = source.indexOf('.qat-bar-side{')
-  const block = source.slice(start, source.indexOf('.qat-bar[data-sides="false"] .qat-bar-side'))
-  return /#[0-9a-fA-F]{3,6}|rgb\(|:white|:black/.test(block)
-})(), false)
-
+check('宿主几何变量已彻底删除',
+  ['--qat-cl', '--qat-cw', '--qat-et', '--qat-eh', '--qat-side-w', '--qat-side-gap'].some((key) => source.includes(`'${key}'`)), false)
+check('不再从编辑器往上找卡片',
+  source.includes('pickCardRect'), false)
 
 // —— 面板：章节下拉 & 词库选择器 ——
 function countTag(node, tag, out = { n: 0 }) {
