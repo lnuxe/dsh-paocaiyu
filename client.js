@@ -2776,7 +2776,7 @@ window.__ModuleLoader__.load({
 .qat-bar[data-sides="false"] .qat-bar-skip:hover{opacity:.9}
 /* 条外摆位（宽条）：两组贴在输入框左右边框外面，top:100% 是条的下沿，
    height 取量到的输入框高度，按钮组就垂直居中在输入框那条高度区间里 */
-.qat-bar-side{--qat-side-w:20px;--qat-side-gap:4px;position:absolute;top:calc(100% + var(--qat-et,0px));height:var(--qat-eh,24px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;z-index:3;pointer-events:none}
+.qat-bar-side{--qat-side-w:20px;--qat-side-gap:4px;position:absolute;top:calc(100% + var(--qat-et,0px) + var(--qat-eh,24px) / 2);transform:translateY(-50%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;overflow:visible;z-index:5;pointer-events:none}
 .qat-bar-side[data-side="left"]{left:calc(var(--qat-cl,0px) - var(--qat-side-w) - var(--qat-side-gap))}
 .qat-bar-side[data-side="right"]{left:calc(var(--qat-cl,0px) + var(--qat-cw,100%) + var(--qat-side-gap))}
 /* 组内一律回到普通流：条内那套绝对摆位不许跟进来 */
@@ -6212,6 +6212,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     const run = act === 'prev' ? goPrev : act === 'skip' ? goSkip : act === 'restart' ? restart : () => setOpen(false)
     return h('span', {
       ...pressable(run),
+      key: `qat-act-${act}`,
       className: `qat-icon ${spec.cls}`,
       'data-act': act,
       title: t(spec.label),

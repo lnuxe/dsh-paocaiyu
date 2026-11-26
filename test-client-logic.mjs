@@ -1445,8 +1445,15 @@ navPlugin.__test.setOpen(false)
 // —— 样式：两侧是竖排按钮列，贴在输入卡片左右内沿，垂直居中在文字行 ——
 check('两侧组从条的下沿 + 量到的文字行偏移往下排',
   /\.qat-bar-side\{[^}]*top:calc\(100% \+ var\(--qat-et/.test(source), true)
-check('两侧组高度读文字行高（垂直居中靠它）',
-  /\.qat-bar-side\{[^}]*height:var\(--qat-eh/.test(source), true)
+// 列高度 auto（不再在固定高度里溢出），垂直居中靠「文字行中心 + translateY(-50%)」
+check('两侧组垂直居中靠文字行中心 + translateY',
+  /\.qat-bar-side\{[^}]*top:calc\(100% \+ var\(--qat-et,0px\) \+ var\(--qat-eh,24px\) \/ 2\)/.test(source)
+  && /\.qat-bar-side\{[^}]*transform:translateY\(-50%\)/.test(source), true)
+check('两侧组高度 auto，不在固定高度里溢出（否则第二颗容易被裁）',
+  /\.qat-bar-side\{[^}]*overflow:visible/.test(source), true)
+// 回归锁：按钮带 key —— 同一 act 在不同组出现时，没 key 会复用错槽位（表现就是少一颗）
+check('两侧按钮都带 key（少 key 会少一颗按钮）',
+  source.includes('key: `qat-act-${act}`'), true)
 check('两侧组是竖排（两个按钮上下叠，不占横向空间）',
   /\.qat-bar-side\{[^}]*flex-direction:column/.test(source), true)
 // 左列：卡片左内沿 + 6px；右列：卡片左偏移 + 卡片宽 - 26px（20px 按钮 + 6px）
