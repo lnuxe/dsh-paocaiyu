@@ -2611,6 +2611,47 @@ check('条上首帧就是存档那个词', resumedWord, barWords[2])
 renderTest.setOpen(false)
 renderTest.writeBarProgress('cet4', 0)
 
+// —— 条上换词库（0.16.0）：词库按钮、搜索结果、最近使用、换库写盘 ——
+{
+  const meta = renderTest.dictionaryById('cet4')
+  check('dictionaryById 认得 cet4', [meta?.id, meta?.name, meta?.length], ['cet4', 'CET-4', 2607])
+  const hits = renderTest.searchCatalog('cet', 10).map((item) => item.id)
+  check('搜「cet」能搜到 cet4 / cet6', [hits.includes('cet4'), hits.includes('cet6')].join(','), 'true,true')
+  check('搜索大小写无关', renderTest.searchCatalog('CET-6', 5).some((item) => item.id === 'cet6'), true)
+  check('空搜索词不返回结果（浮层里走「前 40 条」那条路）', renderTest.searchCatalog('   ', 10).length, 0)
+
+  // 换库会把库号写进偏好 + 最近使用（跟面板同一套键）
+  renderTest.writeDictId('cet6')
+  check('换库后偏好就是新库', renderTest.readDictId(), 'cet6')
+  check('最近使用排在最前', renderTest.readRecent()[0], 'cet6')
+  renderTest.writeDictId('cet4')
+  check('切回来也记一笔', renderTest.readRecent()[0], 'cet4')
+
+  // 条上按钮：显示当前库名，点得动，首帧不弹浮层
+  renderTest.writeDictId('cet6')
+  renderTest.setOpen(true)
+  const dictBar = render('渲染：跟打条带词库按钮',
+    () => renderTest.components.ComposerTrainer({ useInput: () => '', inputActions: {}, ctx: ctxStub }))
+  const dictChip = findNodesByClass(dictBar, 'qat-bar-dict')[0]
+  check('条上有词库按钮', Boolean(dictChip), true)
+  check('词库按钮显示当前库名',
+    (dictChip?.children ?? []).map((child) => (typeof child === 'string' ? child : '')).join(''), 'CET-6')
+  check('词库按钮可点（onMouseDown + data-act）',
+    [typeof dictChip?.props?.onMouseDown, dictChip?.props?.['data-act']].join(','), 'function,dict')
+  check('没点开时不弹词库浮层', findNodesByClass(dictBar, 'qat-dict-pop').length, 0)
+  check('浮层里没画搜索框', findNodesByClass(dictBar, 'qat-dict-search').length, 0)
+  renderTest.setOpen(false)
+  renderTest.writeDictId('cet4')
+
+  // 换库动作必须两件事一起做：写偏好、把跟打进度归零（否则新库接着旧库的词序）
+  const chooseAt = source.indexOf('const chooseDict = useCallback')
+  const chooseSrc = source.slice(chooseAt, source.indexOf('const advance = useCallback', chooseAt))
+  check('chooseDict 写了偏好', /writeDictId\(id\)/.test(chooseSrc), true)
+  check('chooseDict 把词序进度归零', /writeBarProgress\(id, 0\)/.test(chooseSrc), true)
+  check('chooseDict 重开一轮（round 归零，换库整本重载）', /setRound\(0\)/.test(chooseSrc), true)
+  check('chooseDict 收浮层并清搜索词', /setDictOpen\(false\)/.test(chooseSrc) && /setDictQuery\(''\)/.test(chooseSrc), true)
+}
+
 // —— 长句的 CSS 不能和 fitWordStyle 抢字号（D1 与 D2 合并后的回归） ——
 {
   const rule = (source.match(/\.qat-word\[data-long="true"\][^{]*\{([^}]*)\}/g) ?? []).join(' ')
