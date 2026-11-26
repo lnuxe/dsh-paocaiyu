@@ -3757,7 +3757,22 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const scale = clampWordScale(options?.scale)
       const want = Math.max(1, Number(options?.maxLines) || 2)
       const maxLines = scale === 'large' ? Math.max(4, want) : scale === 'small' ? Math.min(2, want) : want
-      return fitWordStyle(text, width, { maxLines, sizes: scaleWordSizes(options?.sizes ?? FIT_SIZES, scale) })
+      const sizes = options?.sizes ?? FIT_SIZES
+      // 长句优先「缩字号」而不是「多折一行」：先按 ≤2 行的预算挑字号，
+      // 挑不出来（句子实在太长）才用满 maxLines。
+      // 例：43 字符的句子在 556px 里是 36px 两行，而不是 52px 三行把跟打条顶高一大截。
+      const tightCap = Math.min(2, maxLines)
+      const tight = fitWordStyle(text, width, { maxLines: tightCap, sizes })
+      const chosen = scale !== 'large' && tight.lines.length <= tightCap
+        ? tight
+        : fitWordStyle(text, width, { maxLines, sizes })
+      const factor = WORD_SCALE_FACTOR[scale] ?? 1
+      if (factor === 1) return chosen
+      // 档位系数压在选择之后：先挑好字号，再整体放大/缩小，档位之间才不会互相咬住
+      const size = Math.max(10, Math.round(chosen.size * factor))
+      const room = Math.max(120, Number(width) || 0)
+      const perLine = Math.max(4, Math.floor(room / (size * CHAR_RATIO)))
+      return { size, perLine, lines: wrapWord(String(text ?? ''), perLine) }
     }
 
     /** 断好的行 → 每行的起止（全局索引跨行连续，逐字判定不能被拆行影响） */

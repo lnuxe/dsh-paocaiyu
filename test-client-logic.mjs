@@ -2419,15 +2419,28 @@ check('没传宽度也有字号', renderTest.fitWordStyle('cancel').size > 0, tr
 
 // —— 字号档（N13）：auto 等于不改，三档乘系数且单调，行数上限跟着档位放宽 ——
 const BASE_FIT = renderTest.fitWordStyle(LONG, 520, { maxLines: 3 })
-check('wordScale=auto 等于不改自动排版',
-  renderTest.wordStyleFor(LONG, 520, { maxLines: 3, scale: 'auto' }), BASE_FIT)
-check('不传 scale 也等于 auto', renderTest.wordStyleFor(LONG, 520, { maxLines: 3 }), BASE_FIT)
+const AUTO_FIT = renderTest.wordStyleFor(LONG, 520, { maxLines: 3, scale: 'auto' })
+// auto 不再等于「原样三行」：长句优先缩字号压进 2 行，实在压不进才用满 maxLines
+check('auto 对长句先缩字号、压进 2 行', AUTO_FIT.lines.length <= 2, true)
+check('auto 因此比「原样三行」字号更小', AUTO_FIT.size < BASE_FIT.size, true)
+check('不传 scale 也等于 auto', renderTest.wordStyleFor(LONG, 520, { maxLines: 3 }), AUTO_FIT)
 check('medium 系数为 1，与 auto 同档',
-  renderTest.wordStyleFor(LONG, 520, { maxLines: 3, scale: 'medium' }).size, BASE_FIT.size)
+  renderTest.wordStyleFor(LONG, 520, { maxLines: 3, scale: 'medium' }), AUTO_FIT)
 const sizeAt = (scale) => renderTest.wordStyleFor(LONG, 520, { maxLines: 3, scale }).size
 check('small < medium < large', sizeAt('small') < sizeAt('medium') && sizeAt('medium') < sizeAt('large'), true)
-check('small 比自动小、large 比自动大', [sizeAt('small') < BASE_FIT.size, sizeAt('large') > BASE_FIT.size], [true, true])
-check('large 放宽到 4 行', renderTest.wordStyleFor(LONG, 520, { maxLines: 3, scale: 'large' }).lines.length, 4)
+check('small 比 auto 小、large 比 auto 大', [sizeAt('small') < AUTO_FIT.size, sizeAt('large') > AUTO_FIT.size], [true, true])
+// 缩字号优先级的边界：短句不动、中句两行、超长句才用满三行
+check('短句不受影响（仍最大字号单行）', [renderTest.wordStyleFor('cat', 520, { maxLines: 3 }).size, renderTest.wordStyleFor('cat', 520, { maxLines: 3 }).lines.length], [52, 1])
+const MID = 'The quick brown fox jumps over the lazy dog'
+check('43 字符句子：缩到两行、字号明显变小',
+  [renderTest.wordStyleFor(MID, 556, { maxLines: 3 }).lines.length, renderTest.wordStyleFor(MID, 556, { maxLines: 3 }).size], [2, 36])
+check('超长句仍允许用满三行', renderTest.wordStyleFor(LONG, 520, { maxLines: 3 }).lines.length <= 3, true)
+check('large 档不参与缩字号（用户主动要大字）',
+  renderTest.wordStyleFor(MID, 556, { maxLines: 3, scale: 'large' }).size >= renderTest.wordStyleFor(MID, 556, { maxLines: 3 }).size, true)
+// large = 在「放宽到 4 行」选出的字号上再乘 1.25（档位系数压在选择之后，行数可能被放大到 5-6 行，这是用户主动要大字）
+check('large 在 4 行字号基础上乘 1.25',
+  renderTest.wordStyleFor(LONG, 520, { maxLines: 3, scale: 'large' }).size,
+  Math.round(renderTest.fitWordStyle(LONG, 520, { maxLines: 4 }).size * 1.25))
 check('small 收到 2 行', renderTest.wordStyleFor(LONG, 520, { maxLines: 3, scale: 'small' }).lines.length, 2)
 check('缩放档也不丢字', ['small', 'medium', 'large']
   .every((scale) => renderTest.wordStyleFor(LONG, 320, { maxLines: 3, scale }).lines.join('') === LONG), true)
@@ -2486,9 +2499,60 @@ check('阶梯缩放：small 每档都变小',
   const barLarge = pxAt('large', 'dock')
   check('跟打条 large 字号比 medium 大', barLarge > barMedium, true)
   renderTest.setSetting('wordScale', 'auto')
-  check('auto 档回到自动排版字号', fontSizeOf('panel'), renderTest.fitWordStyle(LONG, 700, { maxLines: 3 }).size)
+  // auto 档：长句先争取两行（fitWordStyle 传 2 行就是同一套判定）
+  check('auto 档回到自动排版字号（长句先争取两行）', fontSizeOf('panel'), renderTest.fitWordStyle(LONG, 700, { maxLines: 2 }).size)
   check('样式里有多行排版的类', /\.qat-word\[data-wrap="true"\]/.test(source), true)
   check('样式里有 .qat-word-line', /\.qat-word-line\{/.test(source), true)
+}
+
+// —— 长句自适应（跟打条 / 面板共用一套）：长句优先缩字号，别靠多折行把条顶高 ——
+{
+  const SHORT = 'cat'
+  const MID = 'The quick brown fox jumps over the lazy dog'
+  const HUGE = "In spite of the fact that the committee had already reached a final decision about the proposal, "
+    + 'they decided to reopen the whole discussion again yesterday'
+  const at = (text, width, maxLines = 3) => renderTest.wordStyleFor(text, width, { maxLines, scale: 'auto' })
+  check('短词：仍是最大字号、一行', [at(SHORT, 556).size, at(SHORT, 556).lines.length], [52, 1])
+  check('中短句：一行放得下就不缩', at('quick brown fox', 556).size, 52)
+  check('43 字符句子：缩字号压进两行', [at(MID, 556).lines.length, at(MID, 556).size], [2, 36])
+  check('同一句在更窄的条里字号更小', at(MID, 340).size < at(MID, 556).size, true)
+  check('超长句：缩到最小字号仍两行就两行，不再硬撑三行大字',
+    at(HUGE, 556).lines.length <= 2, false)
+  check('超长句：实在压不进两行才用满 maxLines', at(HUGE, 556).lines.length <= 3, true)
+  check('长句渲染出的行拼回去等于原文', at(MID, 340).lines.join(''), MID)
+  check('条越窄越早缩字号（单调）', [at(HUGE, 300).size <= at(HUGE, 556).size, at(HUGE, 556).size <= at(HUGE, 760).size].join(','), 'true,true')
+  // 跟打条真正传进去的可用宽度 = 条宽 - 两侧列/进度/速度，这里锁住这条扣减不会被忘掉
+  check('跟打条给单词的可用宽度从条宽里扣掉两侧', source.includes('(barWidth ?? 640) - (sidesOn ? 150 : 170)'), true)
+}
+
+// —— 长句真的落地到渲染：跟打条里的字号 < 52，且靠折行数（≤2）而不是大字撑 ——
+{
+  const LONG_WORD = 'The quick brown fox jumps over the lazy dog'
+  const pxOfWord = (node) => {
+    let size = null
+    const walk = (item) => {
+      if (!item || typeof item !== 'object' || size !== null) return
+      if (Array.isArray(item)) return item.forEach(walk)
+      if (typeof item.type === 'function') return walk(item.type(item.props ?? {}))
+      if (String(item.props?.className ?? '').split(/\s+/).includes('qat-word')) size = parseFloat(item.props?.style?.fontSize)
+      walk(item.children)
+      walk(item.props?.children)
+    }
+    walk(node)
+    return size
+  }
+  const dockLong = render('渲染：跟打条里的长句', () => renderTest.components.Trainer({
+    words: [LONG_WORD], variant: 'dock', showMeta: true, ctx: ctxStub,
+  }))
+  const dockShort = render('渲染：跟打条里的短词', () => renderTest.components.Trainer({
+    words: ['cat'], variant: 'dock', showMeta: true, ctx: ctxStub,
+  }))
+  check('短词仍是 52px', pxOfWord(dockShort), 52)
+  check('长句在条里真的降了字号', pxOfWord(dockLong) < 52, true)
+  check('长句在条里排成两行（data-wrap）',
+    findNodesByClass(dockLong, 'qat-word')[0]?.props?.['data-wrap'], 'true')
+  check('长句的行数 ≤ 2',
+    findNodesByClass(dockLong, 'qat-word-line').length, 2)
 }
 
 // —— 进度存档：Esc 关掉跟打条再打开，接着打上次那个词 ——
