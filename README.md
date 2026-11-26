@@ -2,7 +2,7 @@
 
 > DSH 插件：在对话输入框里练英文打字。**输入框上方给一个英文单词，你照着它打一遍**——就是「跟打」。
 
-- 包名：`@local/qwerty-autotype-ui` · 命令：`/qwerty-autotype` · 许可证：GPL-3.0
+- 包名：`@lnuxe/paocaiyu` · 命令：`/qwerty-autotype` · 许可证：GPL-3.0
 - 词库：371 本 / 41 万词（四六级、考研、托福、雅思、商务、代码、日语……）
 
 ![跟打演示](assets/demo.gif)
@@ -66,8 +66,10 @@ npm run index    # 重新生成词库目录（371 本）
 在 DSH 里以插件（bundle）方式装上就能用，不额外起服务：
 
 ```bash
-pnpm --dir ~/.dsh/profiles/web add @local/qwerty-autotype-ui   # 本地包
-# 或者从插件市场装：搜索「泡菜鱼」
+# 从插件市场（npm）装
+pnpm --dir ~/.dsh/profiles/web add @lnuxe/paocaiyu
+# 或者直接从仓库装（不经过 registry）
+pnpm --dir ~/.dsh/profiles/web add github:lnuxe/dsh-paocaiyu
 ```
 
 装好后：侧栏左上角出现图标，输入框为空时按 `Tab` 也能起条。
@@ -78,4 +80,4 @@ pnpm --dir ~/.dsh/profiles/web add @local/qwerty-autotype-ui   # 本地包
 - 许可证 **GPL-3.0**，词库数据来自同样开源的 [qwerty-learner](https://github.com/Kaiyiwing/qwerty-learner)（见 [NOTICE](./NOTICE)）
 - 改动记录见 [CHANGELOG.md](./CHANGELOG.md)
 - 发布到插件市场的步骤见 [docs/publish-checklist.md](./docs/publish-checklist.md)
-- 仓库：https://github.com/lnuxe/qwerty-autotype-ui
+- 仓库：[lnuxe/dsh-paocaiyu](https://github.com/lnuxe/dsh-paocaiyu)（GitHub 仓库名只收 ASCII，中文名「泡菜鱼插件」放在标题与描述里）

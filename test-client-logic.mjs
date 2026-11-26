@@ -28,7 +28,7 @@ const sandbox = {
   window: {
     __ModuleLoader__: {
       load({ id, factory: fn }) {
-        if (id !== '@local/qwerty-autotype-ui') throw new Error(`unexpected id: ${id}`)
+        if (id !== '@lnuxe/paocaiyu') throw new Error(`unexpected id: ${id}`)
         factory = fn
       },
     },

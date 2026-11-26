@@ -1,16 +1,16 @@
 {
-  "name": "@local/qwerty-autotype-ui",
-  "version": "1.0.0",
+  "name": "@lnuxe/paocaiyu",
+  "version": "1.0.1",
   "type": "module",
   "description": "泡菜鱼（Paocaiyu）：在 DSH 对话输入框里练英文打字 —— /qwerty-autotype 起一张跟打卡片，371 本词库 41 万词。",
   "license": "GPL-3.0-only",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/lnuxe/qwerty-autotype-ui.git"
+    "url": "git+https://github.com/lnuxe/dsh-paocaiyu.git"
   },
-  "homepage": "https://github.com/lnuxe/qwerty-autotype-ui#readme",
+  "homepage": "https://github.com/lnuxe/dsh-paocaiyu#readme",
   "bugs": {
-    "url": "https://github.com/lnuxe/qwerty-autotype-ui/issues"
+    "url": "https://github.com/lnuxe/dsh-paocaiyu/issues"
   },
   "exports": {
     ".": "./index.js",

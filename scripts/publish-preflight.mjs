@@ -37,6 +37,14 @@ add('dsh.client.inject 声明了宿主 UI 包',
 add('cordis.patch.yml 里的 name 和包名一致',
   read('cordis.patch.yml').includes(pkg.name), pkg.name)
 
+// 2b) 包名三处一致（boot roster 用包名当 row id，注册名对不上就挂不上）
+add('client.js 的模块 id 等于包名',
+  read('client.js').includes(`id: '${pkg.name}'`),
+  `期望 id: '${pkg.name}'`)
+add('index.js 的 plugin name 是包名末段',
+  read('index.js').includes(`export const name = '${pkg.name.split('/').pop()}'`),
+  pkg.name.split('/').pop())
+
 // 3) 市场卡片：标题/描述/图标
 add('导出 ./package.json（字段回退要用）', pkg.exports?.['./package.json'] === './package.json', pkg.exports?.['./package.json'] ?? '')
 add('导出 ./locale/*.json', pkg.exports?.['./locale/*.json'] === './locale/*.json', pkg.exports?.['./locale/*.json'] ?? '')

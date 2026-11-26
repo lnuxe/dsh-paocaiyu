@@ -7,6 +7,36 @@
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-11-26
+
+包 id 与仓库名一起换掉，准备上架插件市场。
+
+### Changed
+
+- 包 id：`@local/qwerty-autotype-ui` → **`@lnuxe/paocaiyu`**。三处必须同时改，缺一处页面就挂不上：
+  `package.json.name`、`cordis.patch.yml` 的行 `name`、`client.js` 的 `__ModuleLoader__.load({ id })`
+  （boot roster 拿包名当 row id，注册名对不上会报 `loaded without registering "<包名>"`）
+- `index.js` 的 Host 插件名 → `paocaiyu`，patch 行 id → `paocaiyu`
+- GitHub 仓库改名：`qwerty-autotype-ui` → **`dsh-paocaiyu`**（GitHub 仓库名只收 ASCII，
+  中文「泡菜鱼插件」放在标题和 repo description 里）；`repository` / `homepage` / `bugs` /
+  README / git remote 全部跟着换
+- `client.js` 里存偏好用的 `NS = 'qwerty-autotype'` 与指令名**故意不动**：动了等于把用户进度清零
+
+### Added
+
+- `npm run prepublish-check` 增到 **40 项**：新增「client.js 模块 id 等于包名」「index.js plugin name 是包名末段」
+- README 安装段给两条真实可跑的路：npm 市场安装 / `github:lnuxe/dsh-paocaiyu` 直装
+
+### 本机安装迁移（已做）
+
+```
+~/.dsh/profiles/web/package.json
+  dependencies: "@local/qwerty-autotype-ui" → "@lnuxe/paocaiyu": link:<仓库>
+  dsh.profile.bundles: 同步替换（位置不变）
+~/.dsh/profiles/web/node_modules/@local/qwerty-autotype-ui → 删除
+~/.dsh/profiles/web/node_modules/@lnuxe/paocaiyu → 软链到仓库
+```
+
 ## [1.0.0] - 2026-11-26
 
 改名 **泡菜鱼**，并按 DSH 插件市场的发布要求把包补齐。功能与 0.16.3 一致（无换词库、无按章）。

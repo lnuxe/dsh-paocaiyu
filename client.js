@@ -9,7 +9,7 @@
  * 三种入口共用同一个卡片组件，判定逻辑只有一份。
  */
 window.__ModuleLoader__.load({
-  id: '@local/qwerty-autotype-ui',
+  id: '@lnuxe/paocaiyu',
   factory(require) {
     const React = require('react')
     const h = React.createElement

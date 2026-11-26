@@ -19,7 +19,7 @@ npm run prepublish-check    # 市场元信息自检（38 项）
 | --- | --- | --- | --- |
 | 市场卡片标题 | `locale/zh.json` 的 `meta.title` | **泡菜鱼** | 随便改，只是文案 |
 | 市场卡片描述 | `locale/{zh,en}.json` 的 `meta.description` | 一句话介绍 | 随便改 |
-| 包 id | `package.json` 的 `name` + `cordis.patch.yml` 的 `name` | `@local/qwerty-autotype-ui` | 改了两处必须同时改，且本机 `~/.dsh/profiles/web` 里的安装也要跟着换 |
+| 包 id | `package.json` 的 `name` + `cordis.patch.yml` 的 `name` + `client.js` 的 `__ModuleLoader__.load({ id })` | `@lnuxe/paocaiyu` | **三处必须一致**：boot roster 用包名当 row id，注册名对不上就挂不上 |
 
 `@local/*` 只是本地开发用的 scope，**发不到公共 registry**。要发公共包，第 2 步必须换名字。
 
@@ -27,29 +27,22 @@ npm run prepublish-check    # 市场元信息自检（38 项）
 
 ### A. 只做自托管（不经过 registry）
 
-保持 `@local/qwerty-autotype-ui` 不变，把仓库目录直接给 DSH 当本地 bundle：
+包名保持 `@lnuxe/paocaiyu`，从仓库直装，不走 registry：
 
 ```bash
-# 本机 profile 里已经有软链，改完 client.js 刷新页面即可
-ls -l ~/.dsh/profiles/web/node_modules/@local/qwerty-autotype-ui
+pnpm --dir ~/.dsh/profiles/web add github:lnuxe/dsh-paocaiyu
 ```
 
-这条路**不用发版**，改动即生效；适合自己用。
+这条路**不用发 npm**，`git push` 完就能装最新代码。
 
-### B. 发到公共 registry（真·插件市场）
+### B. 发到公共 registry（`@lnuxe/paocaiyu`）
 
-换一个能上 registry 的名字，一次改两处 + 一次安装：
+名字已经改好，发布只需要一次登录 + 一条命令：
 
 ```bash
-# 1) 换名（示例：@lnuxe/paocaiyu）
-npm pkg set name='@lnuxe/paocaiyu'
-sed -i '' "s#@local/qwerty-autotype-ui#@lnuxe/paocaiyu#g" cordis.patch.yml
-
-# 2) 自检 + 打包看看里面有什么
-npm run prepublish-check
-npm pack --dry-run
-
-# 3) 发布
+npm login                 # 或 export NODE_AUTH_TOKEN=<token>
+npm run prepublish-check  # 38 项自检
+npm pack --dry-run        # 看真发布时会带哪些文件
 npm publish --access public
 ```
 
@@ -59,7 +52,9 @@ npm publish --access public
 pnpm --dir ~/.dsh/profiles/web add @lnuxe/paocaiyu
 ```
 
-> 换了包名，旧的 `@local/qwerty-autotype-ui` 软链要删掉，否则 DSH 会同时看到两份。
+> 改包名时 `package.json` 的 `name`、`cordis.patch.yml` 的 `name`、`client.js` 的
+> `__ModuleLoader__.load({ id })` **三处必须一致**；漏掉第三处，页面加载 bundle 时会报
+> `loaded without registering "<包名>"`。
 
 ## 3. 发布前必须成立的几件事（`prepublish-check` 全查）
 
