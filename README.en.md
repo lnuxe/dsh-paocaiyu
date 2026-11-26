@@ -86,7 +86,8 @@ No shortcut person? There's a button on each side of the word: previous / restar
 ```bash
 npm run verify             # syntax + 1525 tests + assembly smoke + size gate
 npm test                   # tests only, no browser needed
-npm run prepublish-check   # 45 pre-release metadata checks
+npm run prepublish-check   # 51 pre-release metadata checks
+npm run publish:npm        # one-command publish, then reads back from the registry
 npm run index              # rebuild the dictionary index
 ```
 

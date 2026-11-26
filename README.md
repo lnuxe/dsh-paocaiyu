@@ -86,7 +86,8 @@ pnpm --dir ~/.dsh/profiles/web add github:lnuxe/dsh-paocaiyu
 ```bash
 npm run verify             # 语法检查 + 1525 条测试 + 装配冒烟 + 体积闸门
 npm test                   # 只跑测试，不需要浏览器
-npm run prepublish-check   # 发布前元信息自检（45 项）
+npm run prepublish-check   # 发布前元信息自检（51 项）
+npm run publish:npm        # 一条命令发布，发完回读 registry
 npm run index              # 重新生成词库目录
 ```
 

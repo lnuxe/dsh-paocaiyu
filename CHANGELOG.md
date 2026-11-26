@@ -7,6 +7,25 @@
 
 ## [Unreleased]
 
+## [1.0.6] - 2026-11-26
+
+### 正式发到 npm
+
+- **`@lnuxe/paocaiyu@1.0.5` 已在 registry 上架**：匿名 `npm view @lnuxe/paocaiyu version`
+  返回 `1.0.5`，`dist-tags.latest` 指向它，tarball 可公开下载（14 个文件、695,542 字节）
+- 安装通道全部实测通过：`npm i @lnuxe/paocaiyu`、`pnpm add @lnuxe/paocaiyu@1.0.5`、
+  `pnpm --dir ~/.dsh/profiles/web add @lnuxe/paocaiyu`
+- 发布时的两个坑记一下：
+  - granular token 没勾 **Bypass 2FA** 时 `npm publish` 报 `EOTP`，必须给 OTP 或换带 bypass 的 token
+  - 刚发完的那几分钟，registry 的读写副本不同步：`PUT` 已成功、`npm view` 还是 404，
+    再发一次会撞 `E409 Cannot publish over previously staged version`。
+    判断发布是否成功要看**匿名**读：`curl https://registry.npmjs.org/@lnuxe%2Fpaocaiyu`
+    与 tarball 直连都返 200 才算数，别信本地 stdout 的 `+ pkg@version`
+
+### Docs
+
+- 中英 README 本地开发段的两处 `45 项` 改成 `51 项`（preflight 已扩到 51），并补上 `npm run publish:npm`
+
 ## [1.0.5] - 2026-11-26
 
 把「发到插件市场」压成一条命令，并且发布后真去 registry 回读，不听本地 stdout 的自我表扬。
