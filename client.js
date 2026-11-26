@@ -2372,6 +2372,32 @@ window.__ModuleLoader__.load({
     }
 
     /** 搜索词库：名称 / id / 标签 */
+    /**
+     * 词库浮层的位置：贴按钮往上弹，上面放不下就往下翻，左右夹进视口。
+     * 用视口坐标（position:fixed）而不是贴着条摆 —— 条所在那层祖先基本都 overflow:hidden，
+     * 贴着自己摆的浮层会被整块裁掉（列表只剩一两行）。
+     */
+    function popoverPlace(rect, viewport, opts) {
+      const vw = Math.max(0, Number(viewport?.width) || 0)
+      const vh = Math.max(0, Number(viewport?.height) || 0)
+      const width = Math.min(Number(opts?.width) || 240, Math.max(120, vw - 16))
+      const maxHeight = Number(opts?.maxHeight) || 320
+      const gap = 6
+      const edge = 8
+      const top = Number(rect?.top) || 0
+      const bottom = Number(rect?.bottom) || 0
+      const center = (Number(rect?.left) || 0) + (Number(rect?.width) || 0) / 2
+      const left = Math.max(edge, Math.min(center - width / 2, vw - width - edge))
+      const roomUp = top - gap - edge
+      const roomDown = vh - bottom - gap - edge
+      // 上面能给出「一屏小列表」就往上，否则选空间大的那边
+      const above = roomUp >= Math.min(maxHeight, 140) || roomUp >= roomDown
+      const limit = Math.min(maxHeight, Math.max(80, above ? roomUp : roomDown))
+      return above
+    ? { side: 'up', style: { left, width, bottom: Math.max(edge, vh - top + gap), maxHeight: limit } }
+    : { side: 'down', style: { left, width, top: bottom + gap, maxHeight: limit } }
+    }
+
     function searchCatalog(query, limit) {
       const q = String(query || '').trim().toLowerCase()
       if (!q) return []
@@ -2781,10 +2807,10 @@ window.__ModuleLoader__.load({
 .qat-bar-dict{cursor:pointer;pointer-events:auto;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:2px 6px;border-radius:6px;font-size:11px;line-height:1.2;color:var(--dsw-alias-label-tertiary)}
 .qat-bar-dict:hover,.qat-bar-dict[data-open="true"]{background:var(--dsw-alias-interactive-hover);color:var(--dsw-alias-label-primary)}
 .qat-bar[data-sides="false"] .qat-bar-dict{max-width:72px}
-.qat-dict-pop{position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);z-index:6;display:flex;flex-direction:column;gap:4px;width:224px;max-height:240px;padding:6px;border-radius:10px;background:var(--dsw-alias-bg-elevated);box-shadow:0 0 0 1px var(--dsw-alias-border-secondary)}
+.qat-dict-pop{position:fixed;z-index:60;display:flex;flex-direction:column;gap:4px;padding:6px;border-radius:10px;background:var(--dsw-alias-bg-elevated);box-shadow:0 2px 12px rgba(0,0,0,.35),0 0 0 1px var(--dsw-alias-border-secondary)}
 .qat-dict-search{width:100%;box-sizing:border-box;padding:3px 6px;border:0;border-radius:6px;font-size:11px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg);outline:0}
 .qat-dict-search::placeholder{color:var(--dsw-alias-label-tertiary)}
-.qat-dict-list{display:flex;flex-direction:column;overflow:auto;min-height:0}
+.qat-dict-list{display:flex;flex-direction:column;overflow-y:auto;overscroll-behavior:contain;min-height:0}
 .qat-dict-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:3px 6px;border-radius:6px;font-size:11px;cursor:pointer;pointer-events:auto;color:var(--dsw-alias-label-secondary)}
 .qat-dict-item:hover{background:var(--dsw-alias-interactive-hover);color:var(--dsw-alias-label-primary)}
 .qat-dict-item[data-active="true"]{background:var(--dsw-alias-interactive-bg);color:var(--dsw-alias-label-primary);font-weight:600}
@@ -5595,6 +5621,9 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       /** 条上的词库选择：开着时点词条就换库 */
       const [dictOpen, setDictOpen] = useState(false)
       const [dictQuery, setDictQuery] = useState('')
+      /** 浮层的视口坐标（fixed 定位，摆哪儿由 popoverPlace 算） */
+      const [popStyle, setPopStyle] = useState(null)
+      const dictChipRef = useRef(null)
       const [barWidth, setBarWidth] = useState(null)
       /** composer 输入框的高度：两侧按钮组按它垂直居中（量不到就用默认 36） */
       const barRef = useRef(null)
@@ -5784,6 +5813,34 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
        * 换词库：写入偏好 + 最近使用，换完整本重载（loadDictWords 那个 effect 跟着 dictId 走），
        * 跟打条的词序进度按新库从 0 算。
        */
+      /** 开浮层前先把按钮的位置量下来（量不到就退回「贴在条里」的兜底位置） */
+      const openDictPop = useCallback(() => {
+    const chip = dictChipRef.current
+    const rect = chip?.getBoundingClientRect?.()
+    const place = rect && rect.width
+      ? popoverPlace(rect, { width: window.innerWidth, height: window.innerHeight }, { width: 240, maxHeight: 320 })
+      : null
+    setPopStyle(place?.style ?? null)
+    setDictOpen((open) => {
+      if (open) return false
+      return true
+    })
+      }, [])
+
+      // 开着的时候窗口变了（拉窗口 / 键盘顶起来）重算一次
+      useEffect(() => {
+    if (!dictOpen) return undefined
+    const remeasure = () => {
+      const chip = dictChipRef.current
+      const rect = chip?.getBoundingClientRect?.()
+      if (!rect || !rect.width) return
+      setPopStyle(popoverPlace(rect, { width: window.innerWidth, height: window.innerHeight }, { width: 240, maxHeight: 320 }).style)
+    }
+    remeasure()
+    window.addEventListener('resize', remeasure)
+    return () => window.removeEventListener('resize', remeasure)
+      }, [dictOpen])
+
       const chooseDict = useCallback((id) => {
     if (!id || id === dictId) {
       setDictOpen(false)
@@ -6230,7 +6287,8 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     const rows = (q ? hits : [...recent, ...hits.filter((dict) => !recent.some((item) => item.id === dict.id))]).slice(0, 40)
     return h('span', { className: 'qat-bar-dictwrap', key: 'qat-dict' },
       h('span', {
-        ...pressable(() => setDictOpen((open) => !open)),
+        ...pressable(openDictPop),
+        ref: dictChipRef,
         className: 'qat-bar-dict',
         role: 'button',
         tabIndex: 0,
@@ -6241,7 +6299,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         'aria-expanded': dictOpen ? 'true' : 'false',
       }, meta?.name || dictId),
       dictOpen
-        ? h('span', { className: 'qat-dict-pop' },
+        ? h('span', { className: 'qat-dict-pop', style: popStyle ?? undefined },
           h('input', {
             className: 'qat-dict-search',
             type: 'text',
@@ -7704,7 +7762,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     inspectWord, phoneticOf, MAX_WORD_LENGTH, LONG_WORD_CHARS, DROP_REASONS,
     cleanPhone, bracketPhone, PHONE_PLACEHOLDER,
     splitSense, splitSenses, sensesOf, SENSE_LIMIT,
-    searchCatalog, readRecent, catalogSize: () => catalog().length, wordsSync, loadDictWords,
+    searchCatalog, readRecent, catalogSize: () => catalog().length, wordsSync, loadDictWords, popoverPlace,
     effectiveTarget, stripPunct, maskLetters, answersRevealed, selectStyle,
     DICTATION_MODES, DICTATION_OPEN_BY, nextDictation, applyDictation, toggleDictationMode, nextDictationMode,
     doneMessage, confettiBits, paginate, dropWord, removeWordRecord, detailOf, csvCell, wrongCsv, csvName,

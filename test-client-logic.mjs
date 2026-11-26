@@ -2611,6 +2611,40 @@ check('条上首帧就是存档那个词', resumedWord, barWords[2])
 renderTest.setOpen(false)
 renderTest.writeBarProgress('cet4', 0)
 
+// —— 浮层定位（0.16.2）：贴按钮往上弹，上面放不下就往下翻，左右夹进视口 ——
+{
+  const vp = { width: 1000, height: 720 }
+  const opts = { width: 240, maxHeight: 320 }
+  const mid = renderTest.popoverPlace({ top: 500, bottom: 520, left: 400, width: 80 }, vp, opts)
+  check('中间高度：往上弹', mid.side, 'up')
+  check('往上弹：底边离按钮 6px', mid.style.bottom, 720 - 500 + 6)
+  check('往上弹：横向居中在按钮下', mid.style.left, 400 + 40 - 120)
+  check('往上弹：高度吃到上限', mid.style.maxHeight, 320)
+
+  const top = renderTest.popoverPlace({ top: 10, bottom: 30, left: 480, width: 80 }, vp, opts)
+  check('贴顶：往下翻', top.side, 'down')
+  check('往下翻：顶边离按钮 6px', top.style.top, 36)
+
+  const tight = renderTest.popoverPlace({ top: 400, bottom: 420, left: 470, width: 60 }, { width: 420, height: 720 }, opts)
+  check('窄屏：左边夹进视口', tight.style.left, 420 - 240 - 8)
+  check('窄屏：宽度还是 240', tight.style.width, 240)
+
+  const narrow = renderTest.popoverPlace({ top: 400, bottom: 420, left: 40, width: 60 }, { width: 200, height: 720 }, opts)
+  check('视口比浮层还窄：宽度收到视口内', narrow.style.width, 184)
+
+  const tiny = renderTest.popoverPlace({ top: 100, bottom: 120, left: 40, width: 60 }, { width: 600, height: 180 }, opts)
+  check('上下都没空间：高度有下限，不塌成 0', tiny.style.maxHeight >= 80, true)
+
+  const nada = renderTest.popoverPlace(null, vp, opts)
+  check('量不到按钮也不炸', [typeof nada.style.left, typeof nada.style.maxHeight].join(','), 'number,number')
+
+  // 关键点：浮层必须是 fixed，贴着条摆会被祖先 overflow:hidden 整块裁掉
+  const popRule = (source.match(/\.qat-dict-pop\{[^}]*\}/) ?? [''])[0]
+  check('词库浮层用视口定位', /position:fixed/.test(popRule), true)
+  check('词库浮层不再用 absolute + transform 贴着自己摆', /absolute|translateX/.test(popRule), false)
+  check('列表自己滚（否则 40 条会被容器裁掉）', /\.qat-dict-list\{[^}]*overflow-y:auto/.test(source), true)
+}
+
 // —— 条上换词库（0.16.0）：词库按钮、搜索结果、最近使用、换库写盘 ——
 {
   const meta = renderTest.dictionaryById('cet4')
