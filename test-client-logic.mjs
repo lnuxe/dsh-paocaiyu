@@ -2611,104 +2611,12 @@ check('条上首帧就是存档那个词', resumedWord, barWords[2])
 renderTest.setOpen(false)
 renderTest.writeBarProgress('cet4', 0)
 
-// —— 浮层定位（0.16.2）：贴按钮往上弹，上面放不下就往下翻，左右夹进视口 ——
+// —— 条宽只能有一个测量源（0.14.0 起只量自己） ——
 {
-  const vp = { width: 1000, height: 720 }
-  const opts = { width: 240, maxHeight: 320 }
-  const mid = renderTest.popoverPlace({ top: 500, bottom: 520, left: 400, width: 80 }, vp, opts)
-  check('中间高度：往上弹', mid.side, 'up')
-  check('往上弹：底边离按钮 6px', mid.style.bottom, 720 - 500 + 6)
-  check('往上弹：横向居中在按钮下', mid.style.left, 400 + 40 - 120)
-  check('往上弹：高度吃到上限', mid.style.maxHeight, 320)
-
-  const top = renderTest.popoverPlace({ top: 10, bottom: 30, left: 480, width: 80 }, vp, opts)
-  check('贴顶：往下翻', top.side, 'down')
-  check('往下翻：顶边离按钮 6px', top.style.top, 36)
-
-  const tight = renderTest.popoverPlace({ top: 400, bottom: 420, left: 470, width: 60 }, { width: 420, height: 720 }, opts)
-  check('窄屏：左边夹进视口', tight.style.left, 420 - 240 - 8)
-  check('窄屏：宽度还是 240', tight.style.width, 240)
-
-  const narrow = renderTest.popoverPlace({ top: 400, bottom: 420, left: 40, width: 60 }, { width: 200, height: 720 }, opts)
-  check('视口比浮层还窄：宽度收到视口内', narrow.style.width, 184)
-
-  const tiny = renderTest.popoverPlace({ top: 100, bottom: 120, left: 40, width: 60 }, { width: 600, height: 180 }, opts)
-  check('上下都没空间：高度有下限，不塌成 0', tiny.style.maxHeight >= 80, true)
-
-  const nada = renderTest.popoverPlace(null, vp, opts)
-  check('量不到按钮也不炸', [typeof nada.style.left, typeof nada.style.maxHeight].join(','), 'number,number')
-
-  // 关键点：浮层必须是 fixed，贴着条摆会被祖先 overflow:hidden 整块裁掉
-  const popRule = (source.match(/\.qat-dict-pop\{[^}]*\}/) ?? [''])[0]
-  check('词库浮层用视口定位', /position:fixed/.test(popRule), true)
-  check('词库浮层不再用 absolute + transform 贴着自己摆', /absolute|translateX/.test(popRule), false)
-  check('列表自己滚（否则 40 条会被容器裁掉）', /\.qat-dict-list\{[^}]*overflow-y:auto/.test(source), true)
-}
-
-// —— 条上换词库（0.16.0）：词库按钮、搜索结果、最近使用、换库写盘 ——
-{
-  const meta = renderTest.dictionaryById('cet4')
-  check('dictionaryById 认得 cet4', [meta?.id, meta?.name, meta?.length], ['cet4', 'CET-4', 2607])
-  const hits = renderTest.searchCatalog('cet', 10).map((item) => item.id)
-  check('搜「cet」能搜到 cet4 / cet6', [hits.includes('cet4'), hits.includes('cet6')].join(','), 'true,true')
-  check('搜索大小写无关', renderTest.searchCatalog('CET-6', 5).some((item) => item.id === 'cet6'), true)
-  check('空搜索词不返回结果（浮层里走「前 40 条」那条路）', renderTest.searchCatalog('   ', 10).length, 0)
-
-  // 换库会把库号写进偏好 + 最近使用（跟面板同一套键）
-  renderTest.writeDictId('cet6')
-  check('换库后偏好就是新库', renderTest.readDictId(), 'cet6')
-  check('最近使用排在最前', renderTest.readRecent()[0], 'cet6')
-  renderTest.writeDictId('cet4')
-  check('切回来也记一笔', renderTest.readRecent()[0], 'cet4')
-
-  // 条上按钮：显示当前库名，点得动，首帧不弹浮层
-  renderTest.writeDictId('cet6')
-  renderTest.setOpen(true)
-  const dictBar = render('渲染：跟打条带词库按钮',
-    () => renderTest.components.ComposerTrainer({ useInput: () => '', inputActions: {}, ctx: ctxStub }))
-  const dictChip = findNodesByClass(dictBar, 'qat-bar-dict')[0]
-  check('条上有词库按钮', Boolean(dictChip), true)
-  check('词库按钮显示当前库名',
-    (dictChip?.children ?? []).map((child) => (typeof child === 'string' ? child : '')).join(''), 'CET-6')
-  check('词库按钮可点（onMouseDown + data-act）',
-    [typeof dictChip?.props?.onMouseDown, dictChip?.props?.['data-act']].join(','), 'function,dict')
-  check('没点开时不弹词库浮层', findNodesByClass(dictBar, 'qat-dict-pop').length, 0)
-  check('浮层里没画搜索框', findNodesByClass(dictBar, 'qat-dict-search').length, 0)
-  renderTest.setOpen(false)
-  renderTest.writeDictId('cet4')
-
-  // 面板换库 → 条要跟着换（广播事件），不能条在练旧库、进度写新库
-  {
-    // node 里的 window 是精简桩：没有 addEventListener，广播走 try/catch 静默丢弃，
-    // 所以这里断「写盘不炸 + 源码里的广播/订阅成对存在」，DOM 行为在无头 Chrome 里验过
-    const wrote = (() => {
-      try {
-        renderTest.writeDictId('cet6')
-        const id = renderTest.readDictId()
-        renderTest.writeDictId('cet4')
-        return id
-      } catch (err) {
-        return String(err)
-      }
-    })()
-    check('writeDictId 在无 DOM 的宿主里也不炸（广播有兜底）', wrote, 'cet6')
-    const writeSrc = source.slice(source.indexOf('function writeDictId'), source.indexOf('function readRecent'))
-    check('writeDictId 末尾调 announceDict', /announceDict\(id\)/.test(writeSrc), true)
-    check('广播常量只有一份', (source.match(/qwerty-autotype:dict-change/g) ?? []).length, 1)
-    const subAt = source.indexOf('const onDict = (event)')
-    check('条订阅了广播（setDictId + 重开一轮）',
-      [source.slice(subAt, subAt + 200).includes('setDictId'),
-        source.slice(subAt, subAt + 200).includes('setRound(0)')].join(','), 'true,true')
-    check('订阅有对应的解绑', /removeEventListener\(DICT_CHANGE_EVENT/.test(source), true)
-  }
-
-  // 换库动作必须两件事一起做：写偏好、把跟打进度归零（否则新库接着旧库的词序）
-  const chooseAt = source.indexOf('const chooseDict = useCallback')
-  const chooseSrc = source.slice(chooseAt, source.indexOf('const advance = useCallback', chooseAt))
-  check('chooseDict 写了偏好', /writeDictId\(id\)/.test(chooseSrc), true)
-  check('chooseDict 把词序进度归零', /writeBarProgress\(id, 0\)/.test(chooseSrc), true)
-  check('chooseDict 重开一轮（round 归零，换库整本重载）', /setRound\(0\)/.test(chooseSrc), true)
-  check('chooseDict 收浮层并清搜索词', /setDictOpen\(false\)/.test(chooseSrc) && /setDictQuery\(''\)/.test(chooseSrc), true)
+  check('setBarWidth 只剩量自己那一处调用',
+    (source.match(/setBarWidth\(/g) ?? []).length, 1)   // 只剩 barRef 的 ResizeObserver 那一处
+  check('不再量宿主 composer 编辑器（否则会盖掉条的宽度）',
+    /和输入框对齐：量 composer 正文的宽度/.test(source), false)
 }
 
 // —— 长句的 CSS 不能和 fitWordStyle 抢字号（D1 与 D2 合并后的回归） ——

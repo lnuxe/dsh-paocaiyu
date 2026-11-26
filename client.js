@@ -2193,16 +2193,6 @@ window.__ModuleLoader__.load({
       return catalog()[0]?.id ?? 'builtin'
     }
 
-    /** 换词库广播：面板和条都吃这一份，谁换的都能同步（同页 storage 事件不触发） */
-    const DICT_CHANGE_EVENT = 'qwerty-autotype:dict-change'
-    function announceDict(id) {
-      try {
-    window.dispatchEvent(new CustomEvent(DICT_CHANGE_EVENT, { detail: { id } }))
-      } catch {
-    /* ignore */
-      }
-    }
-
     function writeDictId(id) {
       try {
     window.localStorage.setItem(DICT_STORAGE_KEY, id)
@@ -2212,7 +2202,6 @@ window.__ModuleLoader__.load({
       } catch {
     /* ignore */
       }
-      announceDict(id)
     }
 
     function readRecent() {
@@ -2372,32 +2361,6 @@ window.__ModuleLoader__.load({
     }
 
     /** 搜索词库：名称 / id / 标签 */
-    /**
-     * 词库浮层的位置：贴按钮往上弹，上面放不下就往下翻，左右夹进视口。
-     * 用视口坐标（position:fixed）而不是贴着条摆 —— 条所在那层祖先基本都 overflow:hidden，
-     * 贴着自己摆的浮层会被整块裁掉（列表只剩一两行）。
-     */
-    function popoverPlace(rect, viewport, opts) {
-      const vw = Math.max(0, Number(viewport?.width) || 0)
-      const vh = Math.max(0, Number(viewport?.height) || 0)
-      const width = Math.min(Number(opts?.width) || 240, Math.max(120, vw - 16))
-      const maxHeight = Number(opts?.maxHeight) || 320
-      const gap = 6
-      const edge = 8
-      const top = Number(rect?.top) || 0
-      const bottom = Number(rect?.bottom) || 0
-      const center = (Number(rect?.left) || 0) + (Number(rect?.width) || 0) / 2
-      const left = Math.max(edge, Math.min(center - width / 2, vw - width - edge))
-      const roomUp = top - gap - edge
-      const roomDown = vh - bottom - gap - edge
-      // 上面能给出「一屏小列表」就往上，否则选空间大的那边
-      const above = roomUp >= Math.min(maxHeight, 140) || roomUp >= roomDown
-      const limit = Math.min(maxHeight, Math.max(80, above ? roomUp : roomDown))
-      return above
-    ? { side: 'up', style: { left, width, bottom: Math.max(edge, vh - top + gap), maxHeight: limit } }
-    : { side: 'down', style: { left, width, top: bottom + gap, maxHeight: limit } }
-    }
-
     function searchCatalog(query, limit) {
       const q = String(query || '').trim().toLowerCase()
       if (!q) return []
@@ -2446,9 +2409,6 @@ window.__ModuleLoader__.load({
     loading: '正在加载词库…',
     loadFailed: '词库加载失败，先用内置词库继续',
     chapterTitle: '选择章节',
-    barDict: '换词库',
-    dictSearch: '搜词库，回车选第一个',
-    dictRecent: '最近用过',
     panelHeadChapter: '第 {n} 章',
     panelHeadReview: '复练 {n} 词',
     reviewExit: '退出复习',
@@ -2633,9 +2593,6 @@ window.__ModuleLoader__.load({
     searchResult: 'Results',
     loadFailed: 'Dictionary failed to load — using the built-in one',
     chapterTitle: 'Chapter',
-    barDict: 'Switch dictionary',
-    dictSearch: 'Search dictionaries',
-    dictRecent: 'Recent',
     panelHeadChapter: 'Chapter {n}',
     panelHeadReview: 'Review {n} words',
     reviewExit: 'Exit review',
@@ -2803,20 +2760,6 @@ window.__ModuleLoader__.load({
 .qat-card[data-variant="panel"] .qat-done{width:100%;align-items:center}
 .qat-bar-empty{font-size:12px;color:var(--dsw-alias-label-tertiary)}
 .qat-bar-center{flex:1;display:flex;align-items:center;justify-content:center;min-width:0}
-.qat-bar-dictwrap{position:relative;flex:none;display:flex;align-items:center;min-width:0}
-.qat-bar-dict{cursor:pointer;pointer-events:auto;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:2px 6px;border-radius:6px;font-size:11px;line-height:1.2;color:var(--dsw-alias-label-tertiary)}
-.qat-bar-dict:hover,.qat-bar-dict[data-open="true"]{background:var(--dsw-alias-interactive-hover);color:var(--dsw-alias-label-primary)}
-.qat-bar[data-sides="false"] .qat-bar-dict{max-width:72px}
-.qat-dict-pop{position:fixed;z-index:60;display:flex;flex-direction:column;gap:4px;padding:6px;border-radius:10px;background:var(--dsw-alias-bg-elevated);box-shadow:0 2px 12px rgba(0,0,0,.35),0 0 0 1px var(--dsw-alias-border-secondary)}
-.qat-dict-search{width:100%;box-sizing:border-box;padding:3px 6px;border:0;border-radius:6px;font-size:11px;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-interactive-bg);outline:0}
-.qat-dict-search::placeholder{color:var(--dsw-alias-label-tertiary)}
-.qat-dict-list{display:flex;flex-direction:column;overflow-y:auto;overscroll-behavior:contain;min-height:0}
-.qat-dict-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:3px 6px;border-radius:6px;font-size:11px;cursor:pointer;pointer-events:auto;color:var(--dsw-alias-label-secondary)}
-.qat-dict-item:hover{background:var(--dsw-alias-interactive-hover);color:var(--dsw-alias-label-primary)}
-.qat-dict-item[data-active="true"]{background:var(--dsw-alias-interactive-bg);color:var(--dsw-alias-label-primary);font-weight:600}
-.qat-dict-item .qat-dict-len{flex:none;font-size:10px;color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums}
-.qat-dict-item .qat-dict-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.qat-dict-empty{padding:4px 6px;font-size:11px;color:var(--dsw-alias-label-tertiary)}
 .qat-bar-count{flex:none;position:static;transform:none;font-size:11px;color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums}
 .qat-bar-speed{flex:none;position:static;transform:none;font-size:11px;color:var(--dsw-alias-label-tertiary);opacity:.75;font-variant-numeric:tabular-nums;pointer-events:none}
 /* 重开 / 关闭 / 上一个 / 下一个：都是列里的普通按钮，只留透明度反馈 */
@@ -5618,12 +5561,6 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     index: resumeIndex(readBarProgress(), readDictId(), toWordList(wordsSync(readDictId())).length),
     typed: '', flash: false, hits: 0, retries: 0, wordWrong: 0, finishedAt: null,
       }))
-      /** 条上的词库选择：开着时点词条就换库 */
-      const [dictOpen, setDictOpen] = useState(false)
-      const [dictQuery, setDictQuery] = useState('')
-      /** 浮层的视口坐标（fixed 定位，摆哪儿由 popoverPlace 算） */
-      const [popStyle, setPopStyle] = useState(null)
-      const dictChipRef = useRef(null)
       const [barWidth, setBarWidth] = useState(null)
       /** composer 输入框的高度：两侧按钮组按它垂直居中（量不到就用默认 36） */
       const barRef = useRef(null)
@@ -5643,36 +5580,6 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const peekNow = peeking || peekStart === true
       const stateRef = useRef(state)
       const wordsRef = useRef(words)
-      /** 词库浮层开着时：Esc 先收浮层、点条外也收 */
-      const dictOpenRef = useRef(false)
-      useEffect(() => { dictOpenRef.current = dictOpen }, [dictOpen])
-      // 面板里换了词库也要同步到这个条（否则条在练旧库，进度却写进新库）
-      useEffect(() => {
-    const onDict = (event) => {
-      const id = event?.detail?.id
-      if (typeof id !== 'string' || !id) return
-      setDictId((prev) => (prev === id ? prev : id))
-      setRound(0)
-    }
-    window.addEventListener(DICT_CHANGE_EVENT, onDict)
-    return () => window.removeEventListener(DICT_CHANGE_EVENT, onDict)
-      }, [])
-      // 条收起就把浮层连同搜索词一起清掉（panic 关条也不会留下一个自己弹开的浮层）
-      useEffect(() => {
-    if (isOpen) return
-    setDictOpen(false)
-    setDictQuery('')
-      }, [isOpen])
-      useEffect(() => {
-    if (!dictOpen) return undefined
-    const onDown = (event) => {
-      const target = event.target
-      if (target instanceof Element && target.closest('.qat-bar-dictwrap')) return
-      setDictOpen(false)
-    }
-    document.addEventListener('pointerdown', onDown, true)
-    return () => document.removeEventListener('pointerdown', onDown, true)
-      }, [dictOpen])
       const lockRef = useRef({ locked: false, timer: null })
       const draftRef = useRef('')
       const startedAt = useRef(Date.now())
@@ -5808,53 +5715,6 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     meaningRef.current = word
     return speakMeaning(zh)
       }, [])
-
-      /**
-       * 换词库：写入偏好 + 最近使用，换完整本重载（loadDictWords 那个 effect 跟着 dictId 走），
-       * 跟打条的词序进度按新库从 0 算。
-       */
-      /** 开浮层前先把按钮的位置量下来（量不到就退回「贴在条里」的兜底位置） */
-      const openDictPop = useCallback(() => {
-    const chip = dictChipRef.current
-    const rect = chip?.getBoundingClientRect?.()
-    const place = rect && rect.width
-      ? popoverPlace(rect, { width: window.innerWidth, height: window.innerHeight }, { width: 240, maxHeight: 320 })
-      : null
-    setPopStyle(place?.style ?? null)
-    setDictOpen((open) => {
-      if (open) return false
-      return true
-    })
-      }, [])
-
-      // 开着的时候窗口变了（拉窗口 / 键盘顶起来）重算一次
-      useEffect(() => {
-    if (!dictOpen) return undefined
-    const remeasure = () => {
-      const chip = dictChipRef.current
-      const rect = chip?.getBoundingClientRect?.()
-      if (!rect || !rect.width) return
-      setPopStyle(popoverPlace(rect, { width: window.innerWidth, height: window.innerHeight }, { width: 240, maxHeight: 320 }).style)
-    }
-    remeasure()
-    window.addEventListener('resize', remeasure)
-    return () => window.removeEventListener('resize', remeasure)
-      }, [dictOpen])
-
-      const chooseDict = useCallback((id) => {
-    if (!id || id === dictId) {
-      setDictOpen(false)
-      setDictQuery('')
-      return
-    }
-    writeDictId(id)
-    setDictId(id)
-    setRound(0)
-    writeBarProgress(id, 0)
-    setDictOpen(false)
-    setDictQuery('')
-    setState((prev) => ({ ...prev, index: 0, typed: '', flash: false, wordWrong: 0, finishedAt: null }))
-      }, [dictId])
 
       const advance = useCallback(() => {
     // 刚打完这个词（正确）：单词在前，释义延迟接上
@@ -6095,14 +5955,6 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const target = event.target
       if (!(target instanceof Node)) return
       const region = composerRegion()
-      // 词库浮层开着时 Esc 只收浮层（先于关条）
-      if (event.key === 'Escape' && dictOpenRef.current) {
-    event.preventDefault()
-    event.stopPropagation()
-    setDictOpen(false)
-    setDictQuery('')
-    return
-      }
       // Esc 必须先于任何门禁生效：条卡住时这是唯一的逃生口
       if (event.key === 'Escape') {
         const near = (target instanceof HTMLElement
@@ -6195,8 +6047,6 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       if (!region || !region.contains(target)) return
       if (target.closest('[data-qat]') !== null) return
       if (target.closest('button, [role="button"]') === null) return
-      // 这一层 stopPropagation 之后 document 层收不到，浮层只能在这儿顺手收
-      setDictOpen(false)
       event.preventDefault()
       event.stopPropagation()
     }
@@ -6275,68 +6125,6 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       'aria-label': t(spec.label),
     }, h(Icon, { name: spec.icon, size: spec.size }))
       }
-      /**
-       * 条上的词库按钮：显示当前词库名，点开是搜索框 + 词库列表（最近的排前面）。
-       * 选一个就换库，跟面板换库是同一套写法（writeDictId + setDictId + 重开一轮）。
-       */
-      const barDictNode = () => {
-    const meta = dictionaryById(dictId)
-    const q = dictQuery.trim()
-    const recent = readRecent().map((id) => dictionaryById(id)).filter(Boolean)
-    const hits = q ? searchCatalog(q, 40) : catalog().slice(0, 40)
-    const rows = (q ? hits : [...recent, ...hits.filter((dict) => !recent.some((item) => item.id === dict.id))]).slice(0, 40)
-    return h('span', { className: 'qat-bar-dictwrap', key: 'qat-dict' },
-      h('span', {
-        ...pressable(openDictPop),
-        ref: dictChipRef,
-        className: 'qat-bar-dict',
-        role: 'button',
-        tabIndex: 0,
-        'data-act': 'dict',
-        'data-open': dictOpen ? 'true' : 'false',
-        title: t('barDict'),
-        'aria-label': t('barDict'),
-        'aria-expanded': dictOpen ? 'true' : 'false',
-      }, meta?.name || dictId),
-      dictOpen
-        ? h('span', { className: 'qat-dict-pop', style: popStyle ?? undefined },
-          h('input', {
-            className: 'qat-dict-search',
-            type: 'text',
-            value: dictQuery,
-            placeholder: t('dictSearch'),
-            autoFocus: true,
-            onChange: (event) => setDictQuery(event.target.value),
-            onKeyDown: (event) => {
-              if (event.key === 'Escape') {
-                event.preventDefault()
-                setDictOpen(false)
-                setDictQuery('')
-                return
-              }
-              if (event.key === 'Enter') {
-                event.preventDefault()
-                const first = (q ? searchCatalog(q, 1) : rows)[0]
-                if (first) chooseDict(first.id)
-              }
-            },
-          }),
-          h('span', { className: 'qat-dict-list' },
-            rows.length
-              ? rows.map((dict) => h('span', {
-                ...pressable(() => chooseDict(dict.id)),
-                key: `qat-dict-${dict.id}`,
-                className: 'qat-dict-item',
-                role: 'option',
-                'data-active': dict.id === dictId ? 'true' : 'false',
-                title: dict.name,
-              },
-              h('span', { className: 'qat-dict-name' }, dict.name),
-              h('span', { className: 'qat-dict-len' }, String(dict.length))))
-              : h('span', { className: 'qat-dict-empty' }, `${t('searchResult')} · 0`)))
-        : null)
-      }
-
       /** 条上的两处文字：进度 / 实时速度；宽条时分别搬进左右两组 */
       const barTextNode = (kind, position, barMs) => (kind === 'count'
     ? h('span', { className: 'qat-bar-count', title: t('dictTitle') }, `${position}/${total}`)
@@ -6356,7 +6144,6 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     const [left, right] = barSideButtonGroups({ total: has ? 1 : 0 })
     return {
       left: h('span', { className: 'qat-bar-side', 'data-side': 'left', key: 'qat-side-left' }, left.acts.map(barActNode)),
-      dict: barDictNode(),
       count: barTextNode('count', position, barMs),
       speed: barTextNode('speed', position, barMs),
       right: h('span', { className: 'qat-bar-side', 'data-side': 'right', key: 'qat-side-right' }, right.acts.map(barActNode)),
@@ -6376,7 +6163,6 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     },
       h(Styles),
       loading.left,
-      loading.dict,
       loading.count,
       h('span', { className: 'qat-bar-center' },
         h('span', { className: 'qat-bar-empty' }, t('loading')),
@@ -6405,7 +6191,6 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     h(Styles),
     // 一条 flex 行：左列（上一个 / 重开）· 进度 · 单词 · 速度 · 右列（下一个 / 关闭）
     pieces.left,
-    pieces.dict,
     pieces.count,
     h('span', { className: 'qat-bar-center' },
       h('span', { className: 'qat-wordblock', ...selectStyle(settings.textSelectable === true) },
@@ -7762,7 +7547,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     inspectWord, phoneticOf, MAX_WORD_LENGTH, LONG_WORD_CHARS, DROP_REASONS,
     cleanPhone, bracketPhone, PHONE_PLACEHOLDER,
     splitSense, splitSenses, sensesOf, SENSE_LIMIT,
-    searchCatalog, readRecent, catalogSize: () => catalog().length, wordsSync, loadDictWords, popoverPlace,
+    searchCatalog, readRecent, catalogSize: () => catalog().length, wordsSync, loadDictWords,
     effectiveTarget, stripPunct, maskLetters, answersRevealed, selectStyle,
     DICTATION_MODES, DICTATION_OPEN_BY, nextDictation, applyDictation, toggleDictationMode, nextDictationMode,
     doneMessage, confettiBits, paginate, dropWord, removeWordRecord, detailOf, csvCell, wrongCsv, csvName,
