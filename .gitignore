@@ -32,3 +32,6 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# 发布资产（宣传图由发布流程单独产出，按需手动入库）
+assets/promo/
