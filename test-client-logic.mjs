@@ -1370,7 +1370,12 @@ const wideBar = render('渲染：宽条（按钮搬到输入框两侧）', () =>
 check('宽条标了 data-sides', wideBar?.props?.['data-sides'], 'true')
 check('宽条画出左右两组',
   findNodesByClass(wideBar, 'qat-bar-side').map((node) => node.props?.['data-side']).join(','), 'left,right')
-check('宽条仍按 composer 宽度对齐', wideBar?.props?.style?.width, '900px')
+// 条自己撑满列宽（CSS 100% + 上限），不再去对齐输入框：长句靠往两边扩
+check('宽条撑满列宽而不是去对齐输入框', wideBar?.props?.style?.width, '100%')
+check('条宽有上限（超宽屏上按钮不会飞太远）',
+  [wideBar?.props?.style?.maxWidth, renderTest.BAR_MAX_WIDTH], [String(renderTest.BAR_MAX_WIDTH) + 'px', 1120])
+check('条宽上限比输入卡最大宽度（952）更宽，才扩得出去', renderTest.BAR_MAX_WIDTH > 952, true)
+check('条仍然居中', wideBar?.props?.style?.marginInline, 'auto')
 check('条上不再挂任何宿主几何变量（只留宽度）',
   Object.keys(wideBar?.props?.style ?? {}).filter((key) => key.startsWith('--')).length, 0)
 check('左组按钮 = 上一个 + 重开', actsIn(sideNode(wideBar, 'left')).join(','), 'prev,restart')

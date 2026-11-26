@@ -5510,6 +5510,9 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     /** 窄条阈值：条宽不到这个数，两侧腾不出地方摆按钮，回退到条内 */
     const BAR_SIDES_MIN = 460
 
+    /** 条的最宽处：比输入卡（最大 952px）宽一截，长句才有「往两边扩」的空间 */
+    const BAR_MAX_WIDTH = 1120
+
     /** 条宽够不够把按钮搬到输入框两侧：null（首帧还没量到）当不够处理，先保守放条内 */
     function barSidesFit(barWidth, min = BAR_SIDES_MIN) {
       return typeof barWidth === 'number' && Number.isFinite(barWidth) && barWidth >= min
@@ -5629,19 +5632,19 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     if (lockRef.current.timer !== null) clearTimeout(lockRef.current.timer)
       }, [])
 
-      // 只需要一个数：条宽对齐 composer 正文宽度；其余版式都是条内的 flex，不问宿主要几何
+      // 条自己撑满列宽（宽度是 CSS 的 100% + 上限），这里只量「自己有多宽」给排版算字用。
+      // 不再去问输入框要几何：长句靠往两边扩，不靠把宿主挤窄。
       useEffect(() => {
     if (!isOpen) return undefined
     const measure = () => {
-      const node = document.querySelector('[data-composer-input]')
-      const width = node?.getBoundingClientRect?.().width ?? 0
+      const width = barRef.current?.getBoundingClientRect?.().width ?? 0
       setBarWidth((prev) => {
-        const next = width > 40 ? Math.round(width) : null
+        const next = width > 40 ? Math.round(width) : prev
         return prev === next ? prev : next
       })
     }
     measure()
-    const target = document.querySelector('[data-composer-input]')
+    const target = barRef.current
     const observer = typeof ResizeObserver === 'function' ? new ResizeObserver(measure) : null
     if (observer && target) observer.observe(target)
     window.addEventListener('resize', measure)
@@ -6129,7 +6132,8 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const sidesOn = barSidesFit(barWidth)
       /** 版式变量挂一处：两侧按钮列靠 --qat-cl/--qat-cw 贴卡片内沿，靠 --qat-et/--qat-eh 对齐文字行 */
       // 版式全靠条内 flex：这里只给宽度（对齐 composer 正文），不再向宿主量任何几何
-      const barStyle = barWidth === null ? undefined : { width: `${barWidth}px`, marginInline: 'auto' }
+      // 撑满列宽并居中：单词居中，长句自然向两边扩出去；给个上限免得超宽屏上按钮飞太远
+      const barStyle = { width: '100%', maxWidth: `${BAR_MAX_WIDTH}px`, marginInline: 'auto' }
 
       /** 按钮工厂：class/图标/文案一处定义，动作复用现成的 goPrev / goSkip / restart */
       const barActNode = (act) => {
@@ -7598,7 +7602,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     FINGER_MAP, FINGER_IDS, FINGER_LABELS, FINGER_COLORS, FINGER_KEY,
     parseCustomFile, serializeCustomDict, splitCsvLine, toCustomWord, downloadText, withSlashes,
     stepIndex, toWordList, isRoundDone,
-    barSideButtonGroups, barSidesFit, BAR_SIDES_MIN, BAR_ACT_SPEC,
+    barSideButtonGroups, barSidesFit, BAR_SIDES_MIN, BAR_MAX_WIDTH, BAR_ACT_SPEC,
     wrapWord, fitWordStyle, wordLines, FIT_SIZES, CHAR_RATIO,
     WORD_SCALES, WORD_SCALE_FACTOR, clampWordScale, scaleWordSizes, wordStyleFor,
     VOICE_RATES, CLICK_VOLUMES, clampVoiceRate, clampClickVolume,
