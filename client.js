@@ -2761,13 +2761,30 @@ window.__ModuleLoader__.load({
 .qat-bar-empty{font-size:12px;color:var(--dsw-alias-label-tertiary)}
 .qat-bar-center{display:flex;align-items:center;justify-content:center;min-width:0;width:100%}
 .qat-bar-count{position:absolute;left:0;top:50%;transform:translateY(-50%);font-size:11px;color:var(--dsw-alias-label-tertiary);font-variant-numeric:tabular-nums}
-.qat-bar-speed{position:absolute;right:42px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--dsw-alias-label-tertiary);opacity:.75;font-variant-numeric:tabular-nums;pointer-events:none}
+.qat-bar-speed{position:absolute;right:72px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--dsw-alias-label-tertiary);opacity:.75;font-variant-numeric:tabular-nums;pointer-events:none}
 /* 跟打条的重开：夹在速度与关闭之间，常驻不浮动 */
 .qat-bar-restart{position:absolute;right:20px;top:50%;transform:translateY(-50%);opacity:.45;font-size:12px}
 .qat-bar-restart:hover{opacity:.9}
 .qat-bar-gloss{font-size:12px;color:var(--dsw-alias-label-tertiary);max-width:34%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .qat-bar-close{position:absolute;right:0;top:50%;transform:translateY(-50%);opacity:.45;font-size:13px}
 .qat-bar-close:hover{opacity:.9}
+/* 条内摆位（窄条回退）：新增的上一个 / 下一个插进进度与速度之间，互不压；
+   横向占位从左到右 = 进度 0 / 上一个 56，右边 关闭 0 / 重开 20 / 下一个 46 / 速度 72 */
+.qat-bar[data-sides="false"] .qat-bar-prev{position:absolute;left:56px;top:50%;transform:translateY(-50%);opacity:.45;font-size:12px}
+.qat-bar[data-sides="false"] .qat-bar-prev:hover{opacity:.9}
+.qat-bar[data-sides="false"] .qat-bar-skip{position:absolute;right:46px;top:50%;transform:translateY(-50%);opacity:.45;font-size:12px}
+.qat-bar[data-sides="false"] .qat-bar-skip:hover{opacity:.9}
+/* 条外摆位（宽条）：两组贴在输入框左右边框外面，top:100% 是条的下沿，
+   height 取量到的输入框高度，按钮组就垂直居中在输入框那条高度区间里 */
+.qat-bar-side{position:absolute;top:100%;height:var(--qat-ch,36px);display:flex;align-items:center;gap:2px;z-index:2;pointer-events:none}
+.qat-bar-side[data-side="left"]{left:-38px}
+.qat-bar-side[data-side="right"]{right:-38px}
+/* 组内一律回到普通流：条内那套绝对摆位不许跟进来 */
+.qat-bar-side > *{position:static;top:auto;left:auto;right:auto;transform:none;white-space:nowrap}
+.qat-bar-side .qat-icon{pointer-events:auto;width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;opacity:.45}
+.qat-bar-side .qat-icon:hover{opacity:.95;background:var(--dsw-alias-interactive-hover,var(--dsw-alias-interactive-bg))}
+/* 窄条：条外那两组整体不渲染，CSS 再兜一层 */
+.qat-bar[data-sides="false"] .qat-bar-side{display:none}
 .qat-wordblock{display:inline-flex;flex-direction:column;align-items:center;gap:1px;line-height:1.15}
 .qat-ipa{font-size:13px;line-height:1.25;color:var(--dsw-alias-label-secondary);opacity:.7;letter-spacing:0;user-select:none}
 /* 假名词库的 notation 在跟打条里也占这个位置，但它是假名、不是音标，样式走正文字体 */
@@ -5483,6 +5500,45 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       return (list || []).map((entry) => (typeof entry === 'string' ? entry : entry?.w)).filter(Boolean)
     }
 
+    /** 窄条阈值：条宽不到这个数，两侧腾不出地方摆按钮，回退到条内 */
+    const BAR_SIDES_MIN = 460
+
+    /** 条宽够不够把按钮搬到输入框两侧：null（首帧还没量到）当不够处理，先保守放条内 */
+    function barSidesFit(barWidth, min = BAR_SIDES_MIN) {
+      return typeof barWidth === 'number' && Number.isFinite(barWidth) && barWidth >= min
+    }
+
+    /**
+     * 跟打条的按钮分组：渲染的唯一真源（渲染时照着 map，别在 JSX 里再手写一份顺序）。
+     * 宽条 → 输入框左右各一组，文字贴着条、按钮朝外；
+     * 窄条 → 全部回条内（一组 inline，位置交给 .qat-bar-* 的绝对摆位）；
+     * 词库还没来（total === 0）→ 没有上一个 / 下一个，也没有进度和速度可写。
+     * @param {object} opts
+     * @param {boolean} opts.sides - 是否走条外两侧（false = 条内回退）
+     * @param {number} opts.total - 当前词库词数
+     * @returns {Array<{side: string, acts: string[], texts: string[]}>}
+     */
+    function barSideButtonGroups({ sides = true, total = 0 } = {}) {
+      const has = Number(total) > 0
+      const prev = has ? ['prev'] : []
+      const skip = has ? ['skip'] : []
+      if (sides === false) {
+        return [{ side: 'inline', acts: [...prev, 'restart', ...skip, 'close'], texts: has ? ['count', 'speed'] : [] }]
+      }
+      return [
+        { side: 'left', acts: [...prev, 'restart'], texts: has ? ['count'] : [] },
+        { side: 'right', acts: [...skip, 'close'], texts: has ? ['speed'] : [] },
+      ]
+    }
+
+    /** 条外两侧按钮的动作表：class / 图标 / 文案 key 一处定义，渲染只按 act 取 */
+    const BAR_ACT_SPEC = {
+      prev: { cls: 'qat-bar-prev', icon: 'prev', size: 12, label: 'prevTip' },
+      restart: { cls: 'qat-bar-restart', icon: 'again', size: 12, label: 'restart' },
+      skip: { cls: 'qat-bar-skip', icon: 'next', size: 12, label: 'skipTip' },
+      close: { cls: 'qat-bar-close', icon: 'close', size: 13, label: 'close' },
+    }
+
     function ComposerTrainer({ useInput, inputActions, ctx, hovering: hoverStart = false, peeking: peekStart = false }) {
       const t = useT(ctx)
       const isOpen = useSyncExternalStore(subscribeOpen, getOpen, getOpen)
@@ -5497,6 +5553,8 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     typed: '', flash: false, hits: 0, retries: 0, wordWrong: 0, finishedAt: null,
       }))
       const [barWidth, setBarWidth] = useState(null)
+      /** composer 输入框的高度：两侧按钮组按它垂直居中（量不到就用默认 36） */
+      const [composerH, setComposerH] = useState(36)
       /** 我们自己写进 composer 的那句中文（关闭时要原样撤掉） */
       const wroteDraftRef = useRef('')
       /** 条真的渲染出来了才接管键盘：否则一律不 preventDefault，输入框必须照常能用 */
@@ -5566,13 +5624,20 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       }, [])
 
       // 宽度对齐 composer 正文：之前 setBarWidth 从没被调用过，整条所以不居中
+      // 高度顺手一起量：条外的两组按钮要垂直居中在输入框那条高度里
       useEffect(() => {
     if (!isOpen) return undefined
     const measure = () => {
       const node = document.querySelector('[data-composer-input]')
-      const width = node?.getBoundingClientRect?.().width ?? 0
+      const rect = node?.getBoundingClientRect?.()
+      const width = rect?.width ?? 0
+      const height = rect?.height ?? 0
       setBarWidth((prev) => {
         const next = width > 40 ? Math.round(width) : null
+        return prev === next ? prev : next
+      })
+      setComposerH((prev) => {
+        const next = height > 16 ? Math.round(height) : 36
         return prev === next ? prev : next
       })
     }
@@ -6061,24 +6126,77 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
 
       if (!isOpen) return null
 
+      /** 条宽够不够把按钮搬到输入框两侧；首帧没量到、窄条都当不够 */
+      const sidesOn = barSidesFit(barWidth)
+      /** 宽度与条高变量挂一处：两组按钮靠 --qat-ch 垂直居中在输入框那条高度里 */
+      const barStyle = barWidth === null
+    ? { '--qat-ch': `${composerH}px` }
+    : { width: `${barWidth}px`, marginInline: 'auto', '--qat-ch': `${composerH}px` }
+
+      /** 按钮工厂：class/图标/文案一处定义，动作复用现成的 goPrev / goSkip / restart */
+      const barActNode = (act) => {
+    const spec = BAR_ACT_SPEC[act]
+    const run = act === 'prev' ? goPrev : act === 'skip' ? goSkip : act === 'restart' ? restart : () => setOpen(false)
+    return h('span', {
+      ...pressable(run),
+      className: `qat-icon ${spec.cls}`,
+      'data-act': act,
+      title: t(spec.label),
+      'aria-label': t(spec.label),
+    }, h(Icon, { name: spec.icon, size: spec.size }))
+      }
+      /** 条上的两处文字：进度 / 实时速度；宽条时分别搬进左右两组 */
+      const barTextNode = (kind, position, barMs) => (kind === 'count'
+    ? h('span', { className: 'qat-bar-count', title: t('dictTitle') }, `${position}/${total}`)
+    : h('span', { className: 'qat-bar-speed' }, t('liveSpeed', { wpm: liveWpm }),
+      clockVisible('command', barMs) ? ` · ${clockText(barMs).text}` : ''))
+
+      /**
+       * 按 barSideButtonGroups 造节点（分组顺序由纯函数决定，这里只摆位）：
+       * 宽条 → 左右两组，文字贴着单词、按钮朝外；
+       * 窄条 → 组 span 不画，文字与按钮直接回条内，用 .qat-bar-* 那套绝对摆位。
+       */
+      const barPieces = (groups, position, barMs) => {
+    const inline = groups.find((group) => group.side === 'inline')
+    if (inline) {
+      return {
+        inlineTexts: inline.texts.map((kind) => barTextNode(kind, position, barMs)),
+        inlineActs: inline.acts.map(barActNode),
+        sides: [],
+      }
+    }
+    return {
+      inlineTexts: [],
+      inlineActs: [],
+      sides: groups.map((group) => {
+        const texts = group.texts.map((kind) => barTextNode(kind, position, barMs))
+        const acts = group.acts.map(barActNode)
+        return h('span', {
+          className: 'qat-bar-side',
+          'data-side': group.side,
+          key: `qat-side-${group.side}`,
+        }, group.side === 'left' ? [...acts, ...texts] : [...texts, ...acts])
+      }),
+    }
+      }
+
       // 词库还在加载 / 空词库：给一个可见的占位条，别看起来像「按了没反应」
+      // 没有词就没有上一个/下一个，也没有进度和速度，只剩重开与关闭（分组照样走同一套）
       if (total === 0) {
+    const loading = barPieces(barSideButtonGroups({ sides: sidesOn, total }), 0, 0)
     return h('div', {
       className: 'qat-bar',
       'data-qat': '',
-      style: barWidth === null ? undefined : { width: `${barWidth}px`, marginInline: 'auto' },
+      'data-sides': sidesOn ? 'true' : 'false',
+      style: barStyle,
     },
       h(Styles),
+      ...loading.inlineTexts,
       h('span', { className: 'qat-bar-center' },
         h('span', { className: 'qat-bar-empty' }, t('loading')),
       ),
-      h('span', {
-        ...pressable(() => setOpen(false)),
-        className: 'qat-icon qat-bar-close',
-        'data-act': 'close',
-        title: t('close'),
-        'aria-label': t('close'),
-      }, '×'),
+      ...loading.inlineActs,
+      ...loading.sides,
     )
       }
 
@@ -6088,27 +6206,19 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       // 打错提示（跟打条）：3 / 4 / 5 次逐档揭示，打对后 wordWrong 归零
       const tip = tipState({ wrongCount: state.wordWrong, word: target, typed: state.typed })
 
+      const pieces = barPieces(barSideButtonGroups({ sides: sidesOn, total }), position, barMs)
+
       return h('div', {
     className: 'qat-bar',
     'aria-live': 'off',
     'data-qat': '',
-    style: barWidth === null ? undefined : { width: `${barWidth}px`, marginInline: 'auto' },
+    'data-sides': sidesOn ? 'true' : 'false',
+    style: barStyle,
       },
     h(Styles),
-    // 进度与关闭都绝对定位在两侧，中间那块才是真正居中的
-    h('span', { className: 'qat-bar-count', title: t('dictTitle') }, `${position}/${total}`),
-    // 实时速度：贴在关闭按钮左边的次要点位，小字置灰，不和左侧进度抢位置
-    h('span', { className: 'qat-bar-speed' }, t('liveSpeed', { wpm: liveWpm }),
-      clockVisible('command', barMs) ? ` · ${clockText(barMs).text}` : ''),
-    // 重开：跟打条也常驻一个小按钮（上游是 hover 浮出，这里直接摆着），
-    // 点了从第一个词再来，不打折扣地清计时/错词
-    h('span', {
-      ...pressable(restart),
-      className: 'qat-icon qat-bar-restart',
-      'data-act': 'restart',
-      title: t('restart'),
-      'aria-label': t('restart'),
-    }, h(Icon, { name: 'prev', size: 12 })),
+    // 宽条：进度 / 实时速度 / 重开 / 关闭 / 上一个 / 下一个全在条外的两侧组里，
+    // 条内只剩单词、音标、提示；窄条：这些全部回条内绝对定位（旧摆位）
+    ...pieces.inlineTexts,
     h('span', { className: 'qat-bar-center' },
       h('span', { className: 'qat-wordblock', ...selectStyle(settings.textSelectable === true) },
         // 上一个 / 下一个词：窄条只放两个词，箭头字符省略（词本身已经说清方向）
@@ -6122,8 +6232,9 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         text: target,
         typed: state.typed,
         masked,
-        // 条宽要扣掉左边进度、右边速度与关闭按钮，剩下的才是单词能用的宽度
-        ...wordStyleFor(target, Math.max(200, (barWidth ?? 640) - 120), { maxLines: 3, scale: settings.wordScale }),
+        // 条宽要扣掉两侧按钮占的地方，剩下的才是单词能用的宽度；
+        // 宽条按钮已经搬到条外，只扣一点点呼吸位
+        ...wordStyleFor(target, Math.max(200, (barWidth ?? 640) - (sidesOn ? 40 : 120)), { maxLines: 3, scale: settings.wordScale }),
         long: longWord,
         flash: state.flash,
         selectable: settings.textSelectable === true,
@@ -6139,13 +6250,8 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         h(TipLine, { tip, t, className: 'qat-bar-tip' }),
       ),
     ),
-    h('span', {
-      ...pressable(() => setOpen(false)),
-      className: 'qat-icon qat-bar-close',
-      'data-act': 'close',
-      title: t('close'),
-      'aria-label': t('close'),
-    }, h(Icon, { name: 'close', size: 13 })),
+    ...pieces.inlineActs,
+    ...pieces.sides,
       )
     }
 
@@ -7499,6 +7605,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     FINGER_MAP, FINGER_IDS, FINGER_LABELS, FINGER_COLORS, FINGER_KEY,
     parseCustomFile, serializeCustomDict, splitCsvLine, toCustomWord, downloadText, withSlashes,
     stepIndex, toWordList, isRoundDone,
+    barSideButtonGroups, barSidesFit, BAR_SIDES_MIN, BAR_ACT_SPEC,
     wrapWord, fitWordStyle, wordLines, FIT_SIZES, CHAR_RATIO,
     WORD_SCALES, WORD_SCALE_FACTOR, clampWordScale, scaleWordSizes, wordStyleFor,
     VOICE_RATES, CLICK_VOLUMES, clampVoiceRate, clampClickVolume,
