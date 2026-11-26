@@ -1450,10 +1450,23 @@ check('两侧组高度读文字行高（垂直居中靠它）',
 check('两侧组是竖排（两个按钮上下叠，不占横向空间）',
   /\.qat-bar-side\{[^}]*flex-direction:column/.test(source), true)
 // 左列：卡片左内沿 + 6px；右列：卡片左偏移 + 卡片宽 - 26px（20px 按钮 + 6px）
-check('左列贴在卡片左边框内沿',
-  /\.qat-bar-side\[data-side="left"\]\{left:calc\(var\(--qat-cl,0px\) \+ 6px\)\}/.test(source), true)
-check('右列贴在卡片右边框内沿',
-  /\.qat-bar-side\[data-side="right"\]\{left:calc\(var\(--qat-cl,0px\) \+ var\(--qat-cw,100%\) - 26px\)\}/.test(source), true)
+check('左列贴在卡片左边框内沿（只让 2px）',
+  /\.qat-bar-side\[data-side="left"\]\{left:calc\(var\(--qat-cl,0px\) \+ 2px\)\}/.test(source), true)
+check('右列贴在卡片右边框内沿（只让 2px）',
+  /\.qat-bar-side\[data-side="right"\]\{left:calc\(var\(--qat-cl,0px\) \+ var\(--qat-cw,100%\) - 22px\)\}/.test(source), true)
+// 卡片识别优先认「有底色/有描边」的那层：宿主外壳透明，只按宽度找会摆太远
+check('pickCardRect：有底色的那层优先（跳过错过的透明宽壳）',
+  pickCardRect([
+    { width: 900, height: 400, surface: false },
+    { width: 760, height: 96, surface: true },
+  ], { width: 600, height: 24 }), 1)
+// 回归锁：祖先矩形必须带 left/top —— 少了自己就会被当 0，列会飘进文字区（0.12.2 就踩过）
+check('祖先矩形带上 left / top（少了列会飘到文字里）',
+  ['left: box.left', 'top: box.top'].every((frag) => source.includes(frag)), true)
+check('pickCardRect：都没有底色时退回宽度启发',
+  pickCardRect([
+    { width: 700, height: 90, surface: false },
+  ], { width: 600, height: 24 }), 0)
 check('四个版式变量都挂在条上（同处 inline style）',
   ['--qat-eh', '--qat-et', '--qat-cl', '--qat-cw'].every((key) => source.includes(`'${key}':`)), true)
 check('两侧摆位不再靠 100% 推算（卡片与文字区不同 x 也不会错位）',

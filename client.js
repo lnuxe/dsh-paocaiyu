@@ -2777,8 +2777,8 @@ window.__ModuleLoader__.load({
 /* 条外摆位（宽条）：两组贴在输入框左右边框外面，top:100% 是条的下沿，
    height 取量到的输入框高度，按钮组就垂直居中在输入框那条高度区间里 */
 .qat-bar-side{position:absolute;top:calc(100% + var(--qat-et,0px));height:var(--qat-eh,24px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;z-index:3;pointer-events:none}
-.qat-bar-side[data-side="left"]{left:calc(var(--qat-cl,0px) + 6px)}
-.qat-bar-side[data-side="right"]{left:calc(var(--qat-cl,0px) + var(--qat-cw,100%) - 26px)}
+.qat-bar-side[data-side="left"]{left:calc(var(--qat-cl,0px) + 2px)}
+.qat-bar-side[data-side="right"]{left:calc(var(--qat-cl,0px) + var(--qat-cw,100%) - 22px)}
 /* 组内一律回到普通流：条内那套绝对摆位不许跟进来 */
 .qat-bar-side > *{position:static;top:auto;left:auto;right:auto;transform:none;white-space:nowrap}
 .qat-bar-side .qat-icon{pointer-events:auto;flex:none;width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;opacity:.45}
@@ -5543,10 +5543,16 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       const height = Number(editorRect?.height) || 0
       if (!width) return -1
       const rows = Array.isArray(list) ? list : []
+      const fits = (rect) => Boolean(rect)
+        && (Number(rect.width) || 0) >= width + 12
+        && (Number(rect.height) || 0) >= height + 4
+      // 先认「有底色 / 有描边」的那层：宿主 composer 外面还套着透明容器，
+      // 只按宽度找会挑到外壳，按钮就被摆到离边框很远的地方
       for (let i = 0; i < rows.length; i += 1) {
-        const rect = rows[i]
-        if (!rect) continue
-        if ((Number(rect.width) || 0) >= width + 12 && (Number(rect.height) || 0) >= height + 4) return i
+        if (rows[i]?.surface === true && fits(rows[i])) return i
+      }
+      for (let i = 0; i < rows.length; i += 1) {
+        if (fits(rows[i])) return i
       }
       return -1
     }
@@ -5673,7 +5679,19 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         const ancestors = []
         let cursor = node.parentElement
         for (let i = 0; i < 6 && cursor; i += 1) {
-          ancestors.push(cursor.getBoundingClientRect?.())
+          const box = cursor.getBoundingClientRect?.()
+          if (box) {
+            // 卡片 = 铺了底色或描边的那层；透明外壳不算
+            const style = typeof getComputedStyle === 'function' ? getComputedStyle(cursor) : null
+            const alpha = style ? Number((style.backgroundColor || '').match(/rgba?\([^)]*,\s*([\d.]+)\s*\)/)?.[1] ?? 1) : 0
+            ancestors.push({
+              left: box.left,
+              top: box.top,
+              width: box.width,
+              height: box.height,
+              surface: alpha > 0.05 || (style?.boxShadow ?? 'none') !== 'none',
+            })
+          }
           cursor = cursor.parentElement
         }
         const hit = pickCardRect(ancestors, rect)
