@@ -1,5 +1,5 @@
 /**
- * Client half of the Qwerty 跟打 UI.
+ * Client half of 泡菜鱼 (Paocaiyu) — the Qwerty 跟打 UI for DSH.
  *
  * 三个入口，都落在对话界面上：
  *  1) 侧栏底部一个「跟打」按钮（sidebar.footer.action）—— 开关跟打卡片；
@@ -2373,7 +2373,7 @@ window.__ModuleLoader__.load({
 
     const DICT = {
       zh: {
-    title: 'Qwerty 跟打',
+    title: '泡菜鱼',
     progress: '进度 {done}/{total}',
     hits: '命中 {n}',
     retries: '重打 {n}',
@@ -2401,7 +2401,7 @@ window.__ModuleLoader__.load({
     resultNextChapterLast: '回到第 1 章',
     empty: '没有单词；用空格分隔即可，例如：/qwerty-autotype cancel govern',
     sideLabel: '跟打',
-    sideTitle: '开 / 关 Qwerty 跟打卡片',
+    sideTitle: '开 / 关泡菜鱼跟打卡片',
     searchDict: '搜索词库（名称 / 标签）',
     allCategories: '全部',
     recent: '最近使用',
@@ -2560,7 +2560,7 @@ window.__ModuleLoader__.load({
     wordCount: '{n} 词',
       },
       en: {
-    title: 'Qwerty practice',
+    title: 'Paocaiyu',
     progress: '{done}/{total}',
     hits: '{n} hit',
     retries: '{n} retry',
@@ -2744,7 +2744,7 @@ window.__ModuleLoader__.load({
     wordCount: '{n} words',
     empty: 'No words; separate them with spaces, e.g. /qwerty-autotype cancel govern',
     sideLabel: 'Practice',
-    sideTitle: 'Show / hide the Qwerty practice card',
+    sideTitle: 'Show / hide the Paocaiyu practice card',
       },
     }
 

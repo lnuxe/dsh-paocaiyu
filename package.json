@@ -1,9 +1,8 @@
 {
   "name": "@local/qwerty-autotype-ui",
-  "version": "0.16.3",
-  "private": true,
+  "version": "1.0.0",
   "type": "module",
-  "description": "Qwerty 跟打的对话界面：/qwerty-autotype 在对话里长出一张跟打卡片。",
+  "description": "泡菜鱼（Paocaiyu）：在 DSH 对话输入框里练英文打字 —— /qwerty-autotype 起一张跟打卡片，371 本词库 41 万词。",
   "license": "GPL-3.0-only",
   "repository": {
     "type": "git",
@@ -16,6 +15,7 @@
   "exports": {
     ".": "./index.js",
     "./client": "./client.js",
+    "./package.json": "./package.json",
     "./locale/*.json": "./locale/*.json",
     "./icon": "./icon.svg"
   },
@@ -41,7 +41,8 @@
     "audit": "node scripts/audit-dicts.mjs",
     "verify": "node --check client.js && node test-client-logic.mjs && node scripts/smoke-apply.mjs && node scripts/check-size.mjs",
     "smoke": "node scripts/smoke-apply.mjs",
-    "size": "node scripts/check-size.mjs"
+    "size": "node scripts/check-size.mjs",
+    "prepublish-check": "node scripts/publish-preflight.mjs"
   },
   "dsh": {
     "bundle": {
@@ -57,5 +58,24 @@
   },
   "devDependencies": {
     "jsdom": "^31.0.1"
+  },
+  "author": "lnuxe <lnuxe@users.noreply.github.com>",
+  "icon": "./icon.svg",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "dsh-bundle",
+    "qwerty",
+    "typing",
+    "typing-practice",
+    "dictation",
+    "english",
+    "vocabulary"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

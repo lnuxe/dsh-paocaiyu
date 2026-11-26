@@ -1,6 +1,9 @@
-# qwerty-autotype-ui
+# 泡菜鱼 · Paocaiyu
 
-在 DSH 的对话输入框里练打字：**屏幕上方给一个英文单词，你照着它打一遍**——就是「跟打」。
+> DSH 插件：在对话输入框里练英文打字。**输入框上方给一个英文单词，你照着它打一遍**——就是「跟打」。
+
+- 包名：`@local/qwerty-autotype-ui` · 命令：`/qwerty-autotype` · 许可证：GPL-3.0
+- 词库：371 本 / 41 万词（四六级、考研、托福、雅思、商务、代码、日语……）
 
 ![跟打演示](assets/demo.gif)
 
@@ -58,8 +61,21 @@ npm run index    # 重新生成词库目录（371 本）
 
 主要就是两个文件：`client.js`（全部功能）和 `test-client-logic.mjs`（测试）。测试不需要浏览器，用桩把组件真的渲染一遍。
 
+## 安装
+
+在 DSH 里以插件（bundle）方式装上就能用，不额外起服务：
+
+```bash
+pnpm --dir ~/.dsh/profiles/web add @local/qwerty-autotype-ui   # 本地包
+# 或者从插件市场装：搜索「泡菜鱼」
+```
+
+装好后：侧栏左上角出现图标，输入框为空时按 `Tab` 也能起条。
+
 ## 说明
 
-- 许可证 **GPL-3.0**，词库数据来自同样开源的 [qwerty-learner](https://github.com/Kaiyiwing/qwerty-learner)
+- 名字：**泡菜鱼（Paocaiyu）**—— 一个在输入框里陪你敲单词的小东西；功能上就是 qwerty-learner 的「跟打」
+- 许可证 **GPL-3.0**，词库数据来自同样开源的 [qwerty-learner](https://github.com/Kaiyiwing/qwerty-learner)（见 [NOTICE](./NOTICE)）
 - 改动记录见 [CHANGELOG.md](./CHANGELOG.md)
+- 发布到插件市场的步骤见 [docs/publish-checklist.md](./docs/publish-checklist.md)
 - 仓库：https://github.com/lnuxe/qwerty-autotype-ui

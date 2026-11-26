@@ -7,6 +7,34 @@
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-26
+
+改名 **泡菜鱼**，并按 DSH 插件市场的发布要求把包补齐。功能与 0.16.3 一致（无换词库、无按章）。
+
+### Changed
+
+- 项目名 → **泡菜鱼 / Paocaiyu**：市场卡片标题取 `locale/{zh,en}.json` 的 `meta.title`，
+  面板标题与侧栏提示同步换掉；README 抬头改成「泡菜鱼 · Paocaiyu」
+- 图标重画：深底圆角 + 薄荷色小鱼 + 打字光标（原键盘图标退役），`<title>` 改成「泡菜鱼」
+- `package.json` 补齐市场元信息：去掉 `private`、加 `author` / `keywords` / `engines` /
+  `publishConfig` / 顶层 `icon`，`exports` 补 `./package.json`（字段回退要用）
+
+### Added
+
+- `scripts/publish-preflight.mjs` + `npm run prepublish-check`：38 项发布自检
+  （元信息、bundle 入口、`cordis.patch.yml` 与包名一致、locale 中英标题描述、图标格式与 256 KiB 上限、
+  `files` 是否覆盖全部运行时文件、`client.js` 体积）
+- `docs/publish-checklist.md`：改名两种路线（自托管 / 发公共 registry）、发布前必须成立的项、发布后自查、回滚
+
+### 回归（最后一轮，全部通过）
+
+```
+npm run verify         ALL PASS — 1525 条 / SMOKE OK — 5 slot、2 i18n / client.js 452,155 字节（94.2%）
+npm run prepublish-check  PREFLIGHT OK — 38 项 0 失败
+无头 Chrome 五档：380 / 420 / 760 / 1000 / 1440，条与单词居中、两侧列显隐正确
+长句 43 字符：可用宽 250→950 时字号 18 → 25 → 36 → 44 → 52，始终 ≤2 行
+```
+
 ## [0.16.3] - 2026-11-26
 
 条上换词库这件事不做了，整块撤回；顺手留下一个独立的宽度修复。
