@@ -7,6 +7,28 @@
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-26
+
+跟打条版式改一版：**按钮从条内搬到你输入框的左右两侧**，并补上「上一个 / 下一个」。
+测试 1448 → 1507 条；`client.js` 446,492 → **452,598 字节**（94.3% of 480KB）。
+
+### Changed · 跟打条按钮搬到输入框两侧
+
+- 条内不再挤按钮：`重开/关闭/实时速度/进度` 全部搬到 `.qat-bar-side` 两组（`data-side="left"|"right"`），
+  挂在条的 `top:100%` 处、高度取 `var(--qat-ch)` = 实测的输入框高度 →
+  **按钮组垂直居中在输入框那条高度里、水平落在输入框左右边框外面**（`left/right:-38px`），不压输入区
+- `--qat-ch` 与条宽合并到同一处 inline style（`{ width, marginInline, '--qat-ch' }`），composer 尺寸量一次同时拿宽高
+- 组内顺序由纯函数 `barSideButtonGroups({ sides, total })` 决定（渲染只摆位，不在 JSX 里手写两套顺序）
+- **窄宽度回退**：`barWidth < 460` 时条上给 `data-sides="false"`，两组不渲染，按钮回到条内旧位置
+  （`count` 左 0、`speed` 右 0 / 42、`restart` 右 20、`close` 右 0，新增 `prev` 左 56、`skip` 右 46）；
+  词库加载中的空条走同一套判定
+
+### Added · 上一个 / 下一个
+
+- 左组第一个 `data-act="prev"` → `goPrev()`（index 减一，夹到 0）；右组第一个 `data-act="skip"` → `goSkip()`（下一个词）
+- **复用既有实现**，没有第二份跳词逻辑；热键（`⌘⇧←/→`、`⌘←/→`）没动
+- 两组按钮都是 `pressable`（`onMouseDown` preventDefault），点它们不会把焦点从输入框抢走
+
 ## [0.11.0] - 2026-11-25
 
 第三批：三条分支并行做「入口类 + 键盘 + 结算/错词本」十项。测试 1245 → 1448 条；
