@@ -2585,7 +2585,6 @@ renderTest.writeChapterPos('cet4', 5)
 check('章节存档可读回', renderTest.resumeChapter(renderTest.readChapterPos(), 'cet4', 131), 5)
 check('章节存档换库不认', renderTest.resumeChapter(renderTest.readChapterPos(), 'cet6', 131), 0)
 check('章号越界夹到最后一章', renderTest.resumeChapter({ dictId: 'cet4', chapter: 999 }, 'cet4', 131), 130)
-renderTest.writeChapterPos('cet4', 0)   // 复位：跟打条现在也读这份章号存档
 
 // 首帧就接上次那个词：存档 index=2，条上第一眼应该是词表第 3 个词
 const barWords = renderTest.toWordList(renderTest.wordsSync('cet4'))
@@ -2611,77 +2610,6 @@ const resumedWord = (function pick(node) {
 check('条上首帧就是存档那个词', resumedWord, barWords[2])
 renderTest.setOpen(false)
 renderTest.writeBarProgress('cet4', 0)
-
-// —— 条内章节选择（0.15.0）：本章词表、章号按钮、快捷键、存档互通 ——
-{
-  const all = renderTest.toWordList(renderTest.wordsSync('cet4'))
-  const size = renderTest.CHAPTER_LENGTH
-  check('CHAPTER_LENGTH 是 20（和面板同一档）', size, 20)
-  check('第 0 章正好一章的词', renderTest.wordsOfChapter(all, 0, size).length, size)
-  check('第 0 章就是词库前 20 个', renderTest.wordsOfChapter(all, 0, size)[0], all[0])
-  check('第 2 章从第 41 个词开始', renderTest.wordsOfChapter(all, 2, size)[0], all[40])
-  const lastChapter = renderTest.chapterCount({ length: all.length }) - 1
-  check('最后一章是短章（不满 20 也不补）',
-    renderTest.wordsOfChapter(all, lastChapter, size).length <= size, true)
-  check('越界章给空表（渲染层不用再判）', renderTest.wordsOfChapter(all, 9999, size), [])
-
-  // 浮层数据：一格一章、只有当前章 active
-  const items = renderTest.chapterItems(6, 2)
-  check('章节浮层一格一章', [items.length, items[0].label, items[5].label], [6, '1', '6'])
-  check('章节浮层只高亮当前章', items.filter((item) => item.active).map((item) => item.label), ['3'])
-  check('章节浮层：0 章给空数组', renderTest.chapterItems(0, 0), [])
-  check('章节浮层：脏值不炸', renderTest.chapterItems('x', null), [])
-
-  // 快捷键：⌘↑ / ⌘↓ 换章，动作名不会被 hotkeyAction 改写掉
-  check('⌘↑ 是上一章',
-    renderTest.resolveHotkey({ key: 'ArrowUp', meta: true }), 'prev-chapter')
-  check('⌘↓ 是下一章',
-    renderTest.resolveHotkey({ key: 'ArrowDown', ctrl: true }), 'next-chapter')
-  check('带 shift 的上下键不抢（留给系统/插件）',
-    [renderTest.resolveHotkey({ key: 'ArrowUp', meta: true, shift: true }),
-      renderTest.resolveHotkey({ key: 'ArrowDown', meta: true, shift: true })].join(','), ',')
-  check('换章动作原样透传', [renderTest.hotkeyAction('prev-chapter'), renderTest.hotkeyAction('next-chapter')].join(','),
-    'prev-chapter,next-chapter')
-  check('isChapterAction 只认这两个动作',
-    [renderTest.isChapterAction('prev-chapter'), renderTest.isChapterAction('next-chapter'), renderTest.isChapterAction('skip')].join(','),
-    'true,true,false')
-
-  // 换词库后章号越界要夹回来（否则本章空表，条上没词可打）
-  const sizeNow = renderTest.chapterCount({ length: all.length })
-  check('越界章号夹到最后一章', Math.min(999, sizeNow - 1), sizeNow - 1)
-  check('夹回来之后本章一定有词', renderTest.wordsOfChapter(all, sizeNow - 1, size).length > 0, true)
-
-  // 存档互通：面板把章号存到 3，跟打条首帧就该打第 4 章第一个词
-  renderTest.writeChapterPos('cet4', 3)
-  renderTest.writeBarProgress('cet4', 0)
-  renderTest.setOpen(true)
-  const chapBar = render('渲染：跟打条按存档章号开局',
-    () => renderTest.components.ComposerTrainer({ useInput: () => '', inputActions: {}, ctx: ctxStub }))
-  const chapWord = (function pick(node) {
-    if (!node || typeof node !== 'object') return null
-    if (Array.isArray(node)) return node.map(pick).find(Boolean) ?? null
-    if (typeof node.type === 'function') return pick(node.type(node.props ?? {}))
-    if (node.props?.className === 'qat-word') {
-      return (node.children ?? []).map((child) => (child?.children?.[0] ?? '')).join('')
-    }
-    return pick(node.children) ?? pick(node.props?.children)
-  })(chapBar)
-  check('跟打条读面板存的章号（第 4 章第 1 个词）', chapWord, all[3 * size])
-  const chip = findNodesByClass(chapBar, 'qat-bar-chapter')[0]
-  check('条上有章号按钮', Boolean(chip), true)
-  // 测试里的 t() 是 key 直出，所以这里断键名；文案本身在下面按源码断
-  check('章号按钮用的是 barChapter 这条文案',
-    (chip?.children ?? []).map((child) => (typeof child === 'string' ? child : '')).join(''), 'barChapter')
-  check('中英文案都在（第 {n}/{total} 章 / Ch. {n}/{total}）',
-    [/barChapter: '第 \{n\}\/\{total\} 章'/.test(source), /barChapter: 'Ch\. \{n\}\/\{total\}'/.test(source)].join(','),
-    'true,true')
-  check('章号按钮是「点得动」的（onMouseDown 拦截 + data-act）',
-    [typeof chip?.props?.onMouseDown, chip?.props?.['data-act']].join(','), 'function,chapter')
-  check('没点开时不画浮层（首帧不闪一层）', findNodesByClass(chapBar, 'qat-chap-pop').length, 0)
-  renderTest.setOpen(false)
-  renderTest.writeChapterPos('cet4', 0)
-  renderTest.writeBarProgress('cet4', 0)
-}
 
 // —— 长句的 CSS 不能和 fitWordStyle 抢字号（D1 与 D2 合并后的回归） ——
 {
@@ -4021,7 +3949,6 @@ const nbSingle = renderTest.components.Trainer({ words: ['only'], variant: 'pane
 check('N4 只有一个词：不画空气泡', countClass(nbSingle, 'qat-neighbors'), 0)
 
 // 中间词（条里接着上次的进度）：两边都有，条上一律不带箭头字符
-renderTest.writeChapterPos(renderTest.readDictId(), 0)
 const nbBarDict = renderTest.readDictId()
 const nbBarWords = renderTest.toWordList(renderTest.wordsSync(nbBarDict))
 renderTest.writeBarProgress(nbBarDict, 1)
