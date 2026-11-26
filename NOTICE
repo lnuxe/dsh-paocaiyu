@@ -1,13 +1,70 @@
-qwerty-autotype-ui
+泡菜鱼（Paocaiyu）
+包名 @lnuxe/paocaiyu · 仓库 https://github.com/lnuxe/dsh-paocaiyu
 Copyright (C) 2026 lnuxe
 
-本项目的**词库数据**（dicts.generated.json、dicts.index.json 及其归一化后的词条）
-派生自 qwerty-learner（https://github.com/RealKai42/qwerty-learner），
-该项目以 GNU General Public License v3.0 发布。
+本文件记录本项目所依赖、派生或内联的第三方作品与其许可。
+项目整体按 GNU General Public License v3.0（仅此版本，GPL-3.0-only）发布，全文见 LICENSE。
 
-因为本项目分发这些派生数据，整个项目按 GPL-3.0（仅此版本）发布，
-完整许可全文见 LICENSE。上游版权归其作者所有；上游数据来源见其仓库
-docs/toBuildDict.md 与各词库的提交历史。
+────────────────────────────────────────────────────────────
+1. Qwerty Learner —— 词库数据与练习形态的源头（GPL-3.0）
+────────────────────────────────────────────────────────────
+上游：https://github.com/RealKai42/qwerty-learner（作者 KaiyiWing / RealKai42）
+上游许可：GNU General Public License v3.0
+
+本项目的**词库数据**（dicts.generated.json、dicts.index.json 及其归一化后的词条、
+音标、中文释义、词库分类与章节划分）派生自该项目。
+
+因为本项目分发这些派生数据，整个项目按 GPL-3.0（仅此版本）发布。
+上游版权归其作者所有；上游数据来源见其仓库 docs/toBuildDict.md 与各词库的提交历史。
 
 运行时按需拉取的词库 JSON 直接来自上游仓库（jsDelivr / raw.githubusercontent），
 不构成本仓库的再次分发。
+
+本项目的交互形态（单词在上、照着打、打错重打整词、章节与结算）同样来自该项目，
+属于同一「跟打」设计谱系。
+
+────────────────────────────────────────────────────────────
+2. DSH · DeepSeek Harness —— 宿主平台
+────────────────────────────────────────────────────────────
+上游：https://github.com/deepseek-ai/deepseek-harness
+许可：见上游仓库 LICENSE
+
+本项目是 DSH 的 bundle（`dsh.bundle.patch` + `dsh.client`），依赖其 slot 体系
+（sidebar / conversation.input.dock / settings 等）、composer 编辑器、主题 token
+（`--dsw-alias-*`）与插件运行时。未内联、未再分发其源码。
+
+────────────────────────────────────────────────────────────
+3. React —— 运行时依赖（MIT）
+────────────────────────────────────────────────────────────
+上游：https://github.com/facebook/react
+许可：MIT
+
+卡片与单词条全部用 `React.createElement` 手写（无 JSX、无构建步骤），React 本身
+由宿主页面提供，不随本包分发。
+
+────────────────────────────────────────────────────────────
+4. Iconify 图标集 —— 内联 SVG path
+────────────────────────────────────────────────────────────
+上游：https://iconify.design
+本包内联的 path data 取自 Qwerty Learner 所用的同一套图标，涉及集合：
+
+  · Tabler Icons（tabler）        —— MIT
+  · Heroicons（heroicons）        —— MIT
+  · Boxicons（bxs）               —— CC-BY-4.0（免费版），署名保留于此
+  · ic（Iconify 自有集合）        —— 归 Iconify
+
+这些 path 以内联字符串形式出现在 client.js 的 ICONS 表与侧栏图标中，
+不依赖图标库、不加载外部字体或图片。各集合版权归其作者。
+
+────────────────────────────────────────────────────────────
+5. 图标与演示素材
+────────────────────────────────────────────────────────────
+icon.svg、assets/ 下的演示图与宣传图由本项目自行绘制 / 录制，
+随项目以同一 GPL-3.0 条款提供。
+
+────────────────────────────────────────────────────────────
+6. CDN
+────────────────────────────────────────────────────────────
+运行时按需从 jsDelivr（https://cdn.jsdelivr.net）与
+raw.githubusercontent.com 拉取词库 JSON。二者为第三方服务，
+其可用性与条款由服务方负责，本项目不缓存、不再分发这些响应。

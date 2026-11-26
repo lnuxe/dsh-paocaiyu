@@ -7,6 +7,26 @@
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-11-26
+
+README 按 Standard Readme 结构重写，并补上完整的致谢与第三方许可说明。
+
+### Docs
+
+- `README.md` 按 [Standard Readme](https://github.com/RichardLitt/standard-readme) 的章节顺序重排：
+  标题 → 徽章（npm / license / platform / CI / tests）→ 一句话简介 → 目录 → 安全 → 背景 →
+  安装 → 用法（快捷键 / 词库 / 练习记录 / 设置）→ 开发 → 维护者 → **致谢** → 参与贡献 → 许可证
+- 新增 **安全** 一节，写清三件事：回车不发送、记录只存 `localStorage`、唯一网络请求是按需拉词库 JSON
+- 新增 **致谢** 表（README）并在 `NOTICE` 里逐条展开：
+  Qwerty Learner（词库数据 + 跟打形态，GPL-3.0）、DSH 宿主平台、React（MIT）、
+  Iconify 图标集（Tabler MIT / Heroicons MIT / Boxicons CC-BY-4.0 / ic）、
+  jsDelivr 与 raw.githubusercontent 两个 CDN
+- `NOTICE` 从 12 行扩成 6 节，明确「哪些是派生、哪些是内联、哪些由宿主提供、哪些只是运行时请求」
+
+### 说明
+
+- 本项目名（泡菜鱼 / Paocaiyu）与仓库名（`dsh-paocaiyu`）在 README 抬头、徽章链接、安装命令中统一
+
 ## [1.0.1] - 2026-11-26
 
 包 id 与仓库名一起换掉，准备上架插件市场。

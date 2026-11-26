@@ -1,6 +1,6 @@
 {
   "name": "@lnuxe/paocaiyu",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "type": "module",
   "description": "泡菜鱼（Paocaiyu）：在 DSH 对话输入框里练英文打字 —— /qwerty-autotype 起一张跟打卡片，371 本词库 41 万词。",
   "license": "GPL-3.0-only",
