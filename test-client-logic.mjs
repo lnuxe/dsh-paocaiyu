@@ -2643,6 +2643,31 @@ renderTest.writeBarProgress('cet4', 0)
   renderTest.setOpen(false)
   renderTest.writeDictId('cet4')
 
+  // 面板换库 → 条要跟着换（广播事件），不能条在练旧库、进度写新库
+  {
+    // node 里的 window 是精简桩：没有 addEventListener，广播走 try/catch 静默丢弃，
+    // 所以这里断「写盘不炸 + 源码里的广播/订阅成对存在」，DOM 行为在无头 Chrome 里验过
+    const wrote = (() => {
+      try {
+        renderTest.writeDictId('cet6')
+        const id = renderTest.readDictId()
+        renderTest.writeDictId('cet4')
+        return id
+      } catch (err) {
+        return String(err)
+      }
+    })()
+    check('writeDictId 在无 DOM 的宿主里也不炸（广播有兜底）', wrote, 'cet6')
+    const writeSrc = source.slice(source.indexOf('function writeDictId'), source.indexOf('function readRecent'))
+    check('writeDictId 末尾调 announceDict', /announceDict\(id\)/.test(writeSrc), true)
+    check('广播常量只有一份', (source.match(/qwerty-autotype:dict-change/g) ?? []).length, 1)
+    const subAt = source.indexOf('const onDict = (event)')
+    check('条订阅了广播（setDictId + 重开一轮）',
+      [source.slice(subAt, subAt + 200).includes('setDictId'),
+        source.slice(subAt, subAt + 200).includes('setRound(0)')].join(','), 'true,true')
+    check('订阅有对应的解绑', /removeEventListener\(DICT_CHANGE_EVENT/.test(source), true)
+  }
+
   // 换库动作必须两件事一起做：写偏好、把跟打进度归零（否则新库接着旧库的词序）
   const chooseAt = source.indexOf('const chooseDict = useCallback')
   const chooseSrc = source.slice(chooseAt, source.indexOf('const advance = useCallback', chooseAt))

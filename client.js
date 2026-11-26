@@ -2193,6 +2193,16 @@ window.__ModuleLoader__.load({
       return catalog()[0]?.id ?? 'builtin'
     }
 
+    /** 换词库广播：面板和条都吃这一份，谁换的都能同步（同页 storage 事件不触发） */
+    const DICT_CHANGE_EVENT = 'qwerty-autotype:dict-change'
+    function announceDict(id) {
+      try {
+    window.dispatchEvent(new CustomEvent(DICT_CHANGE_EVENT, { detail: { id } }))
+      } catch {
+    /* ignore */
+      }
+    }
+
     function writeDictId(id) {
       try {
     window.localStorage.setItem(DICT_STORAGE_KEY, id)
@@ -2202,6 +2212,7 @@ window.__ModuleLoader__.load({
       } catch {
     /* ignore */
       }
+      announceDict(id)
     }
 
     function readRecent() {
@@ -5606,6 +5617,23 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       /** 词库浮层开着时：Esc 先收浮层、点条外也收 */
       const dictOpenRef = useRef(false)
       useEffect(() => { dictOpenRef.current = dictOpen }, [dictOpen])
+      // 面板里换了词库也要同步到这个条（否则条在练旧库，进度却写进新库）
+      useEffect(() => {
+    const onDict = (event) => {
+      const id = event?.detail?.id
+      if (typeof id !== 'string' || !id) return
+      setDictId((prev) => (prev === id ? prev : id))
+      setRound(0)
+    }
+    window.addEventListener(DICT_CHANGE_EVENT, onDict)
+    return () => window.removeEventListener(DICT_CHANGE_EVENT, onDict)
+      }, [])
+      // 条收起就把浮层连同搜索词一起清掉（panic 关条也不会留下一个自己弹开的浮层）
+      useEffect(() => {
+    if (isOpen) return
+    setDictOpen(false)
+    setDictQuery('')
+      }, [isOpen])
       useEffect(() => {
     if (!dictOpen) return undefined
     const onDown = (event) => {
@@ -5892,29 +5920,6 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     if (editor && typeof editor.focus === 'function') editor.focus()
       }, [isOpen])
 
-      // 和输入框对齐：量 composer 正文的宽度，条按同一宽度居中
-      useEffect(() => {
-    if (!isOpen) return undefined
-    const measure = () => {
-      const editor = findComposerEditor()
-      if (!editor) return
-      const width = Math.round(editor.getBoundingClientRect().width)
-      if (width > 0) setBarWidth(width)
-    }
-    measure()
-    window.addEventListener('resize', measure)
-    let observer
-    const editor = findComposerEditor()
-    if (editor && typeof ResizeObserver !== 'undefined') {
-      observer = new ResizeObserver(measure)
-      observer.observe(editor)
-    }
-    return () => {
-      window.removeEventListener('resize', measure)
-      if (observer) observer.disconnect()
-    }
-      }, [isOpen])
-
       // 输入法上屏拦截：拼音/候选字落不进 composer，只留我们自己写的那句提示。
       // 注意这里只「拦事件」，绝不改 inputmode/lang/style —— 改属性会把输入法直接搞哑。
       useEffect(() => {
@@ -6133,6 +6138,8 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       if (!region || !region.contains(target)) return
       if (target.closest('[data-qat]') !== null) return
       if (target.closest('button, [role="button"]') === null) return
+      // 这一层 stopPropagation 之后 document 层收不到，浮层只能在这儿顺手收
+      setDictOpen(false)
       event.preventDefault()
       event.stopPropagation()
     }
