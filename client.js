@@ -2776,12 +2776,12 @@ window.__ModuleLoader__.load({
 .qat-bar[data-sides="false"] .qat-bar-skip:hover{opacity:.9}
 /* 条外摆位（宽条）：两组贴在输入框左右边框外面，top:100% 是条的下沿，
    height 取量到的输入框高度，按钮组就垂直居中在输入框那条高度区间里 */
-.qat-bar-side{position:absolute;top:calc(100% + var(--qat-ct,0px));height:var(--qat-ch,36px);display:flex;align-items:center;gap:2px;z-index:2;pointer-events:none}
-.qat-bar-side[data-side="left"]{left:var(--qat-dl,0px);transform:translateX(calc(-100% + 4px))}
-.qat-bar-side[data-side="right"]{left:calc(var(--qat-dl,0px) + var(--qat-dw,100%));transform:translateX(-4px)}
+.qat-bar-side{position:absolute;top:calc(100% + var(--qat-et,0px));height:var(--qat-eh,24px);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;z-index:3;pointer-events:none}
+.qat-bar-side[data-side="left"]{left:calc(var(--qat-cl,0px) + 6px)}
+.qat-bar-side[data-side="right"]{left:calc(var(--qat-cl,0px) + var(--qat-cw,100%) - 26px)}
 /* 组内一律回到普通流：条内那套绝对摆位不许跟进来 */
 .qat-bar-side > *{position:static;top:auto;left:auto;right:auto;transform:none;white-space:nowrap}
-.qat-bar-side .qat-icon{pointer-events:auto;width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center;opacity:.45}
+.qat-bar-side .qat-icon{pointer-events:auto;flex:none;width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;opacity:.45}
 .qat-bar-side .qat-icon:hover{opacity:.95;background:var(--dsw-alias-interactive-hover,var(--dsw-alias-interactive-bg))}
 /* 窄条：条外那两组整体不渲染，CSS 再兜一层 */
 .qat-bar[data-sides="false"] .qat-bar-side{display:none}
@@ -5532,6 +5532,25 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
       ]
     }
 
+    /**
+     * 从编辑器往上找「输入卡」那一层：卡片一定比文字区宽（左右各有内边距）、也比它高。
+     * @param {Array<object>} list - 祖先矩形（由近到远）
+     * @param {object} editorRect - 编辑器矩形
+     * @returns {number} 命中的下标；找不到给 -1（调用方退回用编辑器自己）
+     */
+    function pickCardRect(list, editorRect) {
+      const width = Number(editorRect?.width) || 0
+      const height = Number(editorRect?.height) || 0
+      if (!width) return -1
+      const rows = Array.isArray(list) ? list : []
+      for (let i = 0; i < rows.length; i += 1) {
+        const rect = rows[i]
+        if (!rect) continue
+        if ((Number(rect.width) || 0) >= width + 12 && (Number(rect.height) || 0) >= height + 4) return i
+      }
+      return -1
+    }
+
     /** 条外两侧按钮的动作表：class / 图标 / 文案 key 一处定义，渲染只按 act 取 */
     const BAR_ACT_SPEC = {
       prev: { cls: 'qat-bar-prev', icon: 'prev', size: 12, label: 'prevTip' },
@@ -5647,20 +5666,31 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
         const next = height > 16 ? Math.round(height) : 36
         return prev === next ? prev : next
       })
-      // 条自己的下沿和输入框顶之间还夹着 dock 的 padding：量出来才能对齐垂直中心
+      // 两侧按钮要贴在「输入卡片」的左右内沿，而 [data-composer-input] 是卡片里的文字区：
+      // 往上找一层比文字区更宽更高的祖先才算卡片（宿主卡片有内边距，宽度差得很明显）
+      let cardRect = rect
+      if (node) {
+        const ancestors = []
+        let cursor = node.parentElement
+        for (let i = 0; i < 6 && cursor; i += 1) {
+          ancestors.push(cursor.getBoundingClientRect?.())
+          cursor = cursor.parentElement
+        }
+        const hit = pickCardRect(ancestors, rect)
+        if (hit >= 0) cardRect = ancestors[hit]
+      }
       const barRect = barRef.current?.getBoundingClientRect?.()
-      const gap = rect && barRect && Number.isFinite(rect.top) && Number.isFinite(barRect.bottom)
-        ? Math.max(0, Math.round(rect.top - barRect.bottom))
-        : 0
-      setComposerGap((prev) => (prev === gap ? prev : gap))
-      // 输入框相对条自己的左偏移 / 宽度：条不一定和输入框同宽同 x（composer 有 padding / border），
-      // 两侧按钮按这两个数摆，才不会像只按 100% 推算那样错位
-      const left = rect && barRect && Number.isFinite(rect.left) && Number.isFinite(barRect.left)
-        ? Math.round(rect.left - barRect.left)
-        : 0
-      setComposerLeft((prev) => (prev === left ? prev : left))
-      const boxWidth = width > 40 ? Math.round(width) : 0
-      setComposerBox((prev) => (prev === boxWidth ? prev : boxWidth))
+      const rel = (value) => (Number.isFinite(value) ? Math.round(value) : 0)
+      // 文字区相对条下沿的偏移 / 高度：竖排按钮组垂直居中在文字行上（不压卡片底部那排按钮）
+      const top = rect && barRect ? Math.max(0, rel(rect.top - barRect.bottom)) : 0
+      setComposerGap((prev) => (prev === top ? prev : top))
+      const textH = rect && rect.height > 8 ? rel(rect.height) : 24
+      setComposerH((prev) => (prev === textH ? prev : textH))
+      // 卡片相对条左边缘的偏移与宽度：两侧按钮按这两个数摆，宿主的 padding 再厚也不会错位
+      const cardLeft = rect && cardRect && barRect ? rel(cardRect.left - barRect.left) : 0
+      setComposerLeft((prev) => (prev === cardLeft ? prev : cardLeft))
+      const cardWidth = cardRect && cardRect.width > 40 ? rel(cardRect.width) : 0
+      setComposerBox((prev) => (prev === cardWidth ? prev : cardWidth))
     }
     measure()
     const target = document.querySelector('[data-composer-input]')
@@ -6149,12 +6179,12 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
 
       /** 条宽够不够把按钮搬到输入框两侧；首帧没量到、窄条都当不够 */
       const sidesOn = barSidesFit(barWidth)
-      /** 宽度与条高变量挂一处：两组按钮靠 --qat-ch 垂直居中在输入框那条高度里 */
+      /** 版式变量挂一处：两侧按钮列靠 --qat-cl/--qat-cw 贴卡片内沿，靠 --qat-et/--qat-eh 对齐文字行 */
       const sideVars = {
-    '--qat-ch': `${composerH}px`,
-    '--qat-ct': `${composerGap}px`,
-    '--qat-dl': `${composerLeft}px`,
-    '--qat-dw': `${composerBox || barWidth || 0}px`,
+    '--qat-eh': `${composerH}px`,
+    '--qat-et': `${composerGap}px`,
+    '--qat-cl': `${composerLeft}px`,
+    '--qat-cw': `${composerBox || barWidth || 0}px`,
       }
       const barStyle = barWidth === null ? sideVars : { width: `${barWidth}px`, marginInline: 'auto', ...sideVars }
 
@@ -7632,7 +7662,7 @@ ${FINGER_IDS.map((id) => `.qat-key[data-finger="${id}"] .qat-keycap{fill:color-m
     FINGER_MAP, FINGER_IDS, FINGER_LABELS, FINGER_COLORS, FINGER_KEY,
     parseCustomFile, serializeCustomDict, splitCsvLine, toCustomWord, downloadText, withSlashes,
     stepIndex, toWordList, isRoundDone,
-    barSideButtonGroups, barSidesFit, BAR_SIDES_MIN, BAR_ACT_SPEC,
+    barSideButtonGroups, barSidesFit, pickCardRect, BAR_SIDES_MIN, BAR_ACT_SPEC,
     wrapWord, fitWordStyle, wordLines, FIT_SIZES, CHAR_RATIO,
     WORD_SCALES, WORD_SCALE_FACTOR, clampWordScale, scaleWordSizes, wordStyleFor,
     VOICE_RATES, CLICK_VOLUMES, clampVoiceRate, clampClickVolume,

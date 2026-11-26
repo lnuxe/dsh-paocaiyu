@@ -1318,7 +1318,7 @@ check('空词库时给出加载提示', gatherText(emptyBar).includes('loading')
 /* ================================================================== */
 
 // —— 分组纯函数：渲染的唯一真源（顺序也由它定，渲染只 map） ——
-const { barSideButtonGroups, barSidesFit, BAR_SIDES_MIN } = renderTest
+const { barSideButtonGroups, barSidesFit, pickCardRect, BAR_SIDES_MIN } = renderTest
 const wideGroups = barSideButtonGroups({ sides: true, total: 12 })
 check('宽条只有左右两组', wideGroups.map((group) => group.side).join(','), 'left,right')
 check('宽条左组 = 上一个 + 重开', wideGroups[0].acts.join(','), 'prev,restart')
@@ -1373,7 +1373,7 @@ const wideBar = render('渲染：宽条（按钮搬到输入框两侧）', () =>
 check('宽条标了 data-sides', wideBar?.props?.['data-sides'], 'true')
 check('宽条画出左右两组',
   findNodesByClass(wideBar, 'qat-bar-side').map((node) => node.props?.['data-side']).join(','), 'left,right')
-check('条高变量挂在条上（和宽度同一处）', String(wideBar?.props?.style?.['--qat-ch'] ?? ''), '36px')
+check('文字行高变量挂在条上（和宽度同一处）', String(wideBar?.props?.style?.['--qat-eh'] ?? ''), '36px')
 check('宽条仍按 composer 宽度对齐', wideBar?.props?.style?.width, '900px')
 check('左组按钮 = 上一个 + 重开', actsIn(sideNode(wideBar, 'left')).join(','), 'prev,restart')
 check('右组按钮 = 下一个 + 关闭', actsIn(sideNode(wideBar, 'right')).join(','), 'skip,close')
@@ -1442,22 +1442,35 @@ check('上一个 / 下一个都不改热键表',
   'prev,next-word')
 navPlugin.__test.setOpen(false)
 
-// —— 样式：条外两组贴在输入框边框外面，窄条整体隐藏，颜色只走变量 ——
-check('条外两组从条的下沿 + 量到的间隙往下排',
-  /\.qat-bar-side\{[^}]*top:calc\(100% \+ var\(--qat-ct/.test(source), true)
-check('条外两组的高度读条高变量（垂直居中靠它）', /\.qat-bar-side\{[^}]*height:var\(--qat-ch/.test(source), true)
-// 左组右对齐到条的左边框（= 输入框左边框），只压 4px：按钮整体在输入区外面
-// 左组：贴到「输入框左偏移」处再整体左移一整个自身宽度（只留 4px 压边）
-check('左组整组落在输入框左边框外',
-  /\.qat-bar-side\[data-side="left"\]\{left:var\(--qat-dl,0px\);transform:translateX\(calc\(-100% \+ 4px\)\)\}/.test(source), true)
-// 右组：贴到「输入框左偏移 + 输入框宽度」处（= 右边框），只压 4px
-check('右组整组落在输入框右边框外',
-  /\.qat-bar-side\[data-side="right"\]\{left:calc\(var\(--qat-dl,0px\) \+ var\(--qat-dw,100%\)\);transform:translateX\(-4px\)\}/.test(source), true)
+// —— 样式：两侧是竖排按钮列，贴在输入卡片左右内沿，垂直居中在文字行 ——
+check('两侧组从条的下沿 + 量到的文字行偏移往下排',
+  /\.qat-bar-side\{[^}]*top:calc\(100% \+ var\(--qat-et/.test(source), true)
+check('两侧组高度读文字行高（垂直居中靠它）',
+  /\.qat-bar-side\{[^}]*height:var\(--qat-eh/.test(source), true)
+check('两侧组是竖排（两个按钮上下叠，不占横向空间）',
+  /\.qat-bar-side\{[^}]*flex-direction:column/.test(source), true)
+// 左列：卡片左内沿 + 6px；右列：卡片左偏移 + 卡片宽 - 26px（20px 按钮 + 6px）
+check('左列贴在卡片左边框内沿',
+  /\.qat-bar-side\[data-side="left"\]\{left:calc\(var\(--qat-cl,0px\) \+ 6px\)\}/.test(source), true)
+check('右列贴在卡片右边框内沿',
+  /\.qat-bar-side\[data-side="right"\]\{left:calc\(var\(--qat-cl,0px\) \+ var\(--qat-cw,100%\) - 26px\)\}/.test(source), true)
 check('四个版式变量都挂在条上（同处 inline style）',
-  ['--qat-ch', '--qat-ct', '--qat-dl', '--qat-dw'].every((key) => source.includes(`'${key}':`)), true)
-// 条与输入框不同 x 时也不靠 100% 推算：偏移走实测值
-check('两侧摆位不再用 100% 推算',
+  ['--qat-eh', '--qat-et', '--qat-cl', '--qat-cw'].every((key) => source.includes(`'${key}':`)), true)
+check('两侧摆位不再靠 100% 推算（卡片与文字区不同 x 也不会错位）',
   source.includes('right:calc(100% - 4px)') || source.includes('left:calc(100% - 4px)'), false)
+
+// —— pickCardRect：从近到远找「比文字区更宽更高」的祖先当卡片 ——
+const edRect = { width: 600, height: 24, left: 100, top: 0 }
+check('pickCardRect：最近一层就够宽 → 选它',
+  pickCardRect([{ width: 640, height: 90 }, { width: 900, height: 400 }], edRect), 0)
+check('pickCardRect：第一层只有宽度相同 → 跳过，选下一层',
+  pickCardRect([{ width: 600, height: 24 }, { width: 640, height: 90 }], edRect), 1)
+check('pickCardRect：都不够宽 → -1（调用方退回用文字区）',
+  pickCardRect([{ width: 604, height: 20 }, { width: 610, height: 26 }], edRect), -1)
+check('pickCardRect：只高不宽也跳过',
+  pickCardRect([{ width: 600, height: 90 }], edRect), -1)
+check('pickCardRect：空 / 非数组 / 没有宽度 → -1',
+  [pickCardRect([], edRect), pickCardRect(null, edRect), pickCardRect([{ width: 999, height: 99 }], {})].join(','), '-1,-1,-1')
 check('组内元素回到普通流（不吃条内绝对摆位）', /\.qat-bar-side > \*\{[^}]*position:static/.test(source), true)
 check('窄条：上一个插在进度右边（左边距 56）', /\.qat-bar\[data-sides="false"\] \.qat-bar-prev\{[^}]*left:56px/.test(source), true)
 check('窄条：下一个插在重开左边（右边距 46）', /\.qat-bar\[data-sides="false"\] \.qat-bar-skip\{[^}]*right:46px/.test(source), true)
